@@ -8,24 +8,31 @@
     "net10.0": []
   },
   "packageFolders": {
-    "/Users/hamza/.nuget/packages/": {}
+    "C:\\Users\\it.officer\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Api/AlAmalBusiness.Api.csproj",
+      "projectUniqueName": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Api\\AlAmalBusiness.Api.csproj",
       "projectName": "AlAmalBusiness.Api",
-      "projectPath": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Api/AlAmalBusiness.Api.csproj",
-      "packagesPath": "/Users/hamza/.nuget/packages/",
-      "outputPath": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Api/obj/",
+      "projectPath": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Api\\AlAmalBusiness.Api.csproj",
+      "packagesPath": "C:\\Users\\it.officer\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Api\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "/Users/hamza/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\it.officer\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -70,7 +77,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/Users/hamza/.dotnet/sdk/10.0.302/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
