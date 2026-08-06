@@ -1,31 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Application\\AlAmalBusiness.Application.csproj": {}
+    "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Application/AlAmalBusiness.Application.csproj": {}
   },
   "projects": {
-    "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Application\\AlAmalBusiness.Application.csproj": {
+    "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Application/AlAmalBusiness.Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Application\\AlAmalBusiness.Application.csproj",
+        "projectUniqueName": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Application/AlAmalBusiness.Application.csproj",
         "projectName": "AlAmalBusiness.Application",
-        "projectPath": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Application\\AlAmalBusiness.Application.csproj",
-        "packagesPath": "C:\\Users\\it.officer\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Application\\obj\\",
+        "projectPath": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Application/AlAmalBusiness.Application.csproj",
+        "packagesPath": "/Users/hamza/.nuget/packages/",
+        "outputPath": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Application/obj/",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\it.officer\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/Users/hamza/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -33,8 +27,8 @@
             "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {
-              "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Domain\\AlAmalBusiness.Domain.csproj": {
-                "projectPath": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Domain\\AlAmalBusiness.Domain.csproj"
+              "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Domain/AlAmalBusiness.Domain.csproj": {
+                "projectPath": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Domain/AlAmalBusiness.Domain.csproj"
               }
             }
           }
@@ -55,6 +49,16 @@
         "net10.0": {
           "framework": "net10.0",
           "targetAlias": "net10.0",
+          "dependencies": {
+            "Microsoft.AspNetCore.Authentication.JwtBearer": {
+              "target": "Package",
+              "version": "[10.0.10, )"
+            },
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[10.0.10, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -71,7 +75,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "/Users/hamza/.dotnet/sdk/10.0.302/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -349,28 +353,22 @@
         }
       }
     },
-    "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Domain\\AlAmalBusiness.Domain.csproj": {
+    "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Domain/AlAmalBusiness.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Domain\\AlAmalBusiness.Domain.csproj",
+        "projectUniqueName": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Domain/AlAmalBusiness.Domain.csproj",
         "projectName": "AlAmalBusiness.Domain",
-        "projectPath": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Domain\\AlAmalBusiness.Domain.csproj",
-        "packagesPath": "C:\\Users\\it.officer\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\it.officer\\source\\repos\\Zahranko\\AlAmalBusiness\\AlAmalBusiness.Domain\\obj\\",
+        "projectPath": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Domain/AlAmalBusiness.Domain.csproj",
+        "packagesPath": "/Users/hamza/.nuget/packages/",
+        "outputPath": "/Users/hamza/RiderProjects/AlAmalBusiness/AlAmalBusiness.Domain/obj/",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\it.officer\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/Users/hamza/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -401,6 +399,14 @@
               "target": "Package",
               "version": "[2.2.4, )"
             },
+            "Microsoft.AspNetCore.Authentication.JwtBearer": {
+              "target": "Package",
+              "version": "[10.0.10, )"
+            },
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[10.0.10, )"
+            },
             "Microsoft.Extensions.Identity.Stores": {
               "target": "Package",
               "version": "[10.0.10, )"
@@ -422,7 +428,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "/Users/hamza/.dotnet/sdk/10.0.302/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",

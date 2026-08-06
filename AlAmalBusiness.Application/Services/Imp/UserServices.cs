@@ -41,7 +41,7 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             }
             
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 return new CreateUserResult { IsSuccess = false, Message = $"Failed to create employee: {errors}" };
 
         }
