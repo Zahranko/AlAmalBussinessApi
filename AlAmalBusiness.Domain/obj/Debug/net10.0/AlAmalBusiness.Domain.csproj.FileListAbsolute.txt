@@ -1,0 +1,13 @@
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\bin\Debug\net10.0\AlAmalBusiness.Domain.deps.json
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\bin\Debug\net10.0\AlAmalBusiness.Domain.dll
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\bin\Debug\net10.0\AlAmalBusiness.Domain.pdb
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\AlAmalBusiness.Domain.csproj.AssemblyReference.cache
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\AlAmalBusiness.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\AlAmalBusiness.Domain.AssemblyInfoInputs.cache
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\AlAmalBusiness.Domain.AssemblyInfo.cs
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\AlAmalBusiness.Domain.csproj.CoreCompileInputs.cache
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\AlAmalBusiness.Domain.sourcelink.json
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\AlAmalBusiness.Domain.dll
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\refint\AlAmalBusiness.Domain.dll
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\AlAmalBusiness.Domain.pdb
+C:\Users\it.officer\source\repos\Zahranko\AlAmalBusiness\AlAmalBusiness.Domain\obj\Debug\net10.0\ref\AlAmalBusiness.Domain.dll

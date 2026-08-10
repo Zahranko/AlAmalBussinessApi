@@ -18,11 +18,10 @@ namespace AlAmalBusiness.Infrastructure.Seeding
         {
             string[] Roles = new string[]
             {
-                AppRoles.CAdmin,
+                AppRoles.Admin,
                 AppRoles.CManager,
                 AppRoles.CEmployee,
                 AppRoles.CUser,
-                AppRoles.FAdmin,
                 AppRoles.FManager,
                 AppRoles.FEmployee,
                 AppRoles.FUser
@@ -37,3 +36,8 @@ namespace AlAmalBusiness.Infrastructure.Seeding
         }
     }
 }
+
+
+
+
+

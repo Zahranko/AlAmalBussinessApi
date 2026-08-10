@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AlAmalBusiness.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e6cb852f00bc3a77f8b910e461ce77bd121687fc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e42d8874abf91e1bacfeb06ef065eef47c66b202")]
 [assembly: System.Reflection.AssemblyProductAttribute("AlAmalBusiness.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AlAmalBusiness.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

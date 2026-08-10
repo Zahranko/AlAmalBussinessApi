@@ -1,4 +1,5 @@
-﻿using AlAmalBusiness.Application.DTOs;
+﻿using AlAmalBusiness.Application.DTOs.Users;
+using AlAmalBusiness.Application.DTOs.Users.Response;
 using AlAmalBusiness.Application.Services.Interface;
 using AlAmalBusiness.Domain.IRepositories;
 using AlAmalBusiness.Domain.Models;
@@ -45,11 +46,91 @@ namespace AlAmalBusiness.Application.Services.Imp
                 return new CreateUserResult { IsSuccess = false, Message = $"Failed to create employee: {errors}" };
 
         }
+
+       
+
+        public async Task<List<GetUserResponse>> GetAllUserAsync()
+        {
+           var getUsers = await _userRepo.GetAllUserAsync();
+            if (getUsers == null || !getUsers.Any())
+            {
+                return new List<GetUserResponse>();
+            }
+            List<GetUserResponse> users = new List<GetUserResponse>();
+            
+            foreach (var user in getUsers)
+            {
+                var roles = await _userRepo.GetRolesAsync(user.Id);
+                users.Add(new GetUserResponse
+                {
+                    UserId= user.Id,
+                    UserName = user.UserName,
+                    FullName = user.FullName,
+                    Roles = roles.ToList()
+                });
+            }
+            return users;
+
+
+
+        }
+
+        public Task<UpdateUserResponse> ResetPasswordAsync(ResetPasswordDTO updateDTO)
+        {
+            var resetPassword = _userRepo.ResetPasswordAsync(updateDTO.UserId!, updateDTO.Password!);
+            if (resetPassword.Result.Succeeded)
+            {
+                return Task.FromResult(new UpdateUserResponse { IsSuccess = true, Message = "Password reset successfully." });
+            }
+            else
+            {
+                var errors = string.Join(", ", resetPassword.Result.Errors.Select(e => e.Description));
+                return Task.FromResult(new UpdateUserResponse { IsSuccess = false, Message = errors });
+            }
+
+        }
+
+        public Task<UpdateUserResponse> UpdateRolesAsync(UpdateUserRolesDTO updateDTO)
+        {
+            var updateRoles = _userRepo.UpdateRolesAsync(updateDTO.UserId!, updateDTO.Roles!);
+            if (updateRoles.Result.Succeeded)
+            {
+                return Task.FromResult(new UpdateUserResponse { IsSuccess = true, Message = "Employee roles updated successfully." });
+            }
+            else
+            {
+                var errors = string.Join(", ", updateRoles.Result.Errors.Select(e => e.Description));
+                return Task.FromResult(new UpdateUserResponse { IsSuccess = false, Message = errors });
+            }
+        }
+
+        public async Task<UpdateUserResponse> UpdateUserAsync(UpdateUserDto updateDTO)
+        {
+            var updateUser= await _userRepo.UpdateUserAsync(updateDTO.UserId!, updateDTO.UserName!, updateDTO.Password!);
+
+            if (updateUser.Succeeded) {
+            return new UpdateUserResponse { IsSuccess = true, Message = "Employee updated successfully." };
+            }
+
+           
+            else {
+                var errors = string.Join(", ", updateUser.Errors.Select(e => e.Description));
+                return new UpdateUserResponse { IsSuccess = false, Message = errors }; }
+        }
+        public async Task<UpdateUserResponse> DisableUserAsync(DisableUserDTO dto)
+        {
+            var disableUser =await  _userRepo.DisableUserAsync(dto.UserId!);
+           if (disableUser.Succeeded)
+            {
+                return new UpdateUserResponse { IsSuccess = true, Message = "Employee disabled successfully." };
+            }
+            else
+            {
+                var errors = string.Join(", ", disableUser.Errors.Select(e => e.Description));
+                return new UpdateUserResponse { IsSuccess = false, Message = errors };
+            }
+
+        }
     }
-    public class CreateUserResult
-    {
-        public bool IsSuccess { get; set; }
-        public string? Message { get; set; }
-    
-    }
+
 }

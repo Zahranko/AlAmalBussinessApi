@@ -1,12 +1,37 @@
+using AlAmalBusiness.Application.DTOs.Auth;
+using AlAmalBusiness.Application.Services.Interface;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AlAmalBusiness.Api.Controllers;
 
-public class AuthController : Controller
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
 {
-    // GET
-    public IActionResult Index()
+    private readonly IAuthService _authServices;
+    public AuthController(IAuthService authServices)
     {
-        return View();
+        _authServices = authServices;
     }
+    [HttpPost("login")]
+    public async Task <IActionResult> Login(LoginDTO dto)
+    {
+        if (ModelState.IsValid)
+        {
+            var res = await _authServices.LoginAsync(dto);
+            if (res.IsSuccess == true)
+            {
+                return Ok(res.Token);
+            }
+            else
+            {
+                return Unauthorized(res.Message);
+            }
+        }
+        else
+        {
+           return BadRequest();
+        }
+    }
+
 }

@@ -1,0 +1,92 @@
+[
+  {
+    "ContainingType": "AlAmalBusiness.Api.Controllers.AuthController",
+    "Method": "Login",
+    "RelativePath": "api/Auth/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "AlAmalBusiness.Application.DTOs.Auth.LoginDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "AlAmalBusiness.Api.Controllers.UserController",
+    "Method": "CreateUser",
+    "RelativePath": "api/User",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "createUserDTO",
+        "Type": "AlAmalBusiness.Application.DTOs.Users.CreateUserDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "AlAmalBusiness.Api.Controllers.UserController",
+    "Method": "GetAllUsers",
+    "RelativePath": "api/User/getAll",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "AlAmalBusiness.Api.Controllers.UserController",
+    "Method": "ResetPassword",
+    "RelativePath": "api/User/resetPassword",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "updateDTO",
+        "Type": "AlAmalBusiness.Application.DTOs.Users.ResetPasswordDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "AlAmalBusiness.Api.Controllers.UserController",
+    "Method": "UpdateUser",
+    "RelativePath": "api/User/update",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "updateDTO",
+        "Type": "AlAmalBusiness.Application.DTOs.Users.UpdateUserDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "AlAmalBusiness.Api.Controllers.UserController",
+    "Method": "UpdateRoles",
+    "RelativePath": "api/User/updateRoles",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "updateDTO",
+        "Type": "AlAmalBusiness.Application.DTOs.Users.UpdateUserRolesDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]
