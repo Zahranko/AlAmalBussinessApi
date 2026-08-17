@@ -8,9 +8,6 @@ namespace AlAmalBusiness.Application.DTOs.Users
     public class UpdateUserRolesDTO
     {
         [Required]
-
-        public string? UserId { get; set; }
-        [Required]
         public List<string>? Roles { get; set; }
 
     }

@@ -14,8 +14,10 @@ namespace AlAmalBusiness.Application.DTOs.Users
         [StringLength(10, MinimumLength = 2)]
         public string? Password { get; set; }
         [Required]
+        [StringLength(20, MinimumLength = 3)]
         public string? FullName { get; set; }
-
+        [Required]
+        public int DepartmentId { get; set; }
         public List<string> Roles { get; set; } = new List<string>();
 
     }

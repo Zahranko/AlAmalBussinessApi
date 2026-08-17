@@ -16,5 +16,6 @@ namespace AlAmalBusiness.Domain.IRepositories
         Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName);
         Task<IdentityResult> ResetPasswordAsync(string id, string password);
         Task<IdentityResult> DisableUserAsync(string id);
+        Task<User> GetUserByIdAsync(string id);
     }
 }

@@ -3,11 +3,13 @@ using AlAmalBusiness.Application.Services.Interface;
 using AlAmalBusiness.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace AlAmalBusiness.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("PerUserLimit")]
 public class UserController : ControllerBase
 {
     private readonly IUserServices _userServices;
@@ -19,120 +21,103 @@ public class UserController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateUser(CreateUserDTO createUserDTO)
     {
-        if (ModelState.IsValid)
-        {
+     
            var res= await _userServices.CreateUserAsync(createUserDTO);
            if (res.IsSuccess == true)
            {
-               return Ok(res.Message);
+               return Ok(res);
            }
            else
            {
                return BadRequest(res.Message);
            }
         }
-        else
-        { 
-                return BadRequest(ModelState);  
-        }
-    }
     [HttpGet("getAll")]
     public async Task<IActionResult> GetAllUsers() {
-        if (ModelState.IsValid)
-        {
+       
             var users = await _userServices.GetAllUserAsync();
             if (users != null)
             {
                 return Ok(users);
             }
+            return NotFound("No users found.");
+
+        }
+    
+    [HttpPost("update/{id}")]
+    public async Task<IActionResult> UpdateUser(string id,UpdateUserDto updateDTO)
+    {
+       
+            var res = await _userServices.UpdateUserAsync(id,updateDTO);
+            if (res.IsSuccess)
+            {
+                return Ok(res.User);
+            }
             else
             {
-                return NotFound("No users found.");
+                return BadRequest(res.Message);
             }
         }
-        return BadRequest(ModelState);
+     
+    [HttpPut("updateRoles/{id}")]
+    public async Task<IActionResult> UpdateRoles(string id,UpdateUserRolesDTO updateDTO)
+    {
+       
+            var res = await _userServices.UpdateRolesAsync(id,updateDTO);
+            if (res.IsSuccess == true)
+            {
+                return Ok(res.User);
+            }
+            else
+            {
+                return BadRequest(res.Message);
+            }
+        }
+     
+    [HttpPost("reset/{id}")]
+    public async Task<IActionResult> ResetPassword(string id,ResetPasswordDTO updateDTO)
+    {
+        
+            var res = await _userServices.ResetPasswordAsync(id,updateDTO);
+            if (res.IsSuccess == true)
+            {
+                return Ok(res.Message);
+            }
+            else
+            {
+                return BadRequest(res.Message);
+            }
+        }
+    
+    [HttpPost("DisableUser/{id}")]
+    public async Task<IActionResult> DisableUser(string id)
+    {
+        
+            var res = await _userServices.DisableUserAsync(id);
+            if (res.IsSuccess == true)
+            {
+                return Ok(res.Message);
+            }
+            else
+            {
+                return BadRequest(res.Message);
+            }
+        }
+    [HttpGet("getuser/{id}")]
+    public async Task<IActionResult> GetUser(string id)
+    {
+
+        var user = await _userServices.GetUserById(id);
+        if (user != null)
+        {
+            return Ok(user);
+        }
+        return NotFound("No users found.");
 
     }
-    [HttpPost("update")]
-    public async Task<IActionResult> UpdateUser(UpdateUserDto updateDTO)
-    {
-        if (ModelState.IsValid)
-        {
-            var res = await _userServices.UpdateUserAsync(updateDTO);
-            if (res.IsSuccess == true)
-            {
-                return Ok(res.Message);
-            }
-            else
-            {
-                return BadRequest(res.Message);
-            }
-        }
-        else
-        {
-            return BadRequest(ModelState);
-        }
-    }
-    [HttpPost("updateRoles")]
-    public async Task<IActionResult> UpdateRoles(UpdateUserRolesDTO updateDTO)
-    {
-        if (ModelState.IsValid)
-        {
-            var res = await _userServices.UpdateRolesAsync(updateDTO);
-            if (res.IsSuccess == true)
-            {
-                return Ok(res.Message);
-            }
-            else
-            {
-                return BadRequest(res.Message);
-            }
-        }
-        else
-        {
-            return BadRequest(ModelState);
-        }
-    }
-    [HttpPost("resetPassword")]
-    public async Task<IActionResult> ResetPassword(ResetPasswordDTO updateDTO)
-    {
-        if (ModelState.IsValid)
-        {
-            var res = await _userServices.ResetPasswordAsync(updateDTO);
-            if (res.IsSuccess == true)
-            {
-                return Ok(res.Message);
-            }
-            else
-            {
-                return BadRequest(res.Message);
-            }
-        }
-        else
-        {
-            return BadRequest(ModelState);
-        }
-    }
-    [HttpPost("DisableUser")]
-    public async Task<IActionResult> DisableUser(DisableUserDTO dto)
-    {
-        if (ModelState.IsValid)
-        {
-            var res = await _userServices.DisableUserAsync(dto);
-            if (res.IsSuccess == true)
-            {
-                return Ok(res.Message);
-            }
-            else
-            {
-                return BadRequest(res.Message);
-            }
-        }
-        else
-        {
-            return BadRequest(ModelState);
-        }
-    }
+
+
+
 
 
 }

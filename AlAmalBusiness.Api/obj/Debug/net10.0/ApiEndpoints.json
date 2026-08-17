@@ -33,6 +33,22 @@
   },
   {
     "ContainingType": "AlAmalBusiness.Api.Controllers.UserController",
+    "Method": "DisableUser",
+    "RelativePath": "api/User/DisableUser",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "AlAmalBusiness.Application.DTOs.Users.DisableUserDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "AlAmalBusiness.Api.Controllers.UserController",
     "Method": "GetAllUsers",
     "RelativePath": "api/User/getAll",
     "HttpMethod": "GET",

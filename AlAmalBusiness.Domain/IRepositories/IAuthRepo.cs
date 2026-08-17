@@ -8,8 +8,7 @@ namespace AlAmalBusiness.Domain.IRepositories
 {
     public interface IAuthRepo
     {
-        Task<string> LogInAsync(string userNames,string password);
+        Task<(string,bool)> LogInAsync(string userNames,string password);
         Task<IEnumerable<string>> GetRolesAsync(string userName);
-        Task <bool> isUserActive(string userName);
     }
 }

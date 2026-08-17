@@ -59,7 +59,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
             var currentRoles = await _userManager.GetRolesAsync(user);
-            foreach(var role in userRoles)
+            foreach (var role in userRoles)
             {
                 if (!await _roleManager.RoleExistsAsync(role))
                 {
@@ -77,7 +77,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
             var lookupUser = await _userManager.FindByNameAsync(userName);
-            if (lookupUser != null)
+            if (lookupUser != null && lookupUser.Id != user.Id)
             {
                 return IdentityResult.Failed(new IdentityError { Description = "Username already exists." });
             }
@@ -89,7 +89,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             return await _userManager.UpdateAsync(user);
 
         }
-        public async Task<IdentityResult> ResetPasswordAsync(string id,string password)
+        public async Task<IdentityResult> ResetPasswordAsync(string id, string password)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
@@ -97,7 +97,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             var hasPassword = await _userManager.HasPasswordAsync(user);
             if (hasPassword)
             {
-              
+
                 var removeResult = await _userManager.RemovePasswordAsync(user);
                 if (!removeResult.Succeeded)
                 {
@@ -113,12 +113,24 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
             user.IsActive = false;
             return await _userManager.UpdateAsync(user);
+
+
+
+
         }
 
-
-
+        public async Task<User> GetUserByIdAsync(string id)
+        {
+           var user = await _userManager.FindByIdAsync(id);
+            if (user != null)
+            {
+                return user;
+            }
+            else
+                return null;
+               
         }
-        
+    }
     }
 
 

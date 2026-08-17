@@ -1,11 +1,13 @@
 using AlAmalBusiness.Application.DTOs.Auth;
 using AlAmalBusiness.Application.Services.Interface;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace AlAmalBusiness.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("PerUserLimit")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authServices;

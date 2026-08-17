@@ -11,9 +11,10 @@ namespace AlAmalBusiness.Application.Services.Interface
     {
         public Task<CreateUserResult> CreateUserAsync(CreateUserDTO user);
         public Task<List<GetUserResponse>> GetAllUserAsync();
-        Task<UpdateUserResponse> UpdateRolesAsync(UpdateUserRolesDTO updateDTO);
-        Task<UpdateUserResponse> UpdateUserAsync(UpdateUserDto updateDTO);
-        Task<UpdateUserResponse> ResetPasswordAsync(ResetPasswordDTO updateDTO);
-        Task<UpdateUserResponse> DisableUserAsync(DisableUserDTO dto);
+        Task<UpdateUserResponse> UpdateRolesAsync(string id,UpdateUserRolesDTO updateDTO);
+        Task<UpdateUserResponse> UpdateUserAsync(string id,UpdateUserDto updateDTO);
+        Task<UpdateUserResponse> ResetPasswordAsync(string id,ResetPasswordDTO updateDTO);
+        Task<UpdateUserResponse> DisableUserAsync(string id);
+        Task<GetUserResponse> GetUserById(string id);
     }
 }

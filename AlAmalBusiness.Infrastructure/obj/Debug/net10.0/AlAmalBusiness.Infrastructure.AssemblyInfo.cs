@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AlAmalBusiness.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e42d8874abf91e1bacfeb06ef065eef47c66b202")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2cddb2d52933af68d7625c33c3846aba2e60b4fc")]
 [assembly: System.Reflection.AssemblyProductAttribute("AlAmalBusiness.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AlAmalBusiness.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

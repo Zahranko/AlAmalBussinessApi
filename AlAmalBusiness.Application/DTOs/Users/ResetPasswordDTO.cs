@@ -10,8 +10,7 @@ namespace AlAmalBusiness.Application.DTOs.Users
         [Required]
         [StringLength(10, MinimumLength = 2)]
         public string? Password { get; set; }
-        [Required]
-        public string? UserId { get; set; }
+      
 
 
 
