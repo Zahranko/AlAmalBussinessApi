@@ -42,6 +42,29 @@ jobs:
       - name: Remove local dev config from publish output
         run: rm -f ./publish/appsettings.Development.json
 
+      # IIS/ANCM keeps the running app's .dll files locked, which makes the
+      # FTP overwrite fail with "550 The process cannot access the file
+      # because it is being used by another process." Dropping app_offline.htm
+      # tells ANCM to shut the app down and serve that file instead, releasing
+      # the locks, so the real deploy step below can overwrite the dlls.
+      - name: Prepare app_offline.htm
+        run: |
+          mkdir -p ./app-offline
+          echo "<h1>Deploying, back shortly...</h1>" > ./app-offline/app_offline.htm
+
+      - name: Take site offline
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: ./app-offline/
+          server-dir: /AlAmalBusiness/
+
+      - name: Wait for app pool to release file locks
+        run: sleep 10
+
       - name: Deploy via FTP to SmarterASP.NET
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -54,3 +77,9 @@ jobs:
           exclude: |
             **/.git*
             **/.git*/**
+
+      - name: Bring site back online
+        run: |
+          curl -u "${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}" \
+            "ftp://${{ secrets.FTP_SERVER }}/AlAmalBusiness/" \
+            -Q "DELE app_offline.htm"
