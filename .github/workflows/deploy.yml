@@ -78,8 +78,15 @@ jobs:
             **/.git*
             **/.git*/**
 
+      # curl's -Q/DELE quoting is unreliable against SmarterASP.NET's FTP
+      # server (path resolution differs from how basic-ftp/FTP-Deploy-Action
+      # resolves server-dir above), so use lftp instead — its cd+rm are
+      # tested against this kind of server. "-f" on rm means don't fail if
+      # the file is already gone, so a re-run stays idempotent.
       - name: Bring site back online
         run: |
-          curl -u "${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}" \
-            "ftp://${{ secrets.FTP_SERVER }}/AlAmalBusiness/" \
-            -Q "DELE app_offline.htm"
+          sudo apt-get update -y
+          sudo apt-get install -y lftp
+          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" \
+            -e "set ftp:ssl-allow no; cd /AlAmalBusiness; rm -f app_offline.htm; bye" \
+            ${{ secrets.FTP_SERVER }}
