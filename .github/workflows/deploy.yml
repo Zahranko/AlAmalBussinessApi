@@ -50,7 +50,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
           local-dir: ./publish/
-          server-dir: ./
+          server-dir: /AlAmalBusiness/
           exclude: |
             **/.git*
             **/.git*/**
