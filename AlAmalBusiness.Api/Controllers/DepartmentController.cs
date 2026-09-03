@@ -1,5 +1,7 @@
 ﻿using AlAmalBusiness.Application.DTOs.Departments;
 using AlAmalBusiness.Application.Services.Interface;
+using AlAmalBusiness.Domain.Constants;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -8,6 +10,7 @@ namespace AlAmalBusiness.Api.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [EnableRateLimiting("PerUserLimit")]
+    [Authorize]
     public class DepartmentController : ControllerBase
     {
         private readonly IDepartmentService _departmentServices;
@@ -16,6 +19,7 @@ namespace AlAmalBusiness.Api.Controllers
             _departmentServices = departmentServices;
         }
         [HttpPost("CreateDepartment")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
         public async Task<IActionResult> CreateDepartment(DepartmentDTO dto)
         {
             var department = await _departmentServices.CreateDepartmentAsync(dto);
@@ -56,6 +60,7 @@ namespace AlAmalBusiness.Api.Controllers
             }
         }
         [HttpPut("updateDepartment/{id}")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
         public async Task<IActionResult> UpdateDepartment(int id, DepartmentDTO dto)
         {
             var department = await _departmentServices.UpdateDepartmentAsync(id, dto);

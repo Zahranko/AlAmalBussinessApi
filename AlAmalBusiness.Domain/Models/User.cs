@@ -1,6 +1,7 @@
+using AlAmalBusiness.Domain.Models.CRM;
+using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Principal;
-using Microsoft.AspNetCore.Identity;
 
 
 namespace AlAmalBusiness.Domain.Models;
@@ -13,6 +14,8 @@ public class User:IdentityUser
     public bool IsActive { get; set; } = true;
     public int DepartmentId { get; set; }
     public Departments Department { get; set; } = null!;
+    public ICollection<Lead>? CreatedLeads { get; set; }
+    public ICollection<Lead>? ClaimedLeads { get; set; }
 
 
 }

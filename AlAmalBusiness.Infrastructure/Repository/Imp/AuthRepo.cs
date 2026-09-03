@@ -41,7 +41,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
                 
             }
             else
-                return ("User or Password os Incorrect",false);
+                return ("User or Password is Incorrect",false);
            
 
         }  

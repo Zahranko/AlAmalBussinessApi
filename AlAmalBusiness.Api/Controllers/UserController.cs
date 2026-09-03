@@ -10,6 +10,7 @@ namespace AlAmalBusiness.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("PerUserLimit")]
+[Authorize(Roles = nameof(AppRoles.Admin))]
 public class UserController : ControllerBase
 {
     private readonly IUserServices _userServices;
@@ -17,7 +18,6 @@ public class UserController : ControllerBase
     {
         _userServices = userServices;
     }
-    //[Authorize(Roles = nameof(AppRoles.Admin))]
     [HttpPost]
     public async Task<IActionResult> CreateUser(CreateUserDTO createUserDTO)
     {

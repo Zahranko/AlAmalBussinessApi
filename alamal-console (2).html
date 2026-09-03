@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="light" data-density="comfortable">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f8fb">
+<title>Al Amal Business Console</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- two separate requests so a miss on one family cannot take down the other -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400..600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap">
+
+<style>
+/* ============================================================
+   AL AMAL CONSOLE - DESIGN TOKENS
+   Palette sampled from the production referral dashboard.
+   Radius system (locked): surfaces 14px / controls 10px /
+   chips + pills full / focus ring 6px. Nothing else.
+   Spacing scale: 4px base, steps 4 8 12 16 20 24 32 40.
+   ============================================================ */
+:root{
+  color-scheme: light;
+
+  /* brand ramp */
+  --brand-900:#08334f;
+  --brand-800:#0a4468;
+  --brand-700:#0b517b;
+  --brand-600:#16618c;
+  --brand-500:#1e7dab;
+  --brand-400:#2aaade;
+  --brand-200:#a9d6ee;
+  --brand-100:#dceefa;
+  --brand-050:#eff7fc;
+  --brand-grad:linear-gradient(90deg,#124e78 0%,#1e7dab 52%,#2aaade 100%);
+
+  /* neutrals */
+  --bg:#f2f7fb;
+  --surface:#ffffff;
+  --surface-2:#f8fbfd;
+  --surface-3:#eef4f9;
+  --border:#dde7ee;
+  --border-strong:#c4d5e2;
+  --text:#0c2c44;
+  --text-2:#3f5a70;
+  --text-3:#5a7287;
+
+  /* semantic */
+  --ok:#0f7049;      --ok-bg:#e2f2ec;   --ok-br:#bfe0d3;
+  --warn:#9a5610;    --warn-bg:#fbf0e2; --warn-br:#ecd6b8;
+  --danger:#c0392f;  --danger-bg:#fbeceb; --danger-br:#f0cdc9;
+  --info:#155d88;    --info-bg:#e3eff7; --info-br:#c3ddee;
+  --muted:#4a5a68;   --muted-bg:#e8ecf0; --muted-br:#d5dce3;
+
+  /* elevation, tinted to the background hue - never pure black */
+  --sh-1:0 1px 2px rgba(11,58,90,.06);
+  --sh-2:0 1px 2px rgba(11,58,90,.05), 0 6px 16px -4px rgba(11,58,90,.10);
+  --sh-3:0 12px 40px -8px rgba(11,58,90,.22);
+
+  --rail:#082638;
+  --rail-line:#153f5c;
+  --rail-text:#9fc2d8;
+  --rail-active:rgba(42,170,222,.16);
+
+  --r-surface:14px;
+  --r-control:10px;
+  --row-pad:14px;
+  --sidebar:264px;
+  --max:1760px;
+  --ease:cubic-bezier(.32,.72,0,1);
+}
+
+html[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#061722;
+  --surface:#0b2635;
+  --surface-2:#0f2f42;
+  --surface-3:#143a51;
+  --border:#1c4560;
+  --border-strong:#2a5876;
+  --text:#e8f3fa;
+  --text-2:#a9c6da;
+  --text-3:#7ba0ba;
+
+  --brand-100:#123c58;
+  --brand-050:#0f3348;
+  --brand-200:#1d5578;
+
+  --ok:#5fd3a5;      --ok-bg:#0d3a2c;   --ok-br:#1d5c47;
+  --warn:#f0b970;    --warn-bg:#3d2c14;  --warn-br:#61481f;
+  --danger:#f5928a;  --danger-bg:#3d1c1a; --danger-br:#63302c;
+  --info:#7dc4ec;    --info-bg:#0f3752; --info-br:#1e567a;
+  --muted:#a8bccb;   --muted-bg:#17303f; --muted-br:#264a5f;
+
+  --sh-1:0 1px 2px rgba(0,0,0,.30);
+  --sh-2:0 1px 2px rgba(0,0,0,.28), 0 6px 16px -4px rgba(0,0,0,.42);
+  --sh-3:0 12px 40px -8px rgba(0,0,0,.60);
+
+  --rail:#04141e;
+  --rail-line:#123449;
+}
+
+html[data-density="compact"]{ --row-pad:9px; }
+
+/* ---------- base ---------- */
+*,*::before,*::after{box-sizing:border-box}
+*{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Geist','Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  overflow-x:hidden;
+}
+/* inline sprite icons: sized by font-size so type and icons scale together */
+.gi{width:1em;height:1em;fill:currentColor;flex:0 0 auto;display:inline-block;vertical-align:-.125em}
+
+.mono{font-family:'Geist Mono','IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+
+:where(a,button,input,select,summary,[tabindex]):focus-visible{
+  outline:2px solid var(--brand-400);
+  outline-offset:2px;
+  border-radius:6px;
+}
+:where(button,a){font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+
+.skip{
+  position:fixed;inset-inline-start:12px;top:-60px;z-index:200;
+  background:var(--brand-700);color:#fff;padding:10px 16px;border-radius:var(--r-control);
+  font-weight:600;transition:top .18s var(--ease);
+}
+.skip:focus{top:12px}
+
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+.shell{display:flex;min-height:100dvh}
+
+/* ---------- sidebar ---------- */
+.side{
+  width:var(--sidebar);flex:0 0 auto;
+  background:var(--rail);color:var(--rail-text);
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100dvh;
+  transition:width .26s var(--ease);
+  overflow:hidden;
+  padding-block-end:env(safe-area-inset-bottom);
+}
+html[data-nav="mini"] .side{ width:72px }
+
+.side-brand{
+  display:flex;align-items:center;gap:11px;
+  padding:18px 18px;min-height:68px;
+  border-block-end:1px solid var(--rail-line);
+}
+.mark{
+  width:38px;height:38px;flex:0 0 auto;border-radius:var(--r-control);
+  background:#fff;padding:4px;
+  display:grid;place-items:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.25);
+}
+.mark img{width:100%;height:100%;object-fit:contain;display:block}
+.side-brand .txt{min-width:0;white-space:nowrap;overflow:hidden}
+.side-brand .nm{color:#fff;font-weight:600;font-size:14.5px;letter-spacing:-.01em;line-height:1.2}
+.side-brand .sb{font-size:11px;color:var(--rail-text);opacity:.8}
+html[data-nav="mini"] .side-brand .txt{opacity:0}
+
+.side-scroll{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:10px 10px 4px}
+.side-scroll::-webkit-scrollbar{width:6px}
+.side-scroll::-webkit-scrollbar-thumb{background:var(--rail-line);border-radius:3px}
+
+.grp{margin-bottom:2px}
+.grp-btn{
+  width:100%;display:flex;align-items:center;gap:12px;
+  padding:10px 11px;border-radius:var(--r-control);
+  color:var(--rail-text);font-weight:500;font-size:13.5px;
+  transition:background .14s var(--ease),color .14s var(--ease);
+  white-space:nowrap;text-align:start;
+}
+.grp-btn:hover{background:rgba(255,255,255,.06);color:#fff}
+.grp-btn .gi{font-size:19px;flex:0 0 auto}
+.grp-btn .lbl{flex:1;min-width:0;overflow:hidden}
+.grp-btn .car{font-size:13px;transition:transform .22s var(--ease)}
+.grp[data-open="true"] .grp-btn{background:var(--rail-active);color:#fff}
+.grp[data-open="true"] .car{transform:rotate(90deg)}
+html[dir="rtl"] .car{transform:scaleX(-1)}
+html[dir="rtl"] .grp[data-open="true"] .car{transform:scaleX(-1) rotate(90deg)}
+html[data-nav="mini"] .grp-btn .lbl,html[data-nav="mini"] .grp-btn .car{opacity:0}
+html[data-nav="mini"] .grp-btn{justify-content:center;padding:10px 0}
+
+.grp-items{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s var(--ease)}
+.grp[data-open="true"] .grp-items{grid-template-rows:1fr}
+.grp-items>div{overflow:hidden}
+html[data-nav="mini"] .grp-items{display:none}
+
+.side a.item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;margin:1px 0 1px 16px;
+  border-inline-start:1.5px solid var(--rail-line);
+  color:var(--rail-text);text-decoration:none;font-size:13px;
+  border-start-end-radius:8px;border-end-end-radius:8px;
+  white-space:nowrap;
+  transition:background .14s var(--ease),color .14s var(--ease),border-color .14s var(--ease);
+}
+html[dir="rtl"] .side a.item{margin:1px 16px 1px 0}
+.side a.item:hover{background:rgba(255,255,255,.05);color:#fff;border-inline-start-color:var(--brand-400)}
+.side a.item[aria-current="page"]{
+  background:var(--rail-active);color:#fff;font-weight:600;
+  border-inline-start-color:var(--brand-400);
+}
+.side a.item .cnt{
+  margin-inline-start:auto;font-size:10.5px;font-weight:600;
+  background:rgba(255,255,255,.10);color:#cfe6f4;
+  padding:1px 7px;border-radius:999px;
+}
+
+.side-foot{border-block-start:1px solid var(--rail-line);padding:12px;display:flex;align-items:center;gap:10px}
+.side-foot .pic{
+  width:32px;height:32px;flex:0 0 auto;border-radius:var(--r-control);
+  background:linear-gradient(135deg,#1b5f87,#2aaade);color:#fff;
+  display:grid;place-items:center;font-weight:600;font-size:12px;
+}
+.side-foot .txt{min-width:0;overflow:hidden;white-space:nowrap}
+.side-foot .n{color:#eaf5fb;font-size:13px;font-weight:600;line-height:1.25}
+.side-foot .r{font-size:11.5px;color:var(--rail-text)}
+html[data-nav="mini"] .side-foot .txt{opacity:0}
+
+/* ---------- main + topbar ---------- */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+.top{
+  position:sticky;top:0;z-index:30;
+  background:color-mix(in srgb,var(--bg) 84%,transparent);
+  backdrop-filter:blur(12px) saturate(1.4);
+  -webkit-backdrop-filter:blur(12px) saturate(1.4);
+  border-block-end:1px solid var(--border);
+}
+.top-in{
+  max-width:var(--max);margin:0 auto;width:100%;
+  display:flex;align-items:center;gap:10px;
+  padding:12px 24px;min-height:64px;
+}
+.icon-btn{
+  width:36px;height:36px;flex:0 0 auto;border-radius:var(--r-control);
+  border:1px solid var(--border);background:var(--surface);color:var(--text-2);
+  display:grid;place-items:center;position:relative;
+  transition:background .14s var(--ease),border-color .14s var(--ease),color .14s var(--ease),transform .1s var(--ease);
+}
+.icon-btn .gi{font-size:18px}
+.icon-btn:hover{border-color:var(--brand-400);color:var(--brand-600);background:var(--brand-050)}
+.icon-btn:active{transform:scale(.95)}
+.icon-btn[aria-pressed="true"]{background:var(--brand-100);border-color:var(--brand-200);color:var(--brand-700)}
+.icon-btn .dot{
+  position:absolute;inset-block-start:6px;inset-inline-end:6px;
+  width:7px;height:7px;border-radius:50%;background:var(--danger);
+  border:2px solid var(--surface);
+}
+
+.crumbs{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-3);min-width:0}
+.crumbs b{color:var(--text);font-weight:600}
+.crumbs .gi{font-size:12px}
+
+.kbtn{
+  margin-inline-start:auto;display:flex;align-items:center;gap:9px;
+  height:36px;padding:0 10px 0 12px;border-radius:var(--r-control);
+  border:1px solid var(--border);background:var(--surface);
+  color:var(--text-3);font-size:13px;min-width:230px;
+  transition:border-color .14s var(--ease),background .14s var(--ease);
+}
+.kbtn:hover{border-color:var(--brand-400);background:var(--brand-050)}
+.kbtn .gi{font-size:16px}
+.kbtn .lbl{flex:1;text-align:start}
+.kbd{
+  display:inline-flex;align-items:center;gap:2px;
+  font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;
+  padding:2px 6px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface-3);color:var(--text-3);
+}
+
+/* ---------- content ---------- */
+.page{max-width:var(--max);margin:0 auto;width:100%;padding:22px 24px 56px;flex:1}
+
+.page-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.page-head .l{min-width:0;flex:1}
+.page-head h1{
+  font-size:26px;font-weight:600;letter-spacing:-.025em;line-height:1.15;
+  text-wrap:balance;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.page-head p{color:var(--text-2);margin-top:4px;max-width:64ch;text-wrap:pretty}
+.page-head .act{display:flex;gap:8px;flex-wrap:wrap}
+
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  height:36px;padding:0 14px;border-radius:var(--r-control);
+  font-size:13px;font-weight:600;letter-spacing:-.005em;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);
+  transition:background .14s var(--ease),border-color .14s var(--ease),transform .1s var(--ease),box-shadow .14s var(--ease);
+}
+.btn .gi{font-size:16px}
+.btn:hover{border-color:var(--border-strong);background:var(--surface-2)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{
+  background:var(--brand-700);border-color:var(--brand-700);color:#fff;
+  box-shadow:var(--sh-1), inset 0 1px 0 rgba(255,255,255,.16);
+}
+.btn.primary:hover{background:var(--brand-600);border-color:var(--brand-600)}
+
+.tag-sample{
+  font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;
+  background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-br);
+  letter-spacing:.01em;
+}
+
+/* ---------- signature: the flow band ---------- */
+.band{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-surface);
+  box-shadow:var(--sh-2);padding:18px 20px 16px;margin-bottom:16px;
+}
+.band-top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.band-top .ttl{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.band-top .tot{font-size:13px;color:var(--text-3)}
+.band-top .tot b{color:var(--text);font-weight:600}
+.band-top .rt{margin-inline-start:auto;font-size:12.5px;color:var(--text-3)}
+
+.flow{display:flex;height:44px;border-radius:var(--r-control);overflow:hidden;gap:2px;background:var(--surface-3)}
+.seg{
+  position:relative;border:0;padding:0;min-width:6px;
+  display:grid;place-items:center;color:#fff;
+  font-size:12px;font-weight:600;overflow:hidden;
+  transition:filter .16s var(--ease),transform .16s var(--ease);
+}
+.seg:hover,.seg:focus-visible{filter:brightness(1.12);transform:scaleY(1.06)}
+.seg span{padding-inline:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.28)}
+.seg[data-k="success"]{background:linear-gradient(180deg,#17835a,#0f6a47)}
+.seg[data-k="pending"]{background:linear-gradient(180deg,#c98a3c,#a86c25)}
+.seg[data-k="closed"]{background:linear-gradient(180deg,#5f7386,#495d70)}
+.seg[data-k="waiting"]{background:linear-gradient(180deg,#2aaade,#1e7dab)}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:12px}
+.lg{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2)}
+.lg i{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+.lg b{color:var(--text);font-weight:600}
+.lg .p{color:var(--text-3);font-size:12px}
+
+/* ---------- metric tiles ---------- */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.tile{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-surface);
+  box-shadow:var(--sh-1);padding:16px 16px 12px;position:relative;overflow:hidden;
+  transition:box-shadow .18s var(--ease),border-color .18s var(--ease),transform .18s var(--ease);
+}
+.tile:hover{box-shadow:var(--sh-2);border-color:var(--border-strong);transform:translateY(-1px)}
+.tile .k{
+  font-size:12px;color:var(--text-3);font-weight:500;
+  display:flex;align-items:center;gap:6px;
+}
+.tile .k .gi{font-size:14px;color:var(--brand-500)}
+.tile .v{
+  font-size:29px;font-weight:600;letter-spacing:-.035em;line-height:1.1;
+  margin:8px 0 2px;font-variant-numeric:tabular-nums;
+}
+.tile .foot{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:6px}
+.delta{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600}
+.delta .gi{font-size:13px}
+.delta.up{color:var(--ok)} .delta.down{color:var(--danger)} .delta.flat{color:var(--text-3)}
+.spark{width:88px;height:30px;flex:0 0 auto;overflow:visible}
+.spark path{fill:none;stroke:var(--brand-400);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.spark .area{fill:var(--brand-400);opacity:.12;stroke:none}
+.spark circle{fill:var(--brand-500)}
+
+/* ---------- panels ---------- */
+.cols{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:16px}
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-surface);
+  box-shadow:var(--sh-1);overflow:hidden;
+}
+.card-head{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:14px 18px;border-block-end:1px solid var(--border);
+}
+.card-head h2{font-size:14.5px;font-weight:600;letter-spacing:-.012em}
+.card-head .sub{font-size:12.5px;color:var(--text-3)}
+.card-head .r{margin-inline-start:auto;display:flex;align-items:center;gap:8px}
+.card-body{padding:16px 18px}
+
+.linkish{
+  font-size:12.5px;font-weight:600;color:var(--brand-600);
+  display:inline-flex;align-items:center;gap:4px;
+  transition:color .14s var(--ease),gap .14s var(--ease);
+}
+.linkish:hover{color:var(--brand-400);gap:7px}
+.linkish .gi{font-size:13px}
+
+/* segmented control */
+.seg-ctl{display:inline-flex;background:var(--surface-3);border-radius:999px;padding:3px;gap:2px}
+.seg-ctl button{
+  padding:5px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--text-3);
+  transition:background .16s var(--ease),color .16s var(--ease),box-shadow .16s var(--ease);
+}
+.seg-ctl button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:var(--sh-1)}
+.seg-ctl button:hover{color:var(--text)}
+
+/* chart */
+.chart-wrap{position:relative;padding-top:4px}
+.chart{width:100%;height:250px;display:block;overflow:visible}
+.chart .grid line{stroke:var(--border);stroke-width:1}
+.chart .axis text{fill:var(--text-3);font-size:11px;font-family:'Geist',sans-serif}
+.chart .col rect{transition:opacity .14s var(--ease)}
+.chart .col:hover rect.b{opacity:.86}
+.chart .hit{fill:transparent}
+.tip{
+  position:absolute;pointer-events:none;opacity:0;
+  transform:translate(-50%,-118%);
+  background:var(--brand-900);color:#eaf6fd;border-radius:10px;
+  padding:7px 10px;font-size:12px;line-height:1.4;white-space:nowrap;
+  box-shadow:var(--sh-3);transition:opacity .12s var(--ease);z-index:5;
+}
+html[data-theme="dark"] .tip{background:#02101a;border:1px solid var(--border)}
+.tip b{font-weight:600;color:#fff}
+
+/* source rows */
+.src{display:flex;flex-direction:column;gap:2px}
+.src-row{
+  display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;
+  padding:9px 8px;border-radius:var(--r-control);
+  transition:background .14s var(--ease);
+}
+.src-row:hover{background:var(--surface-2)}
+.src-row .ic{
+  width:28px;height:28px;border-radius:8px;display:grid;place-items:center;
+  background:var(--brand-050);color:var(--brand-600);font-size:15px;flex:0 0 auto;
+}
+.src-row .nm{font-size:13px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.src-row .bar{
+  grid-column:1 / -1;height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden;
+}
+.src-row .bar i{display:block;height:100%;border-radius:999px;background:var(--brand-grad);
+  transform-origin:left center;animation:grow .7s var(--ease) both}
+html[dir="rtl"] .src-row .bar i{transform-origin:right center}
+.src-row .n{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.src-row .p{font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums;width:46px;text-align:end}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* ---------- toolbar + table ---------- */
+.toolbar{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:12px 18px;border-block-end:1px solid var(--border);background:var(--surface-2);
+}
+.field{
+  display:flex;align-items:center;gap:8px;
+  height:34px;padding:0 11px;border-radius:var(--r-control);
+  border:1px solid var(--border);background:var(--surface);color:var(--text-3);
+  min-width:210px;flex:1;max-width:320px;
+  transition:border-color .14s var(--ease),box-shadow .14s var(--ease);
+}
+.field:focus-within{border-color:var(--brand-400);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand-400) 22%,transparent)}
+.field .gi{font-size:15px;flex:0 0 auto}
+.field input{
+  border:0;outline:0;background:none;font:inherit;font-size:13px;color:var(--text);
+  width:100%;min-width:0;
+}
+.field input::placeholder{color:var(--text-3)}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  height:30px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;
+  border:1px solid var(--border);background:var(--surface);color:var(--text-2);
+  display:inline-flex;align-items:center;gap:6px;
+  transition:background .14s var(--ease),border-color .14s var(--ease),color .14s var(--ease);
+}
+.chip:hover{border-color:var(--border-strong);color:var(--text)}
+.chip[aria-pressed="true"]{background:var(--brand-100);border-color:var(--brand-200);color:var(--brand-700)}
+.chip .c{font-size:11px;opacity:.75;font-variant-numeric:tabular-nums}
+
+.tscroll{overflow-x:auto;overscroll-behavior-x:contain}
+table.data{width:100%;border-collapse:collapse;font-size:13px;min-width:820px}
+table.data th{
+  text-align:start;font-weight:600;font-size:11.5px;color:var(--text-3);
+  padding:0;border-block-end:1px solid var(--border);background:var(--surface-2);
+  white-space:nowrap;position:sticky;top:0;z-index:1;
+}
+table.data th .sortbtn{
+  width:100%;display:flex;align-items:center;gap:5px;
+  padding:10px 16px;color:inherit;font:inherit;text-align:start;
+  transition:color .14s var(--ease),background .14s var(--ease);
+}
+table.data th .sortbtn:hover{color:var(--text);background:var(--surface-3)}
+table.data th .sortbtn .gi{font-size:12px;opacity:0;transition:opacity .14s var(--ease)}
+table.data th[aria-sort] .sortbtn .gi{opacity:1;color:var(--brand-500)}
+table.data th.plain{padding:10px 16px}
+table.data td{
+  padding:var(--row-pad) 16px;border-block-end:1px solid var(--border);
+  color:var(--text-2);vertical-align:middle;
+  transition:padding .18s var(--ease);
+}
+table.data tbody tr{transition:background .12s var(--ease)}
+table.data tbody tr:hover{background:var(--brand-050)}
+table.data tbody tr:last-child td{border-block-end:0}
+
+/* patient name cell: name over a source + phone sub-line */
+.lead{min-width:0}
+.lead .n{display:block;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lead .s{display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11.5px;color:var(--text-3);white-space:nowrap;overflow:hidden}
+.lead .sdot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+
+/* record number */
+.idc{color:var(--text-3);font-weight:600;letter-spacing:.01em;white-space:nowrap}
+
+/* staff chip: avatar initial + name, used for created-by and assigned-to */
+.uchip{display:inline-flex;align-items:center;gap:7px;min-width:0}
+.uchip i{
+  width:22px;height:22px;flex:0 0 auto;border-radius:50%;font-style:normal;
+  display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,#16618d,#2aaade);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+}
+.uchip span{font-weight:600;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash{color:var(--text-3)}
+
+/* status pills - the dot is real semantic state, used nowhere else on the page */
+.pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;font-weight:600;line-height:1;
+  padding:5px 10px 5px 8px;border-radius:999px;border:1px solid;white-space:nowrap;
+}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
+.pill.success{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-br)}
+.pill.pending{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-br)}
+.pill.closed{background:var(--muted-bg);color:var(--muted);border-color:var(--muted-br)}
+.pill.waiting{background:var(--info-bg);color:var(--info);border-color:var(--info-br)}
+
+.table-foot{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:11px 18px;border-block-start:1px solid var(--border);background:var(--surface-2);
+  font-size:12.5px;color:var(--text-3);
+}
+.table-foot .r{margin-inline-start:auto;display:flex;align-items:center;gap:6px}
+.pg{
+  min-width:30px;height:30px;padding:0 9px;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text-2);
+  font-size:12.5px;font-weight:600;
+  transition:background .14s var(--ease),border-color .14s var(--ease),color .14s var(--ease);
+}
+.pg:hover:not(:disabled){border-color:var(--brand-400);color:var(--brand-600)}
+.pg[aria-current="true"]{background:var(--brand-700);border-color:var(--brand-700);color:#fff}
+.pg:disabled{opacity:.42;cursor:not-allowed}
+
+/* empty + skeleton states */
+.empty{padding:52px 24px;text-align:center}
+.empty .ic{
+  width:52px;height:52px;margin:0 auto 14px;border-radius:16px;
+  background:var(--brand-050);color:var(--brand-500);
+  display:grid;place-items:center;font-size:24px;
+}
+.empty h3{font-size:15px;font-weight:600;margin-bottom:5px}
+.empty p{color:var(--text-3);font-size:13px;max-width:42ch;margin:0 auto 16px}
+
+.sk{background:var(--surface-3);border-radius:6px;position:relative;overflow:hidden;display:block}
+.sk::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--surface) 70%,transparent),transparent);
+  animation:sweep 1.25s linear infinite;
+}
+@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* ---------- gauges (feedback view) ---------- */
+.gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.gauge{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-surface);
+  box-shadow:var(--sh-1);padding:18px;display:flex;align-items:center;gap:16px;
+}
+.gauge svg{width:78px;height:78px;flex:0 0 auto;transform:rotate(-90deg)}
+.gauge svg circle{fill:none;stroke-width:9;stroke-linecap:round}
+.gauge svg .trk{stroke:var(--surface-3)}
+.gauge .t .v{font-size:23px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+.gauge .t .l{font-size:13px;font-weight:600;margin-top:2px}
+.gauge .t .s{font-size:12px;color:var(--text-3);margin-top:1px}
+
+.themes{display:flex;flex-direction:column}
+.theme-row{
+  display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;
+  padding:10px 8px;border-radius:var(--r-control);transition:background .14s var(--ease);
+}
+.theme-row:hover{background:var(--surface-2)}
+.theme-row .nm{font-size:13px;font-weight:500}
+.theme-row .v{font-size:12.5px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.theme-row .bar{grid-column:1 / -1;height:5px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+.theme-row .bar i{display:block;height:100%;border-radius:999px;background:var(--brand-grad)}
+.theme-row .bar i.pos{background:linear-gradient(90deg,#0f6a47,#2fa87a)}
+.theme-row .bar i.neg{background:linear-gradient(90deg,#b23a30,#e0796f)}
+
+.reviews{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.review{border:1px solid var(--border);border-radius:var(--r-control);padding:14px;background:var(--surface-2)}
+.review .hd{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.review .pic{
+  width:30px;height:30px;border-radius:9px;color:#fff;display:grid;place-items:center;
+  font-size:11.5px;font-weight:600;background:linear-gradient(135deg,#16618d,#2aaade);flex:0 0 auto;
+}
+.review .n{font-size:13px;font-weight:600;color:var(--text)}
+.review .m{font-size:11.5px;color:var(--text-3)}
+.review .rate{margin-inline-start:auto;color:var(--brand-400);font-size:13px;letter-spacing:1px;flex:0 0 auto}
+.review .q{font-size:13px;color:var(--text-2);line-height:1.55}
+.review .tags{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.tagx{font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--border);color:var(--text-3)}
+
+/* ---------- command palette ---------- */
+.scrim{
+  position:fixed;inset:0;z-index:100;
+  background:color-mix(in srgb,var(--brand-900) 46%,transparent);
+  backdrop-filter:blur(3px);
+  display:grid;place-items:start center;padding:12vh 16px 16px;
+  opacity:0;pointer-events:none;transition:opacity .16s var(--ease);
+  overscroll-behavior:contain;
+}
+.scrim[data-open="true"]{opacity:1;pointer-events:auto}
+.palette{
+  width:100%;max-width:560px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--r-surface);
+  box-shadow:var(--sh-3);overflow:hidden;
+  transform:translateY(-8px) scale(.99);opacity:0;
+  transition:transform .18s var(--ease),opacity .18s var(--ease);
+}
+.scrim[data-open="true"] .palette{transform:none;opacity:1}
+.palette .in{display:flex;align-items:center;gap:10px;padding:14px 16px;border-block-end:1px solid var(--border)}
+.palette .in .gi{font-size:18px;color:var(--text-3)}
+.palette input{border:0;outline:0;background:none;font:inherit;font-size:15px;color:var(--text);width:100%}
+.palette ul{list-style:none;max-height:44vh;overflow-y:auto;overscroll-behavior:contain;padding:6px}
+.palette li{border-radius:var(--r-control)}
+.palette li button{
+  width:100%;display:flex;align-items:center;gap:11px;
+  padding:9px 11px;border-radius:var(--r-control);text-align:start;
+  color:var(--text-2);font-size:13.5px;
+}
+.palette li[data-active="true"] button{background:var(--brand-050);color:var(--brand-700)}
+.palette li button .gi{font-size:17px;color:var(--brand-500);flex:0 0 auto}
+.palette li button .g{margin-inline-start:auto;font-size:11.5px;color:var(--text-3)}
+.palette .none{padding:26px 16px;text-align:center;color:var(--text-3);font-size:13px}
+.palette .ft{
+  display:flex;gap:14px;padding:9px 16px;border-block-start:1px solid var(--border);
+  background:var(--surface-2);font-size:11.5px;color:var(--text-3);
+}
+.palette .ft span{display:flex;align-items:center;gap:5px}
+
+/* ---------- toasts ---------- */
+.toasts{
+  position:fixed;z-index:120;inset-block-end:calc(18px + env(safe-area-inset-bottom));
+  inset-inline-end:18px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;
+  pointer-events:none;
+}
+.toast{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-control);
+  box-shadow:var(--sh-3);padding:11px 14px;font-size:13px;max-width:340px;
+  animation:toastin .26s var(--ease) both;
+}
+.toast .gi{font-size:17px;color:var(--ok);flex:0 0 auto}
+@keyframes toastin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- view transitions ---------- */
+.view[hidden]{display:none}
+.view{animation:viewin .26s var(--ease) both}
+@keyframes viewin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- responsive ---------- */
+@media (min-width:1560px){
+  .page{padding:26px 36px 64px}
+  .top-in{padding:12px 36px}
+  .tiles,.cols,.gauges{gap:16px}
+  .reviews{grid-template-columns:repeat(3,1fr)}
+  .chart{height:290px}
+}
+@media (max-width:1100px){
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .cols{grid-template-columns:1fr}
+  .gauges{grid-template-columns:1fr}
+  .reviews{grid-template-columns:1fr}
+  .kbtn{min-width:auto}.kbtn .lbl,.kbtn .kbd{display:none}
+  .kbtn{width:36px;padding:0;justify-content:center}
+}
+@media (max-width:760px){
+  .tiles{grid-template-columns:1fr}
+  .page{padding:16px 14px 44px}
+  .top-in{padding:10px 14px}
+  .side{
+    position:fixed;z-index:60;inset-inline-start:0;
+    transform:translateX(-100%);transition:transform .26s var(--ease);
+  }
+  html[dir="rtl"] .side{transform:translateX(100%)}
+  html[data-nav="open"] .side{transform:none;box-shadow:var(--sh-3)}
+  html[data-nav="mini"] .side{width:var(--sidebar);transform:translateX(-100%)}
+  .band-top .rt{display:none}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+  html{scroll-behavior:auto}
+}
+@media (prefers-reduced-transparency:reduce){
+  .top{backdrop-filter:none;background:var(--bg)}
+  .scrim{backdrop-filter:none}
+}
+</style>
+</head>
+<body>
+
+<!-- Phosphor Icons (MIT), vendored inline: no network dependency -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-arrow-down-right" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M800 608v-416c0-17.673-14.327-32-32-32v0h-416c-17.673 0-32 14.327-32 32s14.327 32 32 32v0h338.76l-457.4 457.36c-5.794 5.794-9.378 13.799-9.378 22.64 0 17.683 14.335 32.018 32.018 32.018 8.841 0 16.846-3.584 22.64-9.378l457.36-457.4v338.76c0 17.673 14.327 32 32 32s32-14.327 32-32v0z"/></symbol>
+<symbol id="i-arrow-up-right" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M800 704v-416c0-17.673-14.327-32-32-32s-32 14.327-32 32v0 338.76l-457.36-457.4c-5.794-5.794-13.799-9.378-22.64-9.378-17.683 0-32.018 14.335-32.018 32.018 0 8.841 3.584 16.846 9.378 22.64v0l457.4 457.36h-338.76c-17.673 0-32 14.327-32 32s14.327 32 32 32v0h416c17.673 0 32-14.327 32-32v0z"/></symbol>
+<symbol id="i-bell" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M887.2 256.24c-22.2 38.24-55.2 146.44-55.2 287.76 0 176.731-143.269 320-320 320s-320-143.269-320-320v0c0-141.36-33.040-249.52-55.24-287.76-5.477-9.237-8.714-20.36-8.714-32.24 0-35.33 28.627-63.974 63.951-64h163.243c15.422-73.536 79.735-127.964 156.76-127.964s141.338 54.428 156.577 126.922l0.183 1.042h163.24c35.309 0.049 63.914 28.684 63.914 64 0 11.88-3.237 23.003-8.876 32.537l0.163-0.297zM512 96c-41.537 0.013-76.906 26.404-90.269 63.332l-0.211 0.668h180.96c-13.574-37.596-48.943-63.987-90.478-64h-0.002zM192 224c30.8 52.96 64 175.68 64 320 0 141.385 114.615 256 256 256s256-114.615 256-256v0c0-144.2 33.12-266.92 64-320z"/></symbol>
+<symbol id="i-caret-right" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M726.64 425.36l-320-320c-5.794-5.794-13.799-9.378-22.64-9.378-17.683 0-32.018 14.335-32.018 32.018 0 8.841 3.584 16.846 9.378 22.64l297.4 297.36-297.4 297.36c-5.794 5.794-9.378 13.799-9.378 22.64 0 17.683 14.335 32.018 32.018 32.018 8.841 0 16.846-3.584 22.64-9.378v0l320-320c5.798-5.792 9.385-13.797 9.385-22.64s-3.587-16.848-9.385-22.64v0z"/></symbol>
+<symbol id="i-chart-line-up" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M928 128c0-17.673-14.327-32-32-32v0h-768c-17.673 0-32 14.327-32 32v0 640c0 17.673 14.327 32 32 32s32-14.327 32-32v0-434.76l201.36 201.4c5.792 5.798 13.797 9.385 22.64 9.385s16.848-3.587 22.64-9.385l105.36-105.4 210.76 210.76h-82.76c-17.673 0-32 14.327-32 32s14.327 32 32 32v0h160c17.673 0 32-14.327 32-32v0-160c0-17.673-14.327-32-32-32s-32 14.327-32 32v0 82.76l-233.36-233.4c-5.792-5.798-13.797-9.385-22.64-9.385s-16.848 3.587-22.64 9.385l-105.36 105.4-224-224v-82.76h736c17.673 0 32-14.327 32-32v0z"/></symbol>
+<symbol id="i-chat-centered-dots" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M464 480c0 26.51 21.49 48 48 48s48-21.49 48-48c0-26.51-21.49-48-48-48v0c-26.51 0-48 21.49-48 48v0zM336 432c26.51 0 48 21.49 48 48s-21.49 48-48 48c-26.51 0-48-21.49-48-48v0c0-26.51 21.49-48 48-48v0zM688 432c26.51 0 48 21.49 48 48s-21.49 48-48 48c-26.51 0-48-21.49-48-48v0c0-26.51 21.49-48 48-48v0zM928 736v-512c0-35.346-28.654-64-64-64v0h-241.72l-54.72-95.76c-11.24-19.396-31.901-32.234-55.56-32.234s-44.32 12.838-55.396 31.927l-0.164 0.307-54.72 95.76h-241.72c-35.346 0-64 28.654-64 64v0 512c0 35.346 28.654 64 64 64v0h704c35.346 0 64-28.654 64-64v0zM864 736h-704v-512h260.28c0.085 0.001 0.186 0.001 0.286 0.001 11.783 0 22.078-6.368 27.632-15.85l0.082-0.151 64-112 64 112c5.636 9.633 15.931 16.001 27.714 16.001 0.101 0 0.201 0 0.302-0.001h259.705z"/></symbol>
+<symbol id="i-check-circle" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M694.64 566.64c5.798-5.792 9.385-13.797 9.385-22.64s-3.587-16.848-9.385-22.64v0l-224-224c-5.792-5.798-13.797-9.385-22.64-9.385s-16.848 3.587-22.64 9.385v0l-96 96c-5.794 5.794-9.378 13.799-9.378 22.64 0 17.683 14.335 32.018 32.018 32.018 8.841 0 16.846-3.584 22.64-9.378l73.36-73.4 201.36 201.4c5.792 5.798 13.797 9.385 22.64 9.385s16.848-3.587 22.64-9.385v0zM928 448c0-229.75-186.25-416-416-416s-416 186.25-416 416c0 229.75 186.25 416 416 416v0c229.65-0.25 415.75-186.35 416-415.976v-0.024zM864 448c0 194.404-157.596 352-352 352s-352-157.596-352-352c0-194.404 157.596-352 352-352v0c194.313 0.228 351.772 157.687 352 351.978v0.022z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M512 864c-229.75 0-416-186.25-416-416s186.25-416 416-416c229.75 0 416 186.25 416 416v0c-0.25 229.65-186.35 415.75-415.976 416h-0.024zM512 96c-194.404 0-352 157.596-352 352s157.596 352 352 352c194.404 0 352-157.596 352-352v0c-0.228-194.313-157.687-351.772-351.978-352h-0.022zM768 448c0-17.673-14.327-32-32-32v0h-224c-17.673 0-32 14.327-32 32v0 224c0 17.673 14.327 32 32 32s32-14.327 32-32v0-192h192c17.673 0 32-14.327 32-32v0z"/></symbol>
+<symbol id="i-export" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M864 512v-384c0-35.346-28.654-64-64-64v0h-576c-35.346 0-64 28.654-64 64v0 384c0 35.346 28.654 64 64 64v0h96c17.673 0 32-14.327 32-32s-14.327-32-32-32v0h-96v-384h576v384h-96c-17.673 0-32 14.327-32 32s14.327 32 32 32v0h96c35.346 0 64-28.654 64-64v0zM374.64 681.36l105.36 105.4v-370.76c0-17.673 14.327-32 32-32s32 14.327 32 32v0 370.76l105.36-105.4c5.794-5.794 13.799-9.378 22.64-9.378 17.683 0 32.018 14.335 32.018 32.018 0 8.841-3.584 16.846-9.378 22.64v0l-160 160c-5.792 5.798-13.797 9.385-22.64 9.385s-16.848-3.587-22.64-9.385v0l-160-160c-5.794-5.794-9.378-13.799-9.378-22.64 0-17.683 14.335-32.018 32.018-32.018 8.841 0 16.846 3.584 22.64 9.378v0z"/></symbol>
+<symbol id="i-facebook-logo" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M512 864c-229.75 0-416-186.25-416-416s186.25-416 416-416c229.75 0 416 186.25 416 416v0c-0.25 229.65-186.35 415.75-415.976 416h-0.024zM544 97.48v254.52h96c17.673 0 32 14.327 32 32s-14.327 32-32 32v0h-96v96c0 35.346 28.654 64 64 64v0h64c17.673 0 32 14.327 32 32s-14.327 32-32 32v0h-64c-70.692 0-128-57.308-128-128v0-96h-96c-17.673 0-32-14.327-32-32s14.327-32 32-32v0h96v-254.52c-180.142 16.933-320 167.405-320 350.542 0 194.404 157.596 352 352 352s352-157.596 352-352c0-183.138-139.858-333.61-318.595-350.436l-1.405-0.107z"/></symbol>
+<symbol id="i-funnel" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M922.4 761.88c-9.97 22.618-32.193 38.121-58.037 38.121-0.128 0-0.255 0-0.382-0.001h-703.98c-35.292-0.072-63.874-28.698-63.874-64 0-16.597 6.318-31.719 16.68-43.091l-0.046 0.051 0.32-0.36 270.92-289.28v-307.32c0-0.004 0-0.010 0-0.015 0-35.346 28.654-64 64-64 13.222 0 25.508 4.010 35.708 10.88l-0.228-0.145 128 85.36c17.294 11.64 28.52 31.141 28.52 53.265 0 0.005 0 0.011 0 0.016v-0.001 221.96l271.28 289.64c10.38 11.226 16.746 26.296 16.746 42.852 0 9.447-2.073 18.411-5.789 26.46l0.162-0.392zM160 736v0zM584.72 437.68c-5.339-5.651-8.645-13.272-8.72-21.665v-234.655l-128-85.36v320c0 0.003 0 0.006 0 0.010 0 8.466-3.288 16.164-8.656 21.888l0.016-0.017-279.36 298.12h704z"/></symbol>
+<symbol id="i-gauge" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M828.24 669.32c-80.557 80.734-191.941 130.682-314.99 130.682-0.44 0-0.879-0.001-1.318-0.002h-1.532c-246.12-0.84-446.4-204-446.4-452.52v-91.48c0-35.346 28.654-64 64-64v0h768c35.346 0 64 28.654 64 64v0 96c0.001 0.368 0.002 0.804 0.002 1.24 0 123.59-50.383 235.413-131.73 316.049l-0.032 0.031zM896 256h-417.16l219.040 301.2c3.831 5.213 6.131 11.758 6.131 18.84 0 17.679-14.332 32.011-32.011 32.011-10.597 0-19.991-5.149-25.818-13.082l-0.062-0.089-246.44-338.88h-271.68v91.48c0 12.32 0.6 24.48 1.72 36.52h94.28c17.673 0 32 14.327 32 32s-14.327 32-32 32v0h-82.92c41.28 155.44 176 272.96 338.92 286.64v-94.64c0-17.673 14.327-32 32-32s32 14.327 32 32v0 94.68c164.501-14.253 298.431-130.165 339.392-283.994l0.608-2.686h-84c-17.673 0-32-14.327-32-32s14.327-32 32-32v0h94.68c0.84-10.6 1.32-21.24 1.32-32z"/></symbol>
+<symbol id="i-handshake" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M1017.2 528.36l-102.080 204.24c-10.744 21.137-32.329 35.367-57.238 35.367-10.441 0-20.298-2.5-29.005-6.935l0.363 0.168-99.48-49.72-209.56 55.44c-2.461 0.667-5.286 1.049-8.2 1.049s-5.739-0.383-8.428-1.101l0.228 0.052-209.56-55.44-99.48 49.72c-8.344 4.267-18.201 6.767-28.642 6.767-24.909 0-46.494-14.23-57.070-35.004l-0.168-0.363-102.080-204.2c-4.267-8.344-6.767-18.201-6.767-28.642 0-24.909 14.23-46.494 35.004-57.070l0.363-0.168 108-54.040 221.96-158.52c3.089-2.222 6.709-3.944 10.616-4.951l0.224-0.049 256-64c2.337-0.611 5.019-0.961 7.784-0.961 8.831 0 16.826 3.577 22.616 9.361v0l220.28 220.32 105.68 52.84c21.128 10.747 35.351 32.327 35.351 57.23 0 10.429-2.494 20.275-6.919 28.974l0.168-0.364zM797.64 394.88l-137.64 110.24c-5.427 4.375-12.406 7.022-20.003 7.022-8.881 0-16.917-3.618-22.715-9.46l-0.002-0.002c-71.24-71.76-150.64-62.68-201.28-30.68l172.96 168h127.24l108.84-217.64zM166.12 704l81.88-40.88-102.28-204.2-81.72 40.84zM630.12 227.48l-232.44 58.080-196.8 140.56 112 224 199.12 52.76 39.2-10.36-180.32-175.080c-11.582-11.582-18.745-27.582-18.745-45.255 0-22.588 11.701-42.442 29.373-53.833l0.253-0.152c82.24-52.52 181.48-44 259.64 20l110.6-88.84zM878.12 458.96l-102.080 204 81.84 41.040 102.12-204.24zM527.12 88.28c-3.591-14.018-16.101-24.218-30.998-24.24h-0.002c-2.771 0.004-5.459 0.354-8.025 1.009l0.225-0.049-166.68 41.68c-4.132 1.039-7.755 2.762-10.932 5.063l0.092-0.063-105.4 75.28c-7.481 5.912-12.238 14.985-12.238 25.169 0 17.673 14.327 32 32 32 6.484 0 12.518-1.929 17.559-5.244l-0.121 0.075 100.44-71.76 160.96-40.16c14.030-3.596 24.234-16.128 24.234-31.043 0-2.755-0.348-5.428-1.003-7.978l0.048 0.222z"/></symbol>
+<symbol id="i-instagram-logo" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M512 640c-106.039 0-192-85.961-192-192s85.961-192 192-192c106.039 0 192 85.961 192 192v0c-0.114 105.993-86.007 191.886-191.989 192h-0.011zM512 320c-70.692 0-128 57.308-128 128s57.308 128 128 128c70.692 0 128-57.308 128-128v0c0-70.692-57.308-128-128-128v0zM704 864h-384c-123.657-0.137-223.863-100.343-224-223.987v-384.013c0.137-123.657 100.343-223.863 223.987-224h384.013c123.657 0.137 223.863 100.343 224 223.987v384.013c-0.137 123.657-100.343 223.863-223.987 224h-0.013zM864 256c0-88.366-71.634-160-160-160v0h-384c-88.366 0-160 71.634-160 160v0 384c0 88.366 71.634 160 160 160v0h384c88.366 0 160-71.634 160-160v0zM768 656c0-26.51-21.49-48-48-48s-48 21.49-48 48c0 26.51 21.49 48 48 48v0c26.51 0 48-21.49 48-48v0z"/></symbol>
+<symbol id="i-magnifying-glass" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M918.64 86.64l-200.28 200.24c50.79 60.647 81.636 139.503 81.636 225.564 0 194.647-157.793 352.44-352.44 352.44s-352.44-157.793-352.44-352.44c0-194.647 157.793-352.44 352.44-352.44 86.061 0 164.917 30.846 226.116 82.086l-0.552-0.45 200.24-200.28c5.794-5.794 13.799-9.378 22.64-9.378 17.683 0 32.018 14.335 32.018 32.018 0 8.841-3.584 16.846-9.378 22.64v0zM160 512c0 159.058 128.942 288 288 288s288-128.942 288-288c0-159.058-128.942-288-288-288v0c-158.985 0.182-287.818 129.015-288 287.983v0.017z"/></symbol>
+<symbol id="i-moon" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M934.16 391.080c-5.793 5.805-13.803 9.396-22.651 9.396-3.336 0-6.552-0.51-9.576-1.457l0.227 0.061c-30.508-9.564-65.587-15.074-101.954-15.074-194.581 0-352.32 157.739-352.32 352.32 0 36.367 5.51 71.447 15.741 104.45l-0.666-2.496c0.899 2.817 1.417 6.056 1.417 9.417 0 17.673-14.327 32-32 32-3.361 0-6.6-0.518-9.644-1.479l0.227 0.062c-86.604-27.070-158.947-78.831-210.892-146.977l-0.748-1.023c-52.255-68.787-83.711-155.86-83.711-250.28 0-229.75 186.25-416 416-416 0.138 0 0.275 0 0.413 0h-0.022c0.377-0.001 0.824-0.002 1.27-0.002 93.911 0 180.49 31.393 249.814 84.257l-1.005-0.735c69.169 52.693 120.93 125.036 147.196 208.669l0.804 2.971c0.886 2.797 1.396 6.013 1.396 9.349 0 8.808-3.559 16.786-9.317 22.572l0.001-0.001zM755.6 198.64c-58.204-44.215-131.881-70.832-211.775-70.832-194.404 0-352 157.596-352 352 0 79.884 26.61 153.552 71.45 212.625l-0.635-0.872c33.212 43.555 75.226 78.66 123.562 103.067l2.038 0.933c-2.686-17.887-4.227-38.538-4.24-59.546v-0.014c0.25-229.65 186.35-415.75 415.976-416h0.024c21.059 0.007 41.752 1.548 61.981 4.517l-2.301-0.277c-25.362-50.38-60.493-92.394-103.212-124.965l-0.868-0.635z"/></symbol>
+<symbol id="i-phone-call" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M577.080 776.28c3.773 13.776 16.181 23.732 30.913 23.732 2.947 0 5.801-0.398 8.511-1.144l-0.225 0.053c120.967-32.312 214.328-125.672 246.090-244.229l0.55-2.411c0.693-2.485 1.092-5.34 1.092-8.287 0-14.733-9.956-27.14-23.507-30.861l-0.225-0.053c-2.482-0.679-5.333-1.072-8.275-1.080h-0.005c-14.743 0-27.156 9.97-30.868 23.536l-0.052 0.224c-26.353 98.751-102.569 174.967-199.353 200.872l-1.967 0.448c-13.795 3.761-23.769 16.177-23.769 30.923 0 2.944 0.397 5.794 1.142 8.501l-0.053-0.225zM567.76 609.080c55.16-14.72 90.6-50.16 105.32-105.32 3.764-13.79 16.177-23.76 30.92-23.76v0c2.947 0.008 5.798 0.401 8.51 1.133l-0.23-0.053c13.776 3.773 23.732 16.181 23.732 30.913 0 2.947-0.398 5.801-1.144 8.511l0.053-0.225c-20.48 76.64-74 130.16-150.64 150.64-2.478 0.689-5.323 1.084-8.26 1.084-17.675 0-32.004-14.329-32.004-32.004 0-14.738 9.962-27.149 23.52-30.867l0.225-0.053zM895.52 227.68c-15.024-111.012-109.183-195.68-223.117-195.68-0.142 0-0.284 0-0.425 0h0.022c-317.6 0-576 258.4-576 576 0 0.12 0 0.262 0 0.403 0 113.934 84.669 208.092 194.518 222.988l1.163 0.129c2.329 0.3 5.023 0.472 7.757 0.472 26.144 0 48.627-15.677 58.562-38.143l0.161-0.409 84.48-188.6v-0.48c3.336-7.499 5.279-16.249 5.279-25.452 0-12.982-3.865-25.061-10.507-35.149l0.149 0.241c-0.72-1.080-1.48-2.080-2.28-3.080l-83.28-98.72c29.96-60.88 93.64-124 155.32-154.040l97.36 82.84c0.885 0.749 1.863 1.485 2.882 2.166l0.118 0.074c9.978 6.738 22.276 10.756 35.512 10.756 9.095 0 17.746-1.897 25.58-5.317l-0.412 0.16 0.52-0.24 188.44-84.44c22.937-10.070 38.666-32.584 38.666-58.772 0-2.717-0.169-5.394-0.498-8.021l0.032 0.313zM832 235.68s-0.28 0-0.44 0v0l-188 84.2-97.4-82.84c-0.874-0.745-1.839-1.481-2.843-2.165l-0.117-0.075c-9.98-6.741-22.28-10.761-35.519-10.761-9.987 0-19.44 2.288-27.863 6.367l0.381-0.167c-74.92 36.2-149.6 110.32-185.84 184.44-4.026 8.14-6.381 17.724-6.381 27.857 0 12.996 3.874 25.088 10.53 35.183l-0.149-0.24c0.731 1.161 1.483 2.167 2.305 3.109l-0.025-0.029 83.36 98.84-84 188c-0.008 0.072-0.012 0.155-0.012 0.24s0.004 0.168 0.013 0.25l-0.001-0.010c-79.407-10.654-140.001-77.975-140.001-159.449 0-0.151 0-0.303 0.001-0.454v0.023c0.319-282.642 229.359-511.682 511.97-512h0.030c0.164-0.001 0.358-0.001 0.553-0.001 81.383 0 148.648 60.443 159.354 138.887l0.093 0.834z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M896 448c0-17.673-14.327-32-32-32v0h-320v-320c0-17.673-14.327-32-32-32s-32 14.327-32 32v0 320h-320c-17.673 0-32 14.327-32 32s14.327 32 32 32v0h320v320c0 17.673 14.327 32 32 32s32-14.327 32-32v0-320h320c17.673 0 32-14.327 32-32v0z"/></symbol>
+<symbol id="i-rows" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M832 416h-640c-35.346 0-64-28.654-64-64v0-160c0-35.346 28.654-64 64-64v0h640c35.346 0 64 28.654 64 64v0 160c0 35.346-28.654 64-64 64v0zM832 192h-640v160h640v-160zM832 768h-640c-35.346 0-64-28.654-64-64v0-160c0-35.346 28.654-64 64-64v0h640c35.346 0 64 28.654 64 64v0 160c0 35.346-28.654 64-64 64v0zM832 544h-640v160h640v-160z"/></symbol>
+<symbol id="i-sidebar-simple" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M864 800h-704c-35.346 0-64-28.654-64-64v0-576c0-35.346 28.654-64 64-64v0h704c35.346 0 64 28.654 64 64v0 576c0 35.346-28.654 64-64 64v0zM160 736h160v-576h-160zM864 160h-480v576h480v-576z"/></symbol>
+<symbol id="i-star" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M956.72 570.96c-8.252 24.821-30.285 42.819-56.802 45.024l-0.238 0.016-236 19.040-91.12 220.36c-10.048 24.023-33.359 40.594-60.54 40.594s-50.492-16.572-60.38-40.163l-0.16-0.431-91.040-220.32-236.12-19.080c-33.896-2.952-60.291-31.197-60.291-65.606 0-19.875 8.806-37.693 22.729-49.765l0.082-0.070 180-155.32-54.84-232.24c-1.178-4.648-1.854-9.983-1.854-15.476 0-36.186 29.334-65.52 65.52-65.52 12.706 0 24.568 3.617 34.611 9.877l-0.277-0.161 202 124.32 202.12-124.32c9.708-5.991 21.475-9.541 34.070-9.541 36.23 0 65.6 29.37 65.6 65.6 0 5.401-0.653 10.65-1.884 15.671l0.093-0.45-55.040 232.28 180 155.32c14.121 12.126 23.010 30 23.010 49.95 0 7.297-1.189 14.316-3.384 20.874l0.135-0.464zM895.36 549.080l-194.8-168c-6.819-5.902-11.108-14.569-11.108-24.239 0-2.626 0.316-5.178 0.913-7.62l-0.045 0.219 59.52-251.2c0.081-0.177 0.128-0.384 0.128-0.601 0-0.572-0.325-1.068-0.8-1.315l-0.008-0.004c-0.72-0.56-0.92-0.44-1.52 0l-218.88 134.6c-4.768 2.976-10.558 4.74-16.76 4.74s-11.992-1.764-16.895-4.819l0.135 0.079-218.88-134.68c-0.6-0.36-0.76-0.48-1.52 0-0.483 0.25-0.808 0.746-0.808 1.319 0 0.218 0.047 0.425 0.132 0.611l-0.004-0.009 59.52 251.2c0.551 2.223 0.868 4.775 0.868 7.401 0 9.669-4.289 18.337-11.067 24.204l-0.040 0.034-194.8 168c-0.48 0.4-0.92 0.76-0.52 2s0.72 1.080 1.32 1.16l255.68 20.64c12.183 1.076 22.322 8.835 26.802 19.549l0.078 0.211 98.48 238.44c0.32 0.68 0.44 1 1.4 1s1.080-0.32 1.4-1l98.72-238.44c4.598-10.925 14.785-18.664 26.884-19.672l0.116-0.008 255.68-20.64c0.6 0 0.96 0 1.32-1.16s0-1.6-0.64-2z"/></symbol>
+<symbol id="i-storefront" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M928 576c0 0.053 0.001 0.116 0.001 0.178 0 3.070-0.438 6.038-1.256 8.845l0.056-0.223-57.4 200.8c-7.975 26.913-32.409 46.24-61.381 46.4h-592.019c-28.991-0.16-53.425-19.487-61.284-45.945l-0.116-0.455-57.36-200.8c-0.787-2.624-1.24-5.639-1.24-8.76 0-0.014 0-0.028 0-0.042v0.002-64c0-52.165 24.964-98.5 63.598-127.708l0.402-0.292v-288c0-17.673 14.327-32 32-32v0h640c17.673 0 32 14.327 32 32v0 288c39.036 29.5 64 75.835 64 128v0 64zM216 768h592l45.68-160h-683.24zM416 544h192v-32c0-53.019-42.981-96-96-96s-96 42.981-96 96v0zM352 544v-32c-0.019-53.005-42.992-95.966-96-95.966-16.261 0-31.577 4.043-44.999 11.178l0.519-0.252c-2.101 1.649-4.5 3.072-7.073 4.162l-0.207 0.078c-26.76 17.324-44.221 47.021-44.24 80.797v32.003zM800 128h-576v227.2c9.618-2.030 20.672-3.195 31.996-3.2h0.004c52.165 0 98.5 24.964 127.708 63.598l0.292 0.402c29.5-39.036 75.835-64 128-64s98.5 24.964 127.708 63.598l0.292 0.402c29.5-39.036 75.835-64 128-64v0c11.328 0.005 22.382 1.17 33.052 3.382l-1.052-0.182zM819.72 431.2c-2.749-1.172-5.12-2.58-7.273-4.255l0.073 0.055c-12.913-6.897-28.243-10.947-44.52-10.947-53.001 0-95.97 42.951-96 95.944v32.003h192v-32c-0.028-33.786-17.505-63.484-43.905-80.572l-0.375-0.228z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M480 800v96c0 17.673 14.327 32 32 32s32-14.327 32-32v0-96c0-17.673-14.327-32-32-32s-32 14.327-32 32v0zM768 448c0-141.385-114.615-256-256-256s-256 114.615-256 256c0 141.385 114.615 256 256 256v0c141.321-0.159 255.841-114.679 256-255.985v-0.015zM704 448c0 106.039-85.961 192-192 192s-192-85.961-192-192c0-106.039 85.961-192 192-192v0c105.993 0.114 191.886 86.007 192 191.989v0.011zM233.36 681.36c5.794-5.794 13.799-9.378 22.64-9.378 17.683 0 32.018 14.335 32.018 32.018 0 8.841-3.584 16.846-9.378 22.64l-64 64c-5.794 5.794-13.799 9.378-22.64 9.378-17.683 0-32.018-14.335-32.018-32.018 0-8.841 3.584-16.846 9.378-22.64v0zM233.36 214.64l-64-64c-5.794-5.794-9.378-13.799-9.378-22.64 0-17.683 14.335-32.018 32.018-32.018 8.841 0 16.846 3.584 22.64 9.378v0l64 64c5.794 5.794 9.378 13.799 9.378 22.64 0 17.683-14.335 32.018-32.018 32.018-8.841 0-16.846-3.584-22.64-9.378v0zM768 672c0.007 0 0.016 0 0.025 0 8.83 0 16.825 3.577 22.615 9.36v0l64 64c5.794 5.794 9.378 13.799 9.378 22.64 0 17.683-14.335 32.018-32.018 32.018-8.841 0-16.846-3.584-22.64-9.378v0l-64-64c-5.798-5.792-9.385-13.797-9.385-22.64 0-17.673 14.327-32 32-32 0.009 0 0.018 0 0.027 0h-0.001zM790.64 214.64c-5.794 5.794-13.799 9.378-22.64 9.378-17.683 0-32.018-14.335-32.018-32.018 0-8.841 3.584-16.846 9.378-22.64l64-64c5.794-5.794 13.799-9.378 22.64-9.378 17.683 0 32.018 14.335 32.018 32.018 0 8.841-3.584 16.846-9.378 22.64v0zM192 448c0 17.673-14.327 32-32 32v0h-96c-17.673 0-32-14.327-32-32s14.327-32 32-32v0h96c17.673 0 32 14.327 32 32v0zM512 128c-17.673 0-32-14.327-32-32v0-96c0-17.673 14.327-32 32-32s32 14.327 32 32v0 96c0 17.673-14.327 32-32 32v0zM960 480h-96c-17.673 0-32-14.327-32-32s14.327-32 32-32v0h96c17.673 0 32 14.327 32 32s-14.327 32-32 32v0z"/></symbol>
+<symbol id="i-target" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M887.48 627.36c25.703-52.536 40.733-114.323 40.733-179.619 0-229.971-186.429-416.4-416.4-416.4s-416.4 186.429-416.4 416.4c0 229.971 186.429 416.4 416.4 416.4 103.689 0 198.527-37.9 271.416-100.602l-0.548 0.461 90.68 90.72c5.794 5.794 13.799 9.378 22.64 9.378 17.683 0 32.018-14.335 32.018-32.018 0-8.841-3.584-16.846-9.378-22.64v0l-384-384c-5.794-5.794-13.799-9.378-22.64-9.378-17.683 0-32.018 14.335-32.018 32.018 0 8.841 3.584 16.846 9.378 22.64l110.88 110.88c-24.834 16.634-55.39 26.546-88.261 26.546-88.366 0-160-71.634-160-160s71.634-160 160-160c88.366 0 160 71.634 160 160 0 3.199-0.094 6.376-0.279 9.529l0.020-0.435c-0.032 0.538-0.051 1.167-0.051 1.8 0 17.701 14.35 32.051 32.051 32.051 17.068 0 31.020-13.341 31.996-30.164l0.004-0.086c0.234-3.83 0.367-8.307 0.367-12.815 0-123.712-100.288-224-224-224s-224 100.288-224 224c0 123.712 100.288 224 224 224 50.555 0 97.198-16.747 134.684-44.997l-0.57 0.412 91 91c-60.419 50.441-138.906 81.066-224.546 81.066-194.139 0-351.52-157.381-351.52-351.52s157.381-351.52 351.52-351.52c194.139 0 351.52 157.381 351.52 351.52 0 55.178-12.713 107.386-35.37 153.856l0.916-2.082c-1.974 4.037-3.128 8.783-3.128 13.8 0 17.677 14.33 32.008 32.008 32.008 12.661 0 23.605-7.351 28.797-18.018l0.083-0.19z"/></symbol>
+<symbol id="i-users-three" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M979.2 358.4c-5.281-3.996-11.96-6.4-19.2-6.4-10.433 0-19.7 4.993-25.542 12.72l-0.058 0.080c-38.034 50.728-98.025 83.202-165.599 83.202-0.282 0-0.563-0.001-0.844-0.002h0.044c-13.18 0.001-24.498 7.97-29.4 19.352l-0.080 0.208c-1.591 3.672-2.517 7.948-2.517 12.44s0.926 8.768 2.597 12.648l-0.080-0.208c4.982 11.59 16.3 19.559 29.48 19.56v0c53.016 0.005 95.992 42.984 95.992 96 0 53.019-42.981 96-96 96-44.491 0-81.912-30.265-92.801-71.33l-0.151-0.67c-3.68-13.92-16.161-24.016-31-24.016-17.682 0-32.016 14.334-32.016 32.016 0 2.843 0.371 5.599 1.066 8.223l-0.050-0.223c18.411 69.541 80.772 119.965 154.91 119.965 88.366 0 160-71.634 160-160 0-46.659-19.972-88.653-51.834-117.9l-0.117-0.106c44.479-19.568 81.438-49.147 109.22-86.027l0.5-0.693c3.981-5.275 6.376-11.942 6.376-19.168 0-10.475-5.033-19.775-12.813-25.612l-0.083-0.059zM763.68 112c3.133-4.86 4.995-10.796 4.995-17.167 0-17.673-14.327-32-32-32-12.25 0-22.893 6.884-28.271 16.994l-0.084 0.173c-40.404 67.54-113.163 112.058-196.32 112.058s-155.916-44.518-195.744-111.022l-0.576-1.037c-5.462-10.283-16.104-17.167-28.355-17.167-17.673 0-32 14.327-32 32 0 6.371 1.862 12.307 5.071 17.294l-0.076-0.127c31.314 53.139 77.634 94.536 133.113 118.955l1.847 0.725c-45.961 35.44-75.28 90.52-75.28 152.448 0 106.039 85.961 192 192 192s192-85.961 192-192c0-61.928-29.319-117.008-74.833-152.117l-0.447-0.331c57.326-25.144 103.646-66.541 134.227-118.337l0.733-1.343zM512 256c70.692 0 128 57.308 128 128s-57.308 128-128 128c-70.692 0-128-57.308-128-128v0c0-70.692 57.308-128 128-128v0zM288 480c0 17.673-14.327 32-32 32v0c-53.016 0.005-95.992 42.984-95.992 96 0 53.019 42.981 96 96 96 44.491 0 81.912-30.265 92.801-71.33l0.151-0.67c3.68-13.92 16.161-24.016 31-24.016 17.682 0 32.016 14.334 32.016 32.016 0 2.843-0.371 5.599-1.066 8.223l0.050-0.223c-18.411 69.541-80.772 119.965-154.91 119.965-88.366 0-160-71.634-160-160 0-46.659 19.972-88.653 51.834-117.9l0.117-0.106c-44.432-19.585-81.348-49.16-109.099-86.025l-0.501-0.695c-4.003-5.286-6.412-11.972-6.412-19.22 0-17.68 14.332-32.012 32.012-32.012 10.431 0 19.697 4.989 25.542 12.712l0.058 0.080c38.034 50.728 98.025 83.202 165.599 83.202 0.282 0 0.563-0.001 0.844-0.002h-0.044c17.673 0 32 14.327 32 32v0z"/></symbol>
+<symbol id="i-whatsapp-logo" viewBox="0 0 1024 1024"><path transform="translate(0,960) scale(1,-1)" d="M750.32 380.64l-128 64c-4.159 2.118-9.071 3.359-14.272 3.359-6.606 0-12.744-2.002-17.842-5.432l0.114 0.073-58.76-39.2c-27.114 15.102-48.898 36.886-63.578 63.177l-0.422 0.823 39.2 58.76c3.357 4.983 5.359 11.122 5.359 17.728 0 5.201-1.241 10.113-3.443 14.455l0.084-0.182-64 128c-5.351 10.633-16.177 17.8-28.677 17.8-0.029 0-0.058 0-0.088 0h0.005c-88.366 0-160-71.634-160-160v0c0.228-194.313 157.687-351.772 351.978-352h0.022c88.366 0 160 71.634 160 160v0c0 0.007 0 0.015 0 0.023 0 12.453-7.113 23.245-17.498 28.533l-0.182 0.084zM608 256c-158.985 0.182-287.818 129.015-288 287.983v0.017c0 0.008 0 0.017 0 0.027 0 46.352 32.851 85.031 76.54 94.026l0.62 0.107 45.92-92-39.080-58.16c-3.367-4.988-5.374-11.135-5.374-17.75 0-4.435 0.902-8.659 2.533-12.499l-0.079 0.21c23.383-54.6 66-97.217 119.131-120.039l1.469-0.561c3.747-1.666 8.12-2.636 12.718-2.636 6.553 0 12.646 1.97 17.719 5.349l-0.117-0.073 58.44 38.96 92-45.92c-9.149-44.251-47.8-77.041-94.109-77.041-0.116 0-0.233 0-0.349 0.001h0.018zM512 864c-0.027 0-0.059 0-0.091 0-229.75 0-416-186.25-416-416 0-71.565 18.071-138.91 49.9-197.72l-1.089 2.2-45.4-136.2c-2.084-6.042-3.287-13.004-3.287-20.247 0-35.346 28.654-64 64-64 7.243 0 14.205 1.203 20.698 3.421l-0.45-0.134 136.2 45.4c56.567-30.683 123.852-48.72 195.349-48.72 229.75 0 416 186.25 416 416 0 229.69-186.152 415.903-415.82 416h-0.009zM512 96c-0.071 0-0.155 0-0.239 0-64.812 0-125.526 17.542-177.654 48.137l1.654-0.897c-4.602 2.714-10.141 4.318-16.053 4.318-3.615 0-7.091-0.6-10.332-1.705l0.225 0.067-149.6-49.92 49.88 149.6c1.048 3.029 1.653 6.519 1.653 10.151 0 5.895-1.594 11.417-4.374 16.16l0.082-0.151c-29.734 50.544-47.298 111.341-47.298 176.24 0 194.404 157.596 352 352 352s352-157.596 352-352c0-194.384-157.563-351.967-351.939-352h-0.003z"/></symbol>
+</defs></svg>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="shell">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="side" id="side">
+    <div class="side-brand">
+      <div class="mark"><img src="data:image/png;base64,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" alt="Al Amal Hospital"></div>
+      <div class="txt">
+        <div class="nm" translate="no">Al Amal Business</div>
+        <div class="sb" data-i18n="tagline">Operations Console</div>
+      </div>
+    </div>
+
+    <nav class="side-scroll" aria-label="Main">
+      <div class="grp" data-open="true" data-grp="crm">
+        <button class="grp-btn" aria-expanded="true" aria-controls="grp-crm" data-grp-toggle="crm">
+          <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-handshake"/></svg>
+          <span class="lbl" data-i18n="crm">Dashboard</span>
+          <svg class="gi car" aria-hidden="true" focusable="false"><use href="#i-caret-right"/></svg>
+        </button>
+        <div class="grp-items" id="grp-crm">
+          <div>
+            <a class="item" href="#/crm/dashboard" aria-current="page" data-i18n="dashboard">Overview</a>
+            <a class="item" href="#/crm/accounts"><span data-i18n="accounts">Accounts</span><span class="cnt num">1,246</span></a>
+            <a class="item" href="#/crm/pipeline" data-i18n="pipeline">Pipeline</a>
+            <a class="item" href="#/crm/leads" data-i18n="leads">Leads</a>
+            <a class="item" href="#/crm/tasks" data-i18n="tasks">Tasks</a>
+            <a class="item" href="#/crm/reports" data-i18n="reports">Reports</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="grp" data-grp="fb">
+        <button class="grp-btn" aria-expanded="false" aria-controls="grp-fb" data-grp-toggle="fb">
+          <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-chat-centered-dots"/></svg>
+          <span class="lbl" data-i18n="feedback">Feedback</span>
+          <svg class="gi car" aria-hidden="true" focusable="false"><use href="#i-caret-right"/></svg>
+        </button>
+        <div class="grp-items" id="grp-fb">
+          <div>
+            <a class="item" href="#/fb/dashboard" data-i18n="overview">Overview</a>
+            <a class="item" href="#/fb/responses"><span data-i18n="responses">Responses</span><span class="cnt num">86</span></a>
+            <a class="item" href="#/fb/surveys" data-i18n="surveys">Surveys</a>
+            <a class="item" href="#/fb/sentiment" data-i18n="sentiment">Sentiment</a>
+            <a class="item" href="#/fb/settings" data-i18n="settings">Settings</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="side-foot">
+      <div class="pic" aria-hidden="true">NK</div>
+      <div class="txt">
+        <div class="n">Nour Khaled</div>
+        <div class="r" data-i18n="role">Administrator</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+    <header class="top">
+      <div class="top-in">
+        <button class="icon-btn" id="navBtn" aria-label="Toggle navigation" aria-expanded="true">
+          <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-sidebar-simple"/></svg>
+        </button>
+
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <b id="cbService" translate="no">Dashboard</b>
+          <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-caret-right"/></svg>
+          <span id="cbPage">Dashboard</span>
+        </nav>
+
+        <button class="kbtn" id="paletteBtn" aria-label="Open command palette">
+          <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-magnifying-glass"/></svg>
+          <span class="lbl" data-i18n="searchAll">Search or jump to…</span>
+          <span class="kbd" translate="no">⌘&nbsp;K</span>
+        </button>
+
+        <button class="icon-btn" id="densityBtn" aria-label="Toggle row density" aria-pressed="false">
+          <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-rows"/></svg>
+        </button>
+        <button class="icon-btn" id="langBtn" aria-label="Switch to Arabic">
+          <span style="font-size:12px;font-weight:700" translate="no">ع</span>
+        </button>
+        <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme">
+          <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg>
+        </button>
+        <button class="icon-btn" id="bellBtn" aria-label="Notifications, 3 unread">
+          <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-bell"/></svg>
+          <span class="dot" aria-hidden="true"></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="page" id="main">
+
+      <!-- ============ REVENUE DASHBOARD ============ -->
+      <section class="view" id="v-crm" aria-labelledby="crmTitle">
+        <div class="page-head">
+          <div class="l">
+            <h1 id="crmTitle" data-i18n="revenueTitle">Dashboard</h1>
+            <p data-i18n="revenueSub">Every lead across Al Amal, from first contact to a closed case.</p>
+          </div>
+          <div class="act">
+            <button class="btn" data-toast="Export queued. You will get an email when the file is ready.">
+              <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-export"/></svg><span data-i18n="export">Export</span>
+            </button>
+            <button class="btn primary" data-toast="New lead draft created.">
+              <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-plus"/></svg><span data-i18n="newOpp">New lead</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- signature element: the whole lead book as one status band -->
+        <div class="band">
+          <div class="band-top">
+            <span class="ttl" data-i18n="bookTitle">Lead status</span>
+            <span class="tot"><b class="num" id="bookTotal">984</b> <span data-i18n="opportunities">leads</span></span>
+            <span class="rt" data-i18n="bandHint">Select a band to filter the table below</span>
+          </div>
+          <div class="flow" id="flow" role="group" aria-label="Leads by status"></div>
+          <div class="legend" id="flowLegend"></div>
+        </div>
+
+        <div class="tiles" id="crmTiles"></div>
+
+        <div class="cols">
+          <div class="card">
+            <div class="card-head">
+              <h2 data-i18n="closedRevenue">Cases per employee</h2>
+              <span class="sub" data-i18n="lastSeven">Cases created</span>
+              <div class="r">
+                <div class="seg-ctl" role="group" aria-label="Chart period">
+                  <button data-metric="month" aria-pressed="true" data-i18n="value">This month</button>
+                  <button data-metric="today" aria-pressed="false" data-i18n="count">Today</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="chart-wrap">
+                <svg class="chart" id="chart" role="img" aria-labelledby="chartDesc"></svg>
+                <p id="chartDesc" class="sr">Column chart of cases created per employee.</p>
+                <div class="tip" id="chartTip" role="status" aria-live="off"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2 data-i18n="leadSources">Lead sources</h2>
+              <div class="r"><a class="linkish" href="#/crm/reports"><span data-i18n="fullReport">Full report</span><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"/></svg></a></div>
+            </div>
+            <div class="card-body"><div class="src" id="sources"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 data-i18n="opportunitiesTitle">Leads</h2>
+            <span class="sub" id="rowCount"></span>
+          </div>
+
+          <div class="toolbar">
+            <label class="field">
+              <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-magnifying-glass"/></svg>
+              <span class="sr">Search leads by name, record number, phone, or doctor</span>
+              <input id="q" type="search" name="q" autocomplete="off" spellcheck="false"
+                     placeholder="Search name, number, phone, or doctor…">
+            </label>
+            <div class="chips" id="statusChips" role="group" aria-label="Filter by status"></div>
+            <button class="btn" id="resetBtn" hidden>
+              <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-funnel"/></svg><span data-i18n="clear">Clear filters</span>
+            </button>
+          </div>
+
+          <div class="tscroll">
+            <table class="data" id="table">
+              <caption class="sr">Leads, sortable by column</caption>
+              <thead>
+                <tr>
+                  <th data-sort="id"><button class="sortbtn" type="button"><span data-i18n="idCol">No.</span><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-caret-right"/></svg></button></th>
+                  <th data-sort="name"><button class="sortbtn" type="button"><span data-i18n="nameCol">Name</span><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-caret-right"/></svg></button></th>
+                  <th data-sort="procedure"><button class="sortbtn" type="button"><span data-i18n="procedureCol">Procedure</span><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-caret-right"/></svg></button></th>
+                  <th class="plain" data-i18n="paymentCol">Payment method</th>
+                  <th data-sort="createdBy"><button class="sortbtn" type="button"><span data-i18n="createdByCol">Created by</span><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-caret-right"/></svg></button></th>
+                  <th data-sort="assignedTo"><button class="sortbtn" type="button"><span data-i18n="assignedToCol">Assigned to</span><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-caret-right"/></svg></button></th>
+                  <th class="plain" data-i18n="doctorCol">Doctor</th>
+                  <th data-sort="created"><button class="sortbtn" type="button"><span data-i18n="createdCol">Created</span><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-caret-right"/></svg></button></th>
+                  <th class="plain" data-i18n="status">Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+
+          <div id="tableEmpty" hidden>
+            <div class="empty">
+              <div class="ic" aria-hidden="true"><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-funnel"/></svg></div>
+              <h3 data-i18n="emptyTitle">No leads match these filters</h3>
+              <p data-i18n="emptyBody">Try a different search term, or clear the status filters to see the full list again.</p>
+              <button class="btn" data-reset><span data-i18n="clear">Clear filters</span></button>
+            </div>
+          </div>
+
+          <div class="table-foot" id="tableFoot">
+            <span id="pageInfo"></span>
+            <div class="r" id="pager"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ FEEDBACK ============ -->
+      <section class="view" id="v-fb" hidden aria-labelledby="fbTitle">
+        <div class="page-head">
+          <div class="l">
+            <h1 id="fbTitle" data-i18n="feedbackTitle">Patient feedback</h1>
+            <p data-i18n="feedbackSub">Satisfaction, survey completion, and the themes people raise most often.</p>
+          </div>
+          <div class="act">
+            <button class="btn" data-toast="Survey link copied to your clipboard.">
+              <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-export"/></svg><span data-i18n="shareSurvey">Share survey</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="tiles" id="fbTiles"></div>
+
+        <div class="gauges" id="gauges"></div>
+
+        <div class="cols">
+          <div class="card">
+            <div class="card-head">
+              <h2 data-i18n="latestResponses">Latest responses</h2>
+              <div class="r"><a class="linkish" href="#/fb/responses"><span data-i18n="viewAll">View all</span><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"/></svg></a></div>
+            </div>
+            <div class="card-body"><div class="reviews" id="reviews"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2 data-i18n="topThemes">What people mention</h2></div>
+            <div class="card-body"><div class="themes" id="themes"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ GENERIC MODULE ============ -->
+      <section class="view" id="v-generic" hidden aria-labelledby="genTitle">
+        <div class="page-head">
+          <div class="l">
+            <h1 id="genTitle">Module</h1>
+            <p id="genSub">This screen is part of the interactive preview.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="empty">
+            <div class="ic" aria-hidden="true"><svg class="gi" aria-hidden="true" focusable="false"><use href="#i-target"/></svg></div>
+            <h3 data-i18n="genEmptyTitle">Nothing here yet</h3>
+            <p data-i18n="genEmptyBody">The dashboard and feedback screens are wired with live interactions. This module is a placeholder for the tables and detail views that ship with the full product.</p>
+            <a class="btn primary" href="#/crm/dashboard"><span data-i18n="backToDash">Back to dashboard</span></a>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ================= COMMAND PALETTE ================= -->
+<div class="scrim" id="scrim" data-open="false">
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="in">
+      <svg class="gi" aria-hidden="true" focusable="false"><use href="#i-magnifying-glass"/></svg>
+      <input id="pq" type="text" autocomplete="off" spellcheck="false" placeholder="Search pages, accounts, actions…" aria-label="Search pages, accounts, and actions" aria-controls="plist" role="combobox" aria-expanded="true">
+    </div>
+    <ul id="plist" role="listbox" aria-label="Results"></ul>
+    <div class="none" id="pnone" hidden>No matches. Try an account name or a page.</div>
+    <div class="ft">
+      <span><span class="kbd" translate="no">↑↓</span> navigate</span>
+      <span><span class="kbd" translate="no">↵</span> open</span>
+      <span><span class="kbd" translate="no">esc</span> close</span>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   SAMPLE DATA
+   All figures below are mock fixtures for the preview. They are
+   internally consistent (segments sum to the total, months sum
+   to the revenue KPI) so the numbers survive scrutiny in a demo.
+   ============================================================ */
+
+const STATUS = {
+  success: { key:"success", en:"Success", ar:"ناجحة",       color:"#0f7049" },
+  pending: { key:"pending", en:"Pending", ar:"قيد المعالجة", color:"#a86c25" },
+  closed:  { key:"closed",  en:"Closed",  ar:"مغلقة",       color:"#495d70" },
+  waiting: { key:"waiting", en:"Waiting", ar:"بالانتظار",   color:"#1e7dab" }
+};
+
+const BOOK = [
+  { k:"success", n:372 },
+  { k:"pending", n:168 },
+  { k:"closed",  n:331 },
+  { k:"waiting", n:113 }
+];
+
+const MONTHS = [
+  { m:"2026-02", revenue:38200,  count:17 },
+  { m:"2026-03", revenue:47600,  count:21 },
+  { m:"2026-04", revenue:34900,  count:15 },
+  { m:"2026-05", revenue:58100,  count:24 },
+  { m:"2026-06", revenue:51400,  count:22 },
+  { m:"2026-07", revenue:65700,  count:26 },
+  { m:"2026-08", revenue:74300,  count:26 }
+];
+
+/* Cases created per employee - drives the "Cases per employee" chart */
+const STAFF = [
+  { name:"Sireen Mansour", month:74, today:6 },
+  { name:"Laith Haddad",   month:68, today:5 },
+  { name:"Nour Khaled",    month:61, today:4 },
+  { name:"Rasha Obeidat",  month:53, today:3 },
+  { name:"Yazan Freij",    month:47, today:3 },
+  { name:"Duaa Nasser",    month:39, today:2 }
+];
+const staffTotal = k => STAFF.reduce((a, s) => a + s[k], 0);
+
+const SOURCES = [
+  { name:"WhatsApp ads", ar:"إعلانات واتساب", icon:"whatsapp-logo",  n:349, color:"#25a366" },
+  { name:"Call centre",  ar:"مركز الاتصال",   icon:"phone-call",     n:261, color:"#1e7dab" },
+  { name:"Facebook",     ar:"فيسبوك",          icon:"facebook-logo",  n:235, color:"#3b5998" },
+  { name:"Walk-in",      ar:"مراجعة مباشرة",   icon:"storefront",     n:122, color:"#a86c25" },
+  { name:"Instagram",    ar:"إنستغرام",        icon:"instagram-logo", n:13,  color:"#c13584" },
+  { name:"Referral",     ar:"إحالة",           icon:"users-three",    n:4,   color:"#7a5fb0" }
+];
+const SRC = Object.fromEntries(SOURCES.map(s => [s.name, s]));
+
+/* Reference lists so the table stays translatable without duplicating strings on every row. */
+const PROCEDURES = {
+  "Natural birth":     "ولادة طبيعية",
+  "Caesarean section": "ولادة قيصرية",
+  "Consultation":      "استشارة",
+  "Ultrasound":        "تصوير بالموجات",
+  "Laparoscopy":       "تنظير",
+  "IVF cycle":         "دورة أطفال الأنابيب",
+  "Routine check-up":  "فحص دوري",
+  "Paediatric visit":  "زيارة أطفال"
+};
+const PAYMENTS = {
+  "Cash":        "نقداً",
+  "Insurance":   "تأمين",
+  "Card":        "بطاقة",
+  "Instalments": "أقساط"
+};
+const DOCTORS = {
+  "Dr. Hana Zureikat":  "د. هناء زريقات",
+  "Dr. Omar Barghouti": "د. عمر البرغوثي",
+  "Dr. Lina Tabbaa":    "د. لينا الطباع",
+  "Dr. Samer Haddadin": "د. سامر حدادين"
+};
+const STAFF_AR = {
+  "Sireen Mansour": "سيرين منصور",
+  "Laith Haddad":   "ليث حداد",
+  "Nour Khaled":    "نور خالد",
+  "Rasha Obeidat":  "رشا العبيدات",
+  "Yazan Freij":    "يزن فريج",
+  "Duaa Nasser":    "دعاء نصر"
+};
+
+/* One lead = one case file. `doctor` is empty until a consultant is assigned. */
+const ROWS = [
+  { id:1014, name:"Adi Abu Jumaa",    ar:"عدي ابو جمعة",   source:"Call centre",  phone:"078 872 7573", procedure:"Natural birth",     payment:"Cash",        createdBy:"Duaa Nasser",    assignedTo:"Duaa Nasser",    doctor:"",                    created:"2026-08-31T09:12:00", status:"pending" },
+  { id:1013, name:"Rania Al Masri",   ar:"رانيا المصري",   source:"WhatsApp ads", phone:"079 418 2276", procedure:"Caesarean section", payment:"Insurance",   createdBy:"Sireen Mansour", assignedTo:"Sireen Mansour", doctor:"Dr. Hana Zureikat",   created:"2026-08-31T08:05:00", status:"success" },
+  { id:1012, name:"Mahmoud Zaghloul", ar:"محمود زغلول",    source:"Facebook",     phone:"078 903 5514", procedure:"Consultation",      payment:"Cash",        createdBy:"Laith Haddad",   assignedTo:"Laith Haddad",   doctor:"Dr. Omar Barghouti",  created:"2026-08-30T16:48:00", status:"waiting" },
+  { id:1011, name:"Salma Odeh",       ar:"سلمى عودة",      source:"Call centre",  phone:"077 265 5619", procedure:"Ultrasound",        payment:"Insurance",   createdBy:"Nour Khaled",    assignedTo:"Duaa Nasser",    doctor:"Dr. Lina Tabbaa",     created:"2026-08-30T13:30:00", status:"success" },
+  { id:1010, name:"Firas Sweidan",    ar:"فراس سويدان",    source:"Walk-in",      phone:"079 966 1723", procedure:"Routine check-up",  payment:"Cash",        createdBy:"Rasha Obeidat",  assignedTo:"Rasha Obeidat",  doctor:"",                    created:"2026-08-30T11:05:00", status:"closed" },
+  { id:1009, name:"Dina Al Khatib",   ar:"دينا الخطيب",    source:"Instagram",    phone:"078 204 3371", procedure:"IVF cycle",         payment:"Instalments", createdBy:"Yazan Freij",    assignedTo:"Laith Haddad",   doctor:"Dr. Hana Zureikat",   created:"2026-08-29T14:22:00", status:"waiting" },
+  { id:1008, name:"Khalid Nabulsi",   ar:"خالد النابلسي",  source:"Call centre",  phone:"079 551 8840", procedure:"Laparoscopy",       payment:"Insurance",   createdBy:"Sireen Mansour", assignedTo:"Sireen Mansour", doctor:"Dr. Samer Haddadin",  created:"2026-08-29T10:41:00", status:"waiting" },
+  { id:1007, name:"Aya Darwish",      ar:"آية درويش",      source:"WhatsApp ads", phone:"077 812 4409", procedure:"Natural birth",     payment:"Cash",        createdBy:"Duaa Nasser",    assignedTo:"Nour Khaled",    doctor:"Dr. Lina Tabbaa",     created:"2026-08-29T09:18:00", status:"success" },
+  { id:1006, name:"Bassam Qudah",     ar:"بسام القضاة",    source:"Facebook",     phone:"078 447 9163", procedure:"Paediatric visit",  payment:"Card",        createdBy:"Rasha Obeidat",  assignedTo:"Rasha Obeidat",  doctor:"",                    created:"2026-08-28T17:52:00", status:"pending" },
+  { id:1005, name:"Hanan Tawil",      ar:"حنان الطويل",    source:"Walk-in",      phone:"079 330 2758", procedure:"Consultation",      payment:"Cash",        createdBy:"Nour Khaled",    assignedTo:"Yazan Freij",    doctor:"Dr. Omar Barghouti",  created:"2026-08-28T12:37:00", status:"closed" },
+  { id:1004, name:"Tareq Shawabkeh",  ar:"طارق الشوابكة",  source:"Call centre",  phone:"077 619 3085", procedure:"Ultrasound",        payment:"Insurance",   createdBy:"Yazan Freij",    assignedTo:"Yazan Freij",    doctor:"Dr. Samer Haddadin",  created:"2026-08-27T15:09:00", status:"closed" },
+  { id:1003, name:"Maysa Hijazi",     ar:"ميساء حجازي",    source:"Facebook",     phone:"078 158 6604", procedure:"Caesarean section", payment:"Instalments", createdBy:"Sireen Mansour", assignedTo:"Duaa Nasser",    doctor:"Dr. Hana Zureikat",   created:"2026-08-27T09:44:00", status:"waiting" },
+  { id:1002, name:"Anas Rimawi",      ar:"أنس الريماوي",   source:"Referral",     phone:"079 742 1198", procedure:"Routine check-up",  payment:"Card",        createdBy:"Laith Haddad",   assignedTo:"Laith Haddad",   doctor:"",                    created:"2026-08-26T12:26:00", status:"pending" },
+  { id:1001, name:"Lubna Sakran",     ar:"لبنى سكران",     source:"WhatsApp ads", phone:"077 486 2230", procedure:"Paediatric visit",  payment:"Cash",        createdBy:"Duaa Nasser",    assignedTo:"Nour Khaled",    doctor:"Dr. Lina Tabbaa",     created:"2026-08-26T08:15:00", status:"closed" }
+];
+
+const FEEDBACK = { csat:4.6, nps:58, responses:1940, rate:0.423 };
+const NPS_SPLIT = [
+  { l:"Promoters",  pct:71.8, n:1393, color:"#0f7049" },
+  { l:"Passives",   pct:14.6, n:283,  color:"#1e7dab" },
+  { l:"Detractors", pct:13.6, n:264,  color:"#b23a30" }
+];
+const REVIEWS = [
+  { n:"Rania Abu Taleb", m:"Onboarding survey", r:5, q:"Setup was quick and the account team followed up the same day.", t:["Positive","Onboarding"] },
+  { n:"Marwan Fakhoury", m:"Support ticket",    r:4, q:"Resolved fast. A status page for outages would save me a phone call.", t:["Feature idea","Support"] },
+  { n:"Huda Sabbagh",    m:"Quarterly survey",  r:3, q:"Good service, but comparing the pricing tiers took me three tries.", t:["Passive","Pricing"] },
+  { n:"Tareq Kilani",    m:"Renewal survey",    r:5, q:"Renewed for another year. The reporting saves my team hours weekly.", t:["Positive","Renewal"] }
+];
+const THEMES = [
+  { n:"Response speed",  v:88, tone:"pos" },
+  { n:"Ease of booking", v:76, tone:"pos" },
+  { n:"Value for money", v:61, tone:"neutral" },
+  { n:"Reporting depth", v:54, tone:"neutral" },
+  { n:"Pricing clarity", v:33, tone:"neg" }
+];
+
+/* ============================================================
+   i18n - the production system has an English toggle, so the
+   preview flips direction as well as strings.
+   ============================================================ */
+const I18N = {
+  ar:{
+    tagline:"لوحة العمليات", crm:"لوحة التحكم", dashboard:"نظرة عامة", accounts:"الحسابات",
+    pipeline:"مسار الصفقات", leads:"العملاء المحتملون", tasks:"المهام", reports:"التقارير",
+    feedback:"الملاحظات", overview:"نظرة عامة", responses:"الردود", surveys:"الاستبيانات",
+    sentiment:"المشاعر", settings:"الإعدادات", role:"مسؤول", searchAll:"ابحث أو انتقل…",
+    revenueTitle:"لوحة التحكم", sampleData:"بيانات تجريبية",
+    revenueSub:"كل عميل محتمل في الأمل، من أول تواصل حتى إغلاق الحالة.",
+    export:"تصدير", newOpp:"عميل محتمل جديد", bookTitle:"حالة العملاء المحتملين", opportunities:"عميل محتمل",
+    bandHint:"اختر شريحة لتصفية الجدول", closedRevenue:"الحالات لكل موظف",
+    lastSeven:"الحالات المُنشأة", value:"هذا الشهر", count:"اليوم", leadSources:"مصادر الإحالة",
+    fullReport:"التقرير الكامل", opportunitiesTitle:"العملاء المحتملون",
+    idCol:"الرقم", nameCol:"الاسم", procedureCol:"الإجراء", paymentCol:"طريقة الدفع",
+    createdByCol:"أنشئ بواسطة", assignedToCol:"مُعيّن لـ", doctorCol:"الطبيب",
+    createdCol:"تاريخ الإنشاء", status:"الحالة", clear:"مسح التصفية",
+    emptyTitle:"لا توجد نتائج مطابقة", emptyBody:"جرّب كلمة بحث أخرى أو امسح تصفية الحالة لعرض القائمة كاملة.",
+    feedbackTitle:"ملاحظات المراجعين", feedbackSub:"الرضا واكتمال الاستبيانات وأكثر المواضيع تكراراً.",
+    shareSurvey:"مشاركة الاستبيان", latestResponses:"أحدث الردود", viewAll:"عرض الكل",
+    topThemes:"أكثر ما يُذكر", genEmptyTitle:"لا يوجد محتوى بعد",
+    genEmptyBody:"شاشتا لوحة التحكم والملاحظات مفعّلتان بالكامل. هذه الوحدة مخصّصة للجداول وشاشات التفاصيل في النسخة الكاملة.",
+    backToDash:"العودة للوحة التحكم"
+  }
+};
+let lang = "en";
+
+/* Strings that are generated in JS rather than sitting in the markup. */
+const TXT = {
+  leadsMonth:     { en:"Leads this month",         ar:"العملاء المحتملون هذا الشهر" },
+  leadsToday:     { en:"Leads today",              ar:"العملاء المحتملون اليوم" },
+  successMonth:   { en:"Success cases this month", ar:"الحالات الناجحة هذا الشهر" },
+  successToday:   { en:"Success cases today",      ar:"الحالات الناجحة اليوم" },
+  vsPriorMonth:   { en:"12.4% vs prior month",     ar:"مقارنة بالشهر السابق ٪١٢٫٤" },
+  vsYesterday5:   { en:"5 more than yesterday",    ar:"٥ أكثر من أمس" },
+  vsYesterday3:   { en:"3 more than yesterday",    ar:"٣ أكثر من أمس" },
+  successRate:    { en:"37.4% success rate",       ar:"نسبة نجاح ٪٣٧٫٤" },
+  cases:          { en:"cases",                    ar:"حالة" },
+  casesThisMonth: { en:"cases this month",         ar:"حالة هذا الشهر" },
+  casesToday:     { en:"cases today",              ar:"حالة اليوم" }
+};
+const TT = k => (TXT[k] ? (lang === "ar" ? TXT[k].ar : TXT[k].en) : k);
+
+/* ============================================================
+   FORMATTERS - Intl, never hardcoded
+   ============================================================ */
+const locale = () => (lang === "ar" ? "ar-JO" : "en-JO");
+const fMoney  = v => new Intl.NumberFormat(locale(), { style:"currency", currency:"JOD", maximumFractionDigits:0 }).format(v);
+const fMoneyK = v => new Intl.NumberFormat(locale(), { notation:"compact", maximumFractionDigits:1 }).format(v);
+const fNum    = v => new Intl.NumberFormat(locale()).format(v);
+const fPct    = (v,d=1) => new Intl.NumberFormat(locale(), { style:"percent", minimumFractionDigits:d, maximumFractionDigits:d }).format(v);
+const fMonth  = iso => new Intl.DateTimeFormat(locale(), { month:"short" }).format(new Date(iso + "-01T00:00:00"));
+const fWhen   = iso => {
+  const d = new Date(iso), mins = Math.round((Date.now() - d) / 60000);
+  const rtf = new Intl.RelativeTimeFormat(locale(), { numeric:"auto" });
+  if (Math.abs(mins) < 60)   return rtf.format(-mins, "minute");
+  if (Math.abs(mins) < 1440) return rtf.format(-Math.round(mins/60), "hour");
+  if (Math.abs(mins) < 10080) return rtf.format(-Math.round(mins/1440), "day");
+  return new Intl.DateTimeFormat(locale(), { day:"numeric", month:"short" }).format(d);
+};
+const fDate = iso => new Intl.DateTimeFormat(locale(), { day:"2-digit", month:"2-digit", year:"numeric" }).format(new Date(iso));
+const initials = n => n.split(/\s+/).slice(0,2).map(w => w[0]).join("").toUpperCase();
+const statusLabel = k => (lang === "ar" ? STATUS[k].ar : STATUS[k].en);
+
+/* One lookup per reference list: English is the key, Arabic the value. */
+const ar = (map, v) => (lang === "ar" && map[v]) ? map[v] : v;
+const srcLabel   = v => (lang === "ar" && SRC[v]) ? SRC[v].ar : v;
+const rowName    = r => (lang === "ar" && r.ar) ? r.ar : r.name;
+const staffLabel = v => ar(STAFF_AR, v);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+const ico = (name, cls = "") => `<svg class="gi ${cls}" aria-hidden="true" focusable="false"><use href="#i-${name}"/></svg>`;
+
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+/* ============================================================
+   FLOW BAND
+   ============================================================ */
+const bookTotal = BOOK.reduce((a, b) => a + b.n, 0);
+
+function renderBand(){
+  $("#bookTotal").textContent = fNum(bookTotal);
+  $("#flow").innerHTML = BOOK.map(s => {
+    const pct = s.n / bookTotal;
+    const label = statusLabel(s.k);
+    return `<button class="seg" data-k="${s.k}" style="flex:${s.n}"
+      aria-label="${esc(label)}: ${fNum(s.n)} leads, ${fPct(pct)}">
+      <span>${pct > .06 ? esc(label) + " " + fNum(s.n) : ""}</span></button>`;
+  }).join("");
+
+  $("#flowLegend").innerHTML = BOOK.map(s =>
+    `<span class="lg"><i style="background:${STATUS[s.k].color}"></i>${esc(statusLabel(s.k))}
+      <b class="num">${fNum(s.n)}</b><span class="p num">${fPct(s.n / bookTotal)}</span></span>`
+  ).join("");
+
+  $$("#flow .seg").forEach(b => b.addEventListener("click", () => {
+    const k = b.dataset.k;
+    filters.status = filters.status.has(k) && filters.status.size === 1 ? new Set() : new Set([k]);
+    syncChips(); applyFilters();
+    $("#table").scrollIntoView({ behavior:"smooth", block:"center" });
+  }));
+}
+
+/* ============================================================
+   SPARKLINE + METRIC TILES
+   ============================================================ */
+function sparkline(vals){
+  const w = 88, h = 30, p = 3;
+  const min = Math.min(...vals), max = Math.max(...vals), span = max - min || 1;
+  const pts = vals.map((v, i) => [
+    p + i * (w - p * 2) / (vals.length - 1),
+    h - p - ((v - min) / span) * (h - p * 2)
+  ]);
+  const d = pts.map((pt, i) => (i ? "L" : "M") + pt[0].toFixed(1) + " " + pt[1].toFixed(1)).join(" ");
+  const area = `${d} L ${w - p} ${h} L ${p} ${h} Z`;
+  const last = pts[pts.length - 1];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">
+    <path class="area" d="${area}"/><path d="${d}"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.4"/></svg>`;
+}
+
+function tile(t){
+  const dcls = t.dir === 0 ? "flat" : (t.good ? "up" : "down");
+  const dico = t.dir === 0 ? "clock" : (t.dir > 0 ? "arrow-up-right" : "arrow-down-right");
+  return `<article class="tile">
+    <div class="k">${ico(t.icon)}${esc(t.k)}</div>
+    <div class="v">${t.v}</div>
+    <div class="foot">
+      <span class="delta ${dcls}">${ico(dico)}${esc(t.d)}</span>
+      ${t.spark ? sparkline(t.spark) : ""}
+    </div>
+  </article>`;
+}
+
+const KPI = {
+  leadsMonth:   staffTotal("month"),   // 342
+  leadsToday:   staffTotal("today"),   //  23
+  successMonth: 128,
+  successToday: 9
+};
+
+function renderCrmTiles(){
+  $("#crmTiles").innerHTML = [
+    { k:TT("leadsMonth"),   icon:"users-three",  v:fNum(KPI.leadsMonth),   d:TT("vsPriorMonth"),  dir:1, good:true, spark:[268,291,275,304,318,327,342] },
+    { k:TT("leadsToday"),   icon:"clock",        v:fNum(KPI.leadsToday),   d:TT("vsYesterday5"),  dir:1, good:true, spark:[14,19,16,22,18,21,23] },
+    { k:TT("successMonth"), icon:"check-circle", v:fNum(KPI.successMonth), d:TT("successRate"),   dir:1, good:true, spark:[96,105,101,112,118,121,128] },
+    { k:TT("successToday"), icon:"target",       v:fNum(KPI.successToday), d:TT("vsYesterday3"),  dir:1, good:true, spark:[5,7,6,8,7,6,9] }
+  ].map(tile).join("");
+}
+
+function renderFbTiles(){
+  $("#fbTiles").innerHTML = [
+    { k:"CSAT",          icon:"star",              v:FEEDBACK.csat.toFixed(1), d:"0.3 points", dir:1, good:true, spark:[4.1,4.2,4.2,4.3,4.4,4.5,4.6] },
+    { k:"Net promoter",  icon:"chart-line-up",     v:"+" + FEEDBACK.nps, d:"6 points", dir:1, good:true, spark:[41,44,46,49,52,55,58] },
+    { k:"Responses",     icon:"chat-centered-dots",v:fNum(FEEDBACK.responses), d:fNum(86) + " new this week", dir:1, good:true, spark:[188,214,242,266,291,318,341] },
+    { k:"Response rate", icon:"users-three",       v:fPct(FEEDBACK.rate), d:"2.0 points", dir:-1, good:false, spark:[46.4,45.8,45.1,44.6,43.9,43.1,42.3] }
+  ].map(tile).join("");
+}
+
+/* ============================================================
+   COLUMN CHART - real axis, gridlines, hover readout
+   ============================================================ */
+let chartMetric = "month";
+
+function renderChart(){
+  const svg = $("#chart"), tip = $("#chartTip"), wrap = svg.parentElement;
+  if (!wrap.clientWidth) return;
+
+  // viewBox is measured 1:1 against the container so text never distorts
+  const W = Math.max(320, Math.round(wrap.clientWidth));
+  const H = Math.round(parseFloat(getComputedStyle(svg).height)) || 250;
+  const padL = 52, padR = 10, padT = 12, padB = 28;
+  const iw = W - padL - padR, ih = H - padT - padB;
+
+  const vals = STAFF.map(s => s[chartMetric]);
+  const rawMax = Math.max(...vals);
+  // pick a "nice" axis top so the four gridlines always land on whole numbers
+  const mag = Math.pow(10, Math.floor(Math.log10(Math.max(rawMax, 1) / 4)));
+  const step = [1, 2, 2.5, 5, 10].map(x => x * mag).find(c => c * 4 >= rawMax) || mag * 10;
+  const top = step * 4;
+
+  const bw = iw / STAFF.length;
+  const cw = Math.min(48, bw * 0.55);
+  const yOf = v => padT + ih - (v / top) * ih;
+
+  const gridLines = [], tickText = [];
+  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+    const v = top * f, y = +(padT + ih - f * ih).toFixed(1);
+    gridLines.push(`<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}"/>`);
+    tickText.push(`<text x="${padL - 10}" y="${y + 4}" text-anchor="end">${fNum(v)}</text>`);
+  });
+
+  const first = n => n.split(/\s+/)[0];
+
+  const cols = STAFF.map((s, i) => {
+    const v = s[chartMetric];
+    const h = Math.max((v / top) * ih, 2);
+    const x = +(padL + i * bw + (bw - cw) / 2).toFixed(1);
+    const y = +yOf(v).toFixed(1);
+    return `<g class="col" data-i="${i}" tabindex="0" role="listitem" aria-label="${esc(s.name)}: ${fNum(v)} ${TT("cases")}">
+      <rect class="hit" x="${+(padL + i * bw).toFixed(1)}" y="${padT}" width="${+bw.toFixed(1)}" height="${ih}"/>
+      <rect class="b" x="${x}" y="${y}" width="${+cw.toFixed(1)}" height="${+h.toFixed(1)}" rx="5" fill="url(#colGrad)"/>
+      <text x="${+(x + cw / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(first(s.name))}</text>
+    </g>`;
+  }).join("");
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML =
+    `<defs><linearGradient id="colGrad" x1="0" y1="0" x2="0" y2="1">
+       <stop offset="0%" stop-color="#2aaade"/><stop offset="100%" stop-color="#144f7a"/>
+     </linearGradient></defs>
+     <g class="grid" aria-hidden="true">${gridLines.join("")}</g>
+     <g class="axis" aria-hidden="true">${tickText.join("")}</g>
+     <g class="axis" role="list">${cols}</g>`;
+
+  const show = (i, ev) => {
+    const m = STAFF[i];
+    tip.innerHTML = `<b>${esc(m.name)}</b><br>${esc(fNum(m[chartMetric]))} ${
+      chartMetric === "month" ? TT("casesThisMonth") : TT("casesToday")}`;
+    const box = svg.getBoundingClientRect(), wb = wrap.getBoundingClientRect();
+    const scale = box.width / W;
+    const cx = ev ? ev.clientX - wb.left
+                  : box.left - wb.left + (padL + i * bw + bw / 2) * scale;
+    tip.style.left = cx + "px";
+    tip.style.top = (box.top - wb.top + yOf(m[chartMetric]) * scale) + "px";
+    tip.style.opacity = "1";
+  };
+  const hide = () => { tip.style.opacity = "0"; };
+
+  $$("#chart .col").forEach(g => {
+    const i = +g.dataset.i;
+    g.addEventListener("mousemove", e => show(i, e));
+    g.addEventListener("mouseleave", hide);
+    g.addEventListener("focus", () => show(i, null));
+    g.addEventListener("blur", hide);
+  });
+}
+
+/* ============================================================
+   LEAD SOURCES
+   ============================================================ */
+function renderSources(){
+  const tot = SOURCES.reduce((a, s) => a + s.n, 0);
+  const max = Math.max(...SOURCES.map(s => s.n));
+  $("#sources").innerHTML = SOURCES.map((s, i) => `
+    <div class="src-row">
+      <span class="ic" aria-hidden="true">${ico(s.icon)}</span>
+      <span class="nm">${esc(s.name)}</span>
+      <span class="n">${fNum(s.n)}</span>
+      <span class="p">${fPct(s.n / tot)}</span>
+      <span class="bar"><i style="width:${(s.n / max * 100).toFixed(1)}%;animation-delay:${i * 55}ms"></i></span>
+    </div>`).join("");
+}
+
+/* ============================================================
+   TABLE - filter, sort, paginate, empty + skeleton states
+   ============================================================ */
+const filters = { q:"", status:new Set() };
+let sortKey = "created", sortDir = -1, page = 1;
+const PER = 6;
+
+function renderChips(){
+  const counts = {};
+  ROWS.forEach(r => counts[r.status] = (counts[r.status] || 0) + 1);
+  $("#statusChips").innerHTML = Object.keys(STATUS).map(k =>
+    `<button class="chip" type="button" data-k="${k}" aria-pressed="false">
+      ${esc(statusLabel(k))}<span class="c num">${fNum(counts[k] || 0)}</span></button>`).join("");
+  $$("#statusChips .chip").forEach(c => c.addEventListener("click", () => {
+    const k = c.dataset.k;
+    filters.status.has(k) ? filters.status.delete(k) : filters.status.add(k);
+    page = 1; syncChips(); applyFilters();
+  }));
+}
+function syncChips(){
+  $$("#statusChips .chip").forEach(c =>
+    c.setAttribute("aria-pressed", String(filters.status.has(c.dataset.k))));
+  $("#resetBtn").hidden = !(filters.q || filters.status.size);
+}
+
+function visibleRows(){
+  const q = filters.q.trim().toLowerCase();
+  let out = ROWS.filter(r => {
+    if (filters.status.size && !filters.status.has(r.status)) return false;
+    if (!q) return true;
+    const hay = [r.id, r.name, r.ar, r.phone, r.source, r.procedure,
+                 r.payment, r.createdBy, r.assignedTo, r.doctor].join(" ");
+    return hay.toLowerCase().includes(q);
+  });
+  out.sort((a, b) => {
+    const A = a[sortKey], B = b[sortKey];
+    return (typeof A === "number" ? A - B : String(A).localeCompare(String(B))) * sortDir;
+  });
+  return out;
+}
+
+function skeletonRows(n){
+  const chipSk = `<span class="uchip"><span class="sk" style="width:22px;height:22px;border-radius:50%"></span>
+      <span class="sk" style="width:56px;height:11px"></span></span>`;
+  return Array.from({ length:n }, () => `<tr>
+    <td><span class="sk" style="width:38px;height:11px"></span></td>
+    <td><div class="lead"><span class="sk" style="width:120px;height:11px;margin-bottom:6px"></span>
+      <span class="sk" style="width:150px;height:9px"></span></div></td>
+    <td><span class="sk" style="width:84px;height:11px"></span></td>
+    <td><span class="sk" style="width:56px;height:11px"></span></td>
+    <td>${chipSk}</td>
+    <td>${chipSk}</td>
+    <td><span class="sk" style="width:88px;height:11px"></span></td>
+    <td><span class="sk" style="width:70px;height:11px"></span></td>
+    <td><span class="sk" style="width:62px;height:20px;border-radius:999px"></span></td></tr>`).join("");
+}
+
+function applyFilters(){
+  const rows = visibleRows();
+  const pages = Math.max(1, Math.ceil(rows.length / PER));
+  page = Math.min(page, pages);
+  const slice = rows.slice((page - 1) * PER, page * PER);
+
+  $("#rowCount").textContent = rows.length === ROWS.length
+    ? fNum(ROWS.length) + " total"
+    : fNum(rows.length) + " of " + fNum(ROWS.length);
+
+  const isEmpty = rows.length === 0;
+  $("#tableEmpty").hidden = !isEmpty;
+  $("#table").hidden = isEmpty;
+  $("#tableFoot").hidden = isEmpty;
+
+  const uchip = n => `<span class="uchip"><i aria-hidden="true">${esc(n[0])}</i><span>${esc(staffLabel(n))}</span></span>`;
+  const none  = `<span class="dash" aria-label="Not assigned">\u2014</span>`;
+
+  $("#tbody").innerHTML = slice.map(r => `
+    <tr>
+      <td class="idc mono">#${fNum(r.id)}</td>
+      <td><div class="lead">
+        <span class="n">${esc(rowName(r))}</span>
+        <span class="s"><i class="sdot" style="background:${SRC[r.source].color}" aria-hidden="true"></i>${
+          esc(srcLabel(r.source))} \u00b7 <span class="mono">${esc(r.phone)}</span></span>
+      </div></td>
+      <td>${esc(ar(PROCEDURES, r.procedure))}</td>
+      <td>${esc(ar(PAYMENTS, r.payment))}</td>
+      <td>${uchip(r.createdBy)}</td>
+      <td>${uchip(r.assignedTo)}</td>
+      <td>${r.doctor ? esc(ar(DOCTORS, r.doctor)) : none}</td>
+      <td class="mono">${esc(fDate(r.created))}</td>
+      <td><span class="pill ${r.status}">${esc(statusLabel(r.status))}</span></td>
+    </tr>`).join("");
+
+  $("#pageInfo").textContent = isEmpty ? "" :
+    `${fNum((page - 1) * PER + 1)} to ${fNum(Math.min(page * PER, rows.length))} of ${fNum(rows.length)}`;
+
+  $("#pager").innerHTML = [
+    `<button class="pg" data-pg="prev" ${page === 1 ? "disabled" : ""} aria-label="Previous page">‹</button>`,
+    ...Array.from({ length:pages }, (_, i) =>
+      `<button class="pg" data-pg="${i + 1}" ${page === i + 1 ? 'aria-current="true"' : ""}>${fNum(i + 1)}</button>`),
+    `<button class="pg" data-pg="next" ${page === pages ? "disabled" : ""} aria-label="Next page">›</button>`
+  ].join("");
+
+  $$("#pager .pg").forEach(b => b.addEventListener("click", () => {
+    const v = b.dataset.pg;
+    page = v === "prev" ? page - 1 : v === "next" ? page + 1 : +v;
+    applyFilters();
+    $("#table").scrollIntoView({ behavior:"smooth", block:"nearest" });
+  }));
+}
+
+function initTable(){
+  $$("#table th[data-sort]").forEach(th => {
+    th.querySelector(".sortbtn").addEventListener("click", () => {
+      const k = th.dataset.sort;
+      sortDir = sortKey === k ? -sortDir : (k === "id" || k === "created" ? -1 : 1);
+      sortKey = k; page = 1;
+      $$("#table th").forEach(x => x.removeAttribute("aria-sort"));
+      th.setAttribute("aria-sort", sortDir === 1 ? "ascending" : "descending");
+      th.querySelector(".gi").style.transform = sortDir === 1 ? "rotate(-90deg)" : "rotate(90deg)";
+      applyFilters();
+    });
+  });
+
+  let t;
+  $("#q").addEventListener("input", e => {
+    clearTimeout(t);
+    t = setTimeout(() => { filters.q = e.target.value; page = 1; syncChips(); applyFilters(); }, 140);
+  });
+  const reset = () => {
+    filters.q = ""; filters.status.clear(); page = 1;
+    $("#q").value = ""; syncChips(); applyFilters();
+  };
+  $("#resetBtn").addEventListener("click", reset);
+  $$("[data-reset]").forEach(b => b.addEventListener("click", reset));
+}
+
+/* ============================================================
+   FEEDBACK VIEW
+   ============================================================ */
+function renderGauges(){
+  const R = 33, C = 2 * Math.PI * R;
+  $("#gauges").innerHTML = NPS_SPLIT.map(g => `
+    <article class="gauge">
+      <svg viewBox="0 0 78 78" aria-hidden="true">
+        <circle class="trk" cx="39" cy="39" r="${R}"/>
+        <circle cx="39" cy="39" r="${R}" stroke="${g.color}"
+          stroke-dasharray="${(C * g.pct / 100).toFixed(1)} ${C.toFixed(1)}"/>
+      </svg>
+      <div class="t">
+        <div class="v">${fPct(g.pct / 100)}</div>
+        <div class="l">${esc(g.l)}</div>
+        <div class="s">${fNum(g.n)} respondents</div>
+      </div>
+    </article>`).join("");
+}
+
+function renderReviews(){
+  $("#reviews").innerHTML = REVIEWS.map(v => `
+    <article class="review">
+      <div class="hd">
+        <span class="pic" aria-hidden="true">${esc(initials(v.n))}</span>
+        <span><span class="n">${esc(v.n)}</span><br><span class="m">${esc(v.m)}</span></span>
+        <span class="rate" aria-label="${v.r} out of 5">${"★".repeat(v.r)}${"☆".repeat(5 - v.r)}</span>
+      </div>
+      <p class="q">${esc(v.q)}</p>
+      <div class="tags">${v.t.map(x => `<span class="tagx">${esc(x)}</span>`).join("")}</div>
+    </article>`).join("");
+}
+
+function renderThemes(){
+  $("#themes").innerHTML = THEMES.map(t => `
+    <div class="theme-row">
+      <span class="nm">${esc(t.n)}</span>
+      <span class="v">${fPct(t.v / 100, 0)}</span>
+      <span class="bar"><i class="${t.tone === "pos" ? "pos" : t.tone === "neg" ? "neg" : ""}" style="width:${t.v}%"></i></span>
+    </div>`).join("");
+}
+
+/* ============================================================
+   ROUTING - state lives in the URL
+   ============================================================ */
+const PAGES = {
+  crm:{ label:"Dashboard", pages:{ dashboard:"Overview", accounts:"Accounts", pipeline:"Pipeline", leads:"Leads", tasks:"Tasks", reports:"Reports" } },
+  fb: { label:"Feedback", pages:{ dashboard:"Overview", responses:"Responses", surveys:"Surveys", sentiment:"Sentiment", settings:"Settings" } }
+};
+
+function route(){
+  const [, svc = "crm", pg = "dashboard"] = (location.hash || "#/crm/dashboard").split("/");
+  const service = PAGES[svc] ? svc : "crm";
+  const pageKey = PAGES[service].pages[pg] ? pg : "dashboard";
+
+  $("#cbService").textContent = PAGES[service].label;
+  $("#cbPage").textContent = PAGES[service].pages[pageKey];
+
+  $$(".view").forEach(v => v.hidden = true);
+  if (service === "crm" && pageKey === "dashboard")      $("#v-crm").hidden = false;
+  else if (service === "fb" && pageKey === "dashboard")  $("#v-fb").hidden = false;
+  else {
+    $("#genTitle").textContent = PAGES[service].pages[pageKey];
+    $("#genSub").textContent = PAGES[service].label + " module";
+    $("#v-generic").hidden = false;
+  }
+
+  $$(".side a.item").forEach(a => {
+    const on = a.getAttribute("href") === `#/${service}/${pageKey}`;
+    on ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
+  });
+  const grp = $(`.grp[data-grp="${service}"]`);
+  if (grp && grp.dataset.open !== "true") toggleGroup(service, true);
+  if (window.innerWidth <= 760) document.documentElement.removeAttribute("data-nav");
+  if (!$("#v-crm").hidden) renderChart();
+}
+
+function toggleGroup(key, force){
+  const g = $(`.grp[data-grp="${key}"]`);
+  const open = force !== undefined ? force : g.dataset.open !== "true";
+  g.dataset.open = String(open);
+  g.querySelector(".grp-btn").setAttribute("aria-expanded", String(open));
+}
+
+/* ============================================================
+   COMMAND PALETTE
+   ============================================================ */
+const COMMANDS = [
+  { icon:"gauge",   label:"Dashboard", hint:"Page", go:"#/crm/dashboard" },
+  { icon:"users-three", label:"Accounts",      hint:"Page", go:"#/crm/accounts" },
+  { icon:"handshake", label:"Pipeline",        hint:"Page", go:"#/crm/pipeline" },
+  { icon:"chart-line-up", label:"Reports",     hint:"Page", go:"#/crm/reports" },
+  { icon:"chat-centered-dots", label:"Feedback overview", hint:"Page", go:"#/fb/dashboard" },
+  { icon:"star",    label:"Survey responses",  hint:"Page", go:"#/fb/responses" },
+  { icon:"moon",    label:"Toggle theme",      hint:"Action", act:() => $("#themeBtn").click() },
+  { icon:"rows",    label:"Toggle row density",hint:"Action", act:() => $("#densityBtn").click() },
+  { icon:"export",  label:"Export leads", hint:"Action", act:() => toast("Export queued. You will get an email when the file is ready.") },
+  ...ROWS.slice(0, 6).map(r => ({ icon:"target", label:`#${r.id} \u00b7 ${r.name}`, hint:"Lead",
+    act:() => { location.hash = "#/crm/dashboard"; filters.q = r.name; $("#q").value = r.name; page = 1; syncChips(); applyFilters(); } }))
+];
+
+let pIdx = 0, pResults = [], lastFocus = null;
+
+function paintPalette(){
+  const q = $("#pq").value.trim().toLowerCase();
+  pResults = COMMANDS.filter(c => !q || c.label.toLowerCase().includes(q)).slice(0, 8);
+  pIdx = 0;
+  $("#pnone").hidden = pResults.length > 0;
+  $("#plist").innerHTML = pResults.map((c, i) => `
+    <li role="option" id="pop-${i}" aria-selected="${i === 0}" data-active="${i === 0}">
+      <button type="button" data-i="${i}" tabindex="-1">
+        ${ico(c.icon)}<span>${esc(c.label)}</span>
+        <span class="g">${esc(c.hint)}</span></button></li>`).join("");
+  $$("#plist button").forEach(b => b.addEventListener("click", () => runPalette(+b.dataset.i)));
+}
+function movePalette(d){
+  if (!pResults.length) return;
+  pIdx = (pIdx + d + pResults.length) % pResults.length;
+  $$("#plist li").forEach((li, i) => {
+    li.dataset.active = String(i === pIdx);
+    li.setAttribute("aria-selected", String(i === pIdx));
+  });
+  $(`#pop-${pIdx}`)?.scrollIntoView({ block:"nearest" });
+}
+function runPalette(i){
+  const c = pResults[i]; if (!c) return;
+  closePalette();
+  if (c.go) location.hash = c.go;
+  if (c.act) c.act();
+}
+function openPalette(){
+  lastFocus = document.activeElement;
+  $("#scrim").dataset.open = "true";
+  $("#pq").value = ""; paintPalette(); $("#pq").focus();
+}
+function closePalette(){
+  $("#scrim").dataset.open = "false";
+  lastFocus?.focus();
+}
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+function toast(msg){
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<svg class="gi" aria-hidden="true" focusable="false"><use href="#i-check-circle"/></svg><span>${esc(msg)}</span>`;
+  $("#toasts").appendChild(el);
+  setTimeout(() => {
+    el.style.transition = "opacity .3s, transform .3s";
+    el.style.opacity = "0"; el.style.transform = "translateY(6px)";
+    setTimeout(() => el.remove(), 320);
+  }, 3400);
+}
+
+/* ============================================================
+   CHROME CONTROLS
+   ============================================================ */
+function setTheme(t){
+  document.documentElement.dataset.theme = t;
+  const dark = t === "dark";
+  $("#themeBtn").innerHTML = ico(dark ? "sun" : "moon");
+  $("#themeBtn").setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+  $('meta[name="theme-color"]').setAttribute("content", dark ? "#061722" : "#f2f7fb");
+  renderChart();
+}
+
+function setLang(l){
+  lang = l;
+  const ar = l === "ar";
+  document.documentElement.lang = ar ? "ar" : "en";
+  document.documentElement.dir  = ar ? "rtl" : "ltr";
+  $("#langBtn").innerHTML = `<span style="font-size:12px;font-weight:700" translate="no">${ar ? "EN" : "ع"}</span>`;
+  $("#langBtn").setAttribute("aria-label", ar ? "Switch to English" : "Switch to Arabic");
+  $$("[data-i18n]").forEach(el => {
+    const k = el.dataset.i18n;
+    if (ar && I18N.ar[k]) { el.dataset.en ??= el.textContent.trim(); el.textContent = I18N.ar[k]; }
+    else if (!ar && el.dataset.en) { el.textContent = el.dataset.en; }
+  });
+  renderAll();
+}
+
+function renderAll(){
+  renderBand(); renderCrmTiles(); renderFbTiles(); renderSources();
+  renderChips(); syncChips(); applyFilters();
+  renderGauges(); renderReviews(); renderThemes(); renderChart();
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function boot(){
+  // skeleton first so the loading state is real, not decorative
+  $("#tbody").innerHTML = skeletonRows(6);
+
+  $("#navBtn").addEventListener("click", () => {
+    const root = document.documentElement;
+    if (window.innerWidth <= 760) {
+      const open = root.dataset.nav === "open";
+      open ? root.removeAttribute("data-nav") : root.dataset.nav = "open";
+      $("#navBtn").setAttribute("aria-expanded", String(!open));
+    } else {
+      const mini = root.dataset.nav === "mini";
+      mini ? root.removeAttribute("data-nav") : root.dataset.nav = "mini";
+      $("#navBtn").setAttribute("aria-expanded", String(mini));
+    }
+  });
+
+  $$("[data-grp-toggle]").forEach(b =>
+    b.addEventListener("click", () => toggleGroup(b.dataset.grpToggle)));
+
+  $("#themeBtn").addEventListener("click", () =>
+    setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+  $("#langBtn").addEventListener("click", () => setLang(lang === "ar" ? "en" : "ar"));
+
+  $("#densityBtn").addEventListener("click", () => {
+    const root = document.documentElement;
+    const compact = root.dataset.density === "compact";
+    root.dataset.density = compact ? "comfortable" : "compact";
+    $("#densityBtn").setAttribute("aria-pressed", String(!compact));
+  });
+
+  $("#bellBtn").addEventListener("click", () => toast("3 leads are waiting on your approval."));
+  $$("[data-toast]").forEach(b => b.addEventListener("click", () => toast(b.dataset.toast)));
+
+  $$(".seg-ctl [data-metric]").forEach(b => b.addEventListener("click", () => {
+    chartMetric = b.dataset.metric;
+    $$(".seg-ctl [data-metric]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    renderChart();
+  }));
+
+  // palette
+  $("#paletteBtn").addEventListener("click", openPalette);
+  $("#pq").addEventListener("input", paintPalette);
+  $("#scrim").addEventListener("mousedown", e => { if (e.target === $("#scrim")) closePalette(); });
+  document.addEventListener("keydown", e => {
+    const open = $("#scrim").dataset.open === "true";
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); open ? closePalette() : openPalette(); return; }
+    if (!open) return;
+    if (e.key === "Escape") { e.preventDefault(); closePalette(); }
+    if (e.key === "ArrowDown") { e.preventDefault(); movePalette(1); }
+    if (e.key === "ArrowUp")   { e.preventDefault(); movePalette(-1); }
+    if (e.key === "Enter")     { e.preventDefault(); runPalette(pIdx); }
+    if (e.key === "Tab")       { e.preventDefault(); }
+  });
+
+  window.addEventListener("hashchange", route);
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderChart, 120); });
+
+  initTable();
+  setTimeout(() => { renderAll(); route(); }, 420);
+}
+
+document.readyState === "loading"
+  ? document.addEventListener("DOMContentLoaded", boot)
+  : boot();
+</script>
+</body>
+</html>

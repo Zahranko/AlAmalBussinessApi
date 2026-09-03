@@ -1,0 +1,56 @@
+name: Build and Deploy to SmarterASP.NET
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore AlAmalBusiness.sln
+
+      - name: Build
+        run: dotnet build AlAmalBusiness.sln -c Release --no-restore
+
+      - name: Publish
+        run: dotnet publish AlAmalBusiness.Api/AlAmalBusiness.Api.csproj -c Release --no-build -o ./publish
+
+      # appsettings.json ships with the secret fields blank (see CLAUDE.md /
+      # security notes) — the real connection string and JWT signing key live
+      # only in GitHub Actions secrets and are stamped into the published
+      # output here, never committed to the repo.
+      - name: Inject production secrets into appsettings.json
+        shell: pwsh
+        run: |
+          $path = "./publish/appsettings.json"
+          $config = Get-Content $path -Raw | ConvertFrom-Json
+          $config.ConnectionStrings.DefaultConnection = "${{ secrets.PROD_DB_CONNECTION_STRING }}"
+          $config.JwtSettings.Key = "${{ secrets.PROD_JWT_KEY }}"
+          $config | ConvertTo-Json -Depth 10 | Set-Content $path
+
+      - name: Remove local dev config from publish output
+        run: rm -f ./publish/appsettings.Development.json
+
+      - name: Deploy via FTP to SmarterASP.NET
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: ./publish/
+          server-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**

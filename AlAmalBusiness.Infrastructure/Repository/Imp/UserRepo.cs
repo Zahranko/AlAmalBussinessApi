@@ -119,16 +119,10 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
 
         }
 
-        public async Task<User> GetUserByIdAsync(string id)
+        public async Task<User?> GetUserByIdAsync(string id)
         {
-           var user = await _userManager.FindByIdAsync(id);
-            if (user != null)
-            {
-                return user;
-            }
-            else
-                return null;
-               
+            return await _userManager.FindByIdAsync(id);
+
         }
     }
     }

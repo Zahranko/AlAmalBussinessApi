@@ -18,14 +18,15 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
 
         public async Task<Departments> CreateDepartmentAsync(Departments department)
         {
-            var searchDepartment = _context.Departments.FirstOrDefault(d => d.Name == department.Name);
-            if (searchDepartment != null)
+            bool exists = await _context.Departments
+        .AnyAsync(d => d.Name == department.Name);
+            if (exists)
             {
                 return null!;
             }
             else
             {
-                await _context.Departments.AddAsync(department);
+               _context.Departments.Add(department);
                await _context.SaveChangesAsync();
                 return department;
             }
@@ -33,44 +34,20 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
         public async Task<bool> IsDepartmentExist(string name,int departmentId)
         {
 
-            var existingDepartment = await _context.Departments.FirstOrDefaultAsync(d => d.Name == name);
-
-            if (existingDepartment != null&& existingDepartment.Id!=departmentId)
-            {
-                return true;
-            }
-
-            else
-            {
-                return false;
-            }
+            return await _context.Departments
+        .AnyAsync(d => d.Name == name && d.Id != departmentId);
         }
 
 
         public async Task<IEnumerable<Departments>> GetAllDepartmentsAsync()
         {
-            var ListOfDepartments =await _context.Departments.ToListAsync();
-            if (ListOfDepartments == null)
-            {
-                return null!;
-            }
-            else
-            {
-                return ListOfDepartments;
-            }
+            return await _context.Departments.ToListAsync();
         }
 
-        public async Task<Departments> GetDepartmentByIdAsync(int departmentId)
+        public async Task<Departments?> GetDepartmentByIdAsync(int departmentId)
         {
-            var searchDepartment = await _context.Departments.FindAsync(departmentId);
-            if (searchDepartment == null)
-            {
-                return null!;
-            }
-            else
-            {
-                return searchDepartment;
-            }
+            return await _context.Departments.FindAsync(departmentId);
+          
 
         }
 
