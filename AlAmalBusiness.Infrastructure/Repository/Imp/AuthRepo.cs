@@ -37,6 +37,18 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             return (user, null);
         }
 
+        public async Task<User?> FindActiveByIdAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            return user is { IsActive: true } ? user : null;
+        }
+
+        public async Task<IEnumerable<string>> GetRolesByIdAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            return user == null ? Array.Empty<string>() : await _userManager.GetRolesAsync(user);
+        }
+
         public async Task<IEnumerable<string>> GetRolesAsync(string userName)
         {
             var user=await _userManager.FindByNameAsync(userName);

@@ -19,6 +19,7 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<ClosedReason> ClosedReasons { get; set; }
       public DbSet<LeadHistory> LeadHistories { get; set; }
       public DbSet<LeadCall> LeadCalls { get; set; }
+      public DbSet<RefreshToken> RefreshTokens { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -100,6 +101,25 @@ public class AppDbContext : IdentityDbContext<User>
             .WithMany()
             .HasForeignKey(c => c.LeadId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(t => t.User)
+            .WithMany()
+            .HasForeignKey(t => t.UserId)
+            // Deleting a user takes their sessions with them; nothing else
+            // references these rows.
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Every refresh looks a token up by its hash, so this is the one
+        // index that matters. Unique because a hash collision would mean two
+        // sessions sharing a credential.
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.TokenHash)
+            .IsUnique();
+
+        // Supports "revoke everything for this user" and the expiry sweep.
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => new { t.UserId, t.ExpiresAt });
 
         modelBuilder.Entity<LeadCall>()
             .HasOne(c => c.Actor)

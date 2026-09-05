@@ -43,6 +43,7 @@ builder.Services.AddScoped<DbInitializer>();
 // Repositories (Infrastructure)
 builder.Services.AddScoped<IUserRepo, UserRepo>();
 builder.Services.AddScoped<IAuthRepo, AuthRepo>();
+builder.Services.AddScoped<IRefreshTokenRepo, RefreshTokenRepo>();
 builder.Services.AddScoped<IDepartmentRepo, DepartmentRepo>();
 builder.Services.AddScoped<ILeadRepo, LeadRepo>();
 builder.Services.AddScoped<ILeadHistoryRepo, LeadHistoryRepo>();
