@@ -29,6 +29,11 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
 
         Task<List<(string UserId, string? Username, int Total, int Success, int Closed)>> GetLeadCountsByCreatorAsync();
 
+        // Badge counts for the 5 case-queue tabs, computed directly — does not
+        // go through GetPagedAsync/LeadListQuery, so it never touches the
+        // GetPaged filter cache (see LeadController.GetQueueCounts).
+        Task<(int All, int Today, int Mine, int Unassigned, int Closed)> GetQueueCountsAsync(string userId);
+
         Task<List<Lead>> GetByDoctorAsync(int doctorId, DateTime? from = null, DateTime? to = null);
 
         Task<List<(int ProcedureId, int Total, int Pending, int Waiting, int Success, int Closed)>> GetLeadCountsByProcedureAsync(DateTime? from = null, DateTime? to = null);

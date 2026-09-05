@@ -141,6 +141,22 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
             return (items, totalCount);
         }
 
+        public async Task<(int All, int Today, int Mine, int Unassigned, int Closed)> GetQueueCountsAsync(string userId)
+        {
+            var today = DateTime.Now.Date;
+            var tomorrow = today.AddDays(1);
+            var open = ExcludeCompleted(_context.Leads.AsNoTracking());
+
+            var all = await open.CountAsync();
+            var todayCount = await open.CountAsync(l => l.CreatedDate >= today && l.CreatedDate < tomorrow);
+            var mine = await open.CountAsync(l => l.ClaimedById == userId);
+            var unassigned = await open.CountAsync(l => l.ClaimedById == null);
+            var closed = await _context.Leads.AsNoTracking()
+                .CountAsync(l => l.Status == LeadStatus.Success || l.Status == LeadStatus.Closed);
+
+            return (all, todayCount, mine, unassigned, closed);
+        }
+
         public Task<int> CountAllAsync() => _context.Leads.CountAsync();
 
         public async Task<Dictionary<LeadStatus, int>> GetStatusCountsAsync(DateTime? from = null, DateTime? to = null)

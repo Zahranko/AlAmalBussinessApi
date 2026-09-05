@@ -59,11 +59,25 @@ public class LeadController : ControllerBase
 
     [HttpGet("paged")]
     public async Task<ActionResult<PagedResultDTO<LeadListItemResponse>>> GetPaged(
-        int page = 1, int pageSize = 12, string? search = null, string? status = null, string? scope = null, int? doctorId = null)
+        int page = 1, int pageSize = 12, string? search = null, string? status = null, string? scope = null,
+        int? doctorId = null, string? createdByUserId = null, string? claimedByUserId = null)
     {
-        var filter = await ResolveLeadFilterAsync("leads-paged", page, pageSize, search, status, scope, doctorId);
+        var filter = await ResolveLeadFilterAsync("leads-paged", page, pageSize, search, status, scope, doctorId, createdByUserId, claimedByUserId);
         return Ok(await _leadService.GetPagedAsync(BuildScopedQuery(filter)));
     }
+
+    // Case-queue tab badges (all/today/mine/unassigned/closed). Deliberately
+    // bypasses ResolveLeadFilterAsync/the "leads-paged" filter cache: the
+    // frontend used to fetch these 5 counts via GetPaged?page=1&pageSize=1
+    // (once per tab, on every page mount), and since GetPaged treats any
+    // non-empty query string as "the user's new last filter", those probe
+    // requests clobbered whatever real filter the user had actually set
+    // moments after it was saved — the "restore last filter on a bare
+    // request" feature never held past a single page load. Counts now come
+    // from a dedicated endpoint that never writes to that cache.
+    [HttpGet("queue-counts")]
+    public Task<ActionResult<QueueCountsResponse>> GetQueueCounts() =>
+        Run(() => _leadService.GetQueueCountsAsync(CurrentUserId));
 
     [HttpGet("created-by-me/paged")]
     public async Task<ActionResult<PagedResultDTO<LeadListItemResponse>>> GetCreatedByMePaged(
@@ -77,7 +91,8 @@ public class LeadController : ControllerBase
     // filter/paging for this endpoint; any query string present is used
     // exactly as sent and becomes the new "last filter" for next time.
     private async Task<LeadFilterCacheDTO> ResolveLeadFilterAsync(
-        string endpointKey, int page, int pageSize, string? search, string? status, string? scope, int? doctorId)
+        string endpointKey, int page, int pageSize, string? search, string? status, string? scope, int? doctorId,
+        string? createdByUserId = null, string? claimedByUserId = null)
     {
         if (!Request.QueryString.HasValue)
         {
@@ -85,7 +100,17 @@ public class LeadController : ControllerBase
             if (cached != null) return cached;
         }
 
-        var filter = new LeadFilterCacheDTO { Page = page, PageSize = pageSize, Search = search, Status = status, Scope = scope, DoctorId = doctorId };
+        var filter = new LeadFilterCacheDTO
+        {
+            Page = page,
+            PageSize = pageSize,
+            Search = search,
+            Status = status,
+            Scope = scope,
+            DoctorId = doctorId,
+            CreatedByUserId = createdByUserId,
+            ClaimedByUserId = claimedByUserId,
+        };
         await _filterCache.SaveFilterAsync(CurrentUserId, endpointKey, filter);
         return filter;
     }
@@ -95,13 +120,24 @@ public class LeadController : ControllerBase
     // the open/closed default.
     private LeadListQuery BuildScopedQuery(LeadFilterCacheDTO filter)
     {
-        var query = new LeadListQuery { Page = filter.Page, PageSize = filter.PageSize, Search = filter.Search, DoctorId = filter.DoctorId };
+        var query = new LeadListQuery
+        {
+            Page = filter.Page,
+            PageSize = filter.PageSize,
+            Search = filter.Search,
+            DoctorId = filter.DoctorId,
+            CreatedByUserId = filter.CreatedByUserId,
+            ClaimedByUserId = filter.ClaimedByUserId,
+        };
         if (Enum.TryParse<LeadStatus>(filter.Status, ignoreCase: true, out var parsedStatus))
             query.Status = parsedStatus;
 
         switch (filter.Scope)
         {
             case "today": query.TodayOnly = true; break;
+            // "mine" is the case-queue tab (CasesQueue) — always the current
+            // user, regardless of any explicit claimedByUserId (that param is
+            // for the admin dashboard's "Assigned to" filter, a different caller).
             case "mine": query.ClaimedByUserId = CurrentUserId; break;
             case "unclaimed": query.UnclaimedOnly = true; break;
             case "closed": query.OnlyCompleted = true; break;

@@ -10,5 +10,7 @@ namespace AlAmalBusiness.Application.DTOs.CRM.Lead
         public string? Status { get; set; }
         public string? Scope { get; set; }
         public int? DoctorId { get; set; }
+        public string? CreatedByUserId { get; set; }
+        public string? ClaimedByUserId { get; set; }
     }
 }

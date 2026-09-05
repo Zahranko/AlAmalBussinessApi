@@ -452,6 +452,12 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 .ToList();
         }
 
+        public async Task<QueueCountsResponse> GetQueueCountsAsync(string userId)
+        {
+            var (all, today, mine, unassigned, closed) = await _leadRepo.GetQueueCountsAsync(userId);
+            return new QueueCountsResponse { All = all, Today = today, Mine = mine, Unassigned = unassigned, Closed = closed };
+        }
+
         public async Task<DashboardKpiDTO> GetDashboardKpisAsync()
         {
             var now = DateTime.Now;

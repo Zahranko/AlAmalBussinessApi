@@ -32,6 +32,7 @@ namespace AlAmalBusiness.Application.Services.Interface.CRM
         Task<LeadActionResponse> MarkCallDoneAsync(int id, int callId, string userId);
 
         Task<List<AssignableUserResponse>> GetActiveUsersAsync();
+        Task<QueueCountsResponse> GetQueueCountsAsync(string userId);
 
         Task<DashboardKpiDTO> GetDashboardKpisAsync();
         Task<List<EmployeeCaseCountDTO>> GetEmployeeCaseCountsAsync(string period);
