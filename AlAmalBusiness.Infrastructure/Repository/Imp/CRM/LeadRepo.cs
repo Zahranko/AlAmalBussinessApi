@@ -61,35 +61,91 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
         public Task<Lead?> GetLeadDetailAsync(int id) =>
             WithLeadIncludes().AsNoTracking().FirstOrDefaultAsync(l => l.Id == id);
 
-        public Task<List<Lead>> GetAllLeadsAsync(bool excludeCompleted = false)
+        // Projection shared by every list query — see LeadListRow. Names come
+        // through the navigations inside the same SELECT (LEFT JOINs on the
+        // lookup tables), no Include/tracking, no LOB columns.
+        private static readonly System.Linq.Expressions.Expression<Func<Lead, LeadListRow>> ToRow = l => new LeadListRow
         {
-            var q = WithLeadIncludes().AsNoTracking().OrderByDescending(l => l.CreatedDate);
-            return (excludeCompleted ? ExcludeCompleted(q) : q).ToListAsync();
+            Id = l.Id,
+            Name = l.Name,
+            CountryKey = l.CountryKey,
+            PhoneNum = l.PhoneNum,
+            NickName = l.NickName,
+            Status = l.Status,
+            PaymentWay = l.PaymentWay,
+            CreatedDate = l.CreatedDate,
+            CreatedByName = l.CreatedBy!.UserName,
+            ClaimedByName = l.ClaimedBy!.UserName,
+            ReferalName = l.Referal!.Name,
+            ProcedureName = l.Procedure!.Name,
+            DoctorName = l.Doctor!.Name,
+            ClosedReasonName = l.ClosedReason!.Name
+        };
+
+        private IQueryable<Lead> ListBase() => _context.Leads.AsNoTracking();
+
+        // Calendar feed: only leads that have at least one logged call (the
+        // calendar places a case on the day of its latest call, so a lead
+        // without one has nowhere to sit), with that latest call read in the
+        // same query via a correlated top-1 subquery instead of a second
+        // round trip that fetched every call row.
+        public Task<List<LeadListRow>> GetAllLeadsAsync(bool excludeCompleted = false)
+        {
+            var q = ListBase().Where(l => _context.LeadCalls.Any(c => c.LeadId == l.Id));
+            if (excludeCompleted) q = ExcludeCompleted(q);
+            return q
+                .OrderByDescending(l => l.CreatedDate)
+                .Select(l => new LeadListRow
+                {
+                    Id = l.Id,
+                    Name = l.Name,
+                    CountryKey = l.CountryKey,
+                    PhoneNum = l.PhoneNum,
+                    NickName = l.NickName,
+                    Status = l.Status,
+                    PaymentWay = l.PaymentWay,
+                    CreatedDate = l.CreatedDate,
+                    CreatedByName = l.CreatedBy!.UserName,
+                    ClaimedByName = l.ClaimedBy!.UserName,
+                    ReferalName = l.Referal!.Name,
+                    ProcedureName = l.Procedure!.Name,
+                    DoctorName = l.Doctor!.Name,
+                    ClosedReasonName = l.ClosedReason!.Name,
+                    LastCallDate = _context.LeadCalls
+                        .Where(c => c.LeadId == l.Id)
+                        .OrderByDescending(c => c.CreatedAt)
+                        .Select(c => (DateTime?)c.Date)
+                        .FirstOrDefault(),
+                    LastCallNote = _context.LeadCalls
+                        .Where(c => c.LeadId == l.Id)
+                        .OrderByDescending(c => c.CreatedAt)
+                        .Select(c => c.Note)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
         }
 
-        public Task<List<Lead>> GetMineAsync(string userId, bool excludeCompleted = false)
+        public Task<List<LeadListRow>> GetMineAsync(string userId, bool excludeCompleted = false)
         {
-            var q = WithLeadIncludes().AsNoTracking()
-                .Where(l => l.ClaimedById == userId)
-                .OrderByDescending(l => l.CreatedDate);
-            return (excludeCompleted ? ExcludeCompleted(q) : q).ToListAsync();
+            var q = ListBase().Where(l => l.ClaimedById == userId);
+            if (excludeCompleted) q = ExcludeCompleted(q);
+            return q.OrderByDescending(l => l.CreatedDate).Select(ToRow).ToListAsync();
         }
 
-        public Task<List<Lead>> GetCreatedByMeAsync(string userId, bool excludeCompleted = false)
+        public Task<List<LeadListRow>> GetCreatedByMeAsync(string userId, bool excludeCompleted = false)
         {
-            var q = WithLeadIncludes().AsNoTracking()
-                .Where(l => l.CreatedById == userId)
-                .OrderByDescending(l => l.CreatedDate);
-            return (excludeCompleted ? ExcludeCompleted(q) : q).ToListAsync();
+            var q = ListBase().Where(l => l.CreatedById == userId);
+            if (excludeCompleted) q = ExcludeCompleted(q);
+            return q.OrderByDescending(l => l.CreatedDate).Select(ToRow).ToListAsync();
         }
 
-        public Task<(List<Lead> Items, int TotalCount)> GetPagedAsync(LeadListQuery query) =>
-            PageLeadsAsync(WithLeadIncludes().AsNoTracking(), query);
+        public Task<(List<LeadListRow> Items, int TotalCount)> GetPagedAsync(LeadListQuery query) =>
+            PageLeadsAsync(ListBase(), query);
 
-        public Task<(List<Lead> Items, int TotalCount)> GetCreatedByMePagedAsync(string userId, LeadListQuery query) =>
-            PageLeadsAsync(WithLeadIncludes().AsNoTracking().Where(l => l.CreatedById == userId), query);
+        public Task<(List<LeadListRow> Items, int TotalCount)> GetCreatedByMePagedAsync(string userId, LeadListQuery query) =>
+            PageLeadsAsync(ListBase().Where(l => l.CreatedById == userId), query);
 
-        private static async Task<(List<Lead> Items, int TotalCount)> PageLeadsAsync(IQueryable<Lead> q, LeadListQuery query)
+        private static async Task<(List<LeadListRow> Items, int TotalCount)> PageLeadsAsync(IQueryable<Lead> q, LeadListQuery query)
         {
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
@@ -136,25 +192,38 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
                 .OrderByDescending(l => l.CreatedDate)
                 .Skip((query.Page - 1) * query.PageSize)
                 .Take(query.PageSize)
+                .Select(ToRow)
                 .ToListAsync();
 
             return (items, totalCount);
         }
 
+        // One round trip: conditional counts over the whole table (translates
+        // to COUNT(CASE WHEN ...) per bucket) instead of five separate
+        // COUNT(*) queries — on the shared host every query is a network hop
+        // to a separate SQL box, so the trip count is what matters.
         public async Task<(int All, int Today, int Mine, int Unassigned, int Closed)> GetQueueCountsAsync(string userId)
         {
             var today = DateTime.Now.Date;
             var tomorrow = today.AddDays(1);
-            var open = ExcludeCompleted(_context.Leads.AsNoTracking());
 
-            var all = await open.CountAsync();
-            var todayCount = await open.CountAsync(l => l.CreatedDate >= today && l.CreatedDate < tomorrow);
-            var mine = await open.CountAsync(l => l.ClaimedById == userId);
-            var unassigned = await open.CountAsync(l => l.ClaimedById == null);
-            var closed = await _context.Leads.AsNoTracking()
-                .CountAsync(l => l.Status == LeadStatus.Success || l.Status == LeadStatus.Closed);
+            var row = await _context.Leads.AsNoTracking()
+                .GroupBy(l => 1)
+                .Select(g => new
+                {
+                    All = g.Count(l => l.Status != LeadStatus.Success && l.Status != LeadStatus.Closed),
+                    Today = g.Count(l => l.Status != LeadStatus.Success && l.Status != LeadStatus.Closed
+                        && l.CreatedDate >= today && l.CreatedDate < tomorrow),
+                    Mine = g.Count(l => l.Status != LeadStatus.Success && l.Status != LeadStatus.Closed
+                        && l.ClaimedById == userId),
+                    Unassigned = g.Count(l => l.Status != LeadStatus.Success && l.Status != LeadStatus.Closed
+                        && l.ClaimedById == null),
+                    Closed = g.Count(l => l.Status == LeadStatus.Success || l.Status == LeadStatus.Closed)
+                })
+                .FirstOrDefaultAsync();
 
-            return (all, todayCount, mine, unassigned, closed);
+            // No rows at all → GROUP BY yields no group, not a zero row.
+            return row == null ? (0, 0, 0, 0, 0) : (row.All, row.Today, row.Mine, row.Unassigned, row.Closed);
         }
 
         public Task<int> CountAllAsync() => _context.Leads.CountAsync();

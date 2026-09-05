@@ -1,9 +1,10 @@
-﻿using AlAmalBusiness.Domain.Constants;
+using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.Models;
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 namespace AlAmalBusiness.Infrastructure.Seeding
 {
@@ -26,9 +27,12 @@ namespace AlAmalBusiness.Infrastructure.Seeding
                 AppRoles.FEmployee,
                 AppRoles.FUser
             };
+            // Runs on every cold start — one SELECT for the existing names
+            // rather than one RoleExistsAsync round trip per role.
+            var existing = await _roleManager.Roles.Select(r => r.Name).ToListAsync();
             foreach (var role in Roles)
             {
-                if (!await _roleManager.RoleExistsAsync(role))
+                if (!existing.Contains(role, StringComparer.OrdinalIgnoreCase))
                 {
                     await _roleManager.CreateAsync(new IdentityRole(role));
                 }

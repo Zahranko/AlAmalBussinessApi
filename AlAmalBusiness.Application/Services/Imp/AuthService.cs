@@ -1,4 +1,4 @@
-﻿using AlAmalBusiness.Application.DTOs.Auth;
+using AlAmalBusiness.Application.DTOs.Auth;
 using AlAmalBusiness.Application.Services.Interface;
 using AlAmalBusiness.Domain.IRepositories;
 using Microsoft.AspNetCore.Http;
@@ -22,31 +22,16 @@ namespace AlAmalBusiness.Application.Services.Imp
         }
         public async Task<LoginResult> LoginAsync(LoginDTO loginDto)
         {
+            var (user, error) = await _authRepo.LogInAsync(loginDto.UserName!, loginDto.Password!);
+            if (user == null)
+                return LoginResult.Fail(error ?? "User or Password is Incorrect");
 
-            var user = await _authRepo.LogInAsync(loginDto.UserName!, loginDto.Password!);
-           
-                if (user.Item2)
-                {
-                    var roles = await _authRepo.GetRolesAsync(loginDto.UserName!);
-                    if (roles.Any())
-                    {
-                        var token = _tokenService.GenerateToken(user.Item1, loginDto.UserName!, roles);
-                        return LoginResult.Success(token);
+            var roles = await _authRepo.GetRolesAsync(loginDto.UserName!);
+            if (!roles.Any())
+                return LoginResult.Fail("User has no roles assigned.");
 
-                    }
-                    else
-                    {
-                        return LoginResult.Fail("User has no roles assigned.");
-                    }
-                }
-                else
-                {
-                return LoginResult.Fail(user.Item1);
-                }
-
-       
-
-
+            var token = _tokenService.GenerateToken(user.Id, user.UserName ?? loginDto.UserName!, user.FullName, roles);
+            return LoginResult.Success(token);
         }
     }
 }

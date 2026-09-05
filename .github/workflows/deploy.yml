@@ -18,13 +18,22 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore AlAmalBusiness.sln
+        run: dotnet restore AlAmalBusiness.sln -r win-x64
 
       - name: Build
-        run: dotnet build AlAmalBusiness.sln -c Release --no-restore
+        run: dotnet build AlAmalBusiness.sln -c Release --no-restore -r win-x64
 
+      # ReadyToRun pre-compiles the app's IL to native code at publish time,
+      # so the first request after SmarterASP recycles the (idle-timeout,
+      # 1 GB) app pool doesn't pay the full JIT cost — the cold start that
+      # made "the first page after a break" take several seconds. Needs an
+      # explicit RID (win-x64: 64-bit IIS) and can't use --no-build, since
+      # the R2R compile step runs as part of publish. The output is roughly
+      # twice the size (native + IL side by side), so the FTP step takes a
+      # bit longer. Framework-dependent stays as before — the host provides
+      # the .NET runtime.
       - name: Publish
-        run: dotnet publish AlAmalBusiness.Api/AlAmalBusiness.Api.csproj -c Release --no-build -o ./publish
+        run: dotnet publish AlAmalBusiness.Api/AlAmalBusiness.Api.csproj -c Release -r win-x64 --self-contained false -p:PublishReadyToRun=true -o ./publish
 
       # appsettings.json ships with the secret fields blank (see CLAUDE.md /
       # security notes) — the real connection string and JWT signing key live

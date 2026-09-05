@@ -24,8 +24,8 @@ namespace AlAmalBusiness.Application.DTOs.CRM.Lead.Response
         // The most recently logged call for this lead (by CreatedAt, i.e. the
         // last one added — not necessarily the soonest-scheduled one). Null
         // for a lead with no calls yet. Only populated by GetAllLeadsAsync
-        // today (see LeadService.ToListItem) — the case calendar is the only
-        // consumer so far.
+        // (the calendar feed — see LeadRepo.GetAllLeadsAsync); every other
+        // list leaves both null.
         public DateTime? LastCallDate { get; set; }
         public string? LastCallNote { get; set; }
     }

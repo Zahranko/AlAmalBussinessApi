@@ -33,7 +33,9 @@ if (string.IsNullOrWhiteSpace(jwtKeyValue) || jwtKeyValue.Length < 32)
 }
 var key = Encoding.UTF8.GetBytes(jwtKeyValue);
 
-builder.Services.AddDbContext<AppDbContext>(options =>
+// Pooled: contexts are reset and reused across requests instead of built
+// from scratch each time — less allocation churn on the 1 GB shared pool.
+builder.Services.AddDbContextPool<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<DbInitializer>();
@@ -68,6 +70,9 @@ builder.Services.AddSignalR();
 // hosting. Swapping to AddStackExchangeRedisCache(...) later needs no other
 // change, since everything talks to IDistributedCache only.
 builder.Services.AddDistributedMemoryCache();
+// Admin-dashboard aggregate cache (LeadService) — in-process for the same
+// reason; invalidated on every lead write, 60s TTL as a backstop.
+builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()

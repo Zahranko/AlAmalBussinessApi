@@ -1,10 +1,18 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
       <UserSecretsId>26268f34-624a-4b70-9718-4f75547906ca</UserSecretsId>
+      <!-- Production runs in a 1 GB shared app pool (smartasp.net). The Web
+           SDK defaults to Server GC, which reserves a heap per core and holds
+           on to memory; Workstation, non-concurrent GC keeps the footprint
+           small for a low-traffic API. TieredPGO is on by default in .NET 8+
+           — stated here so nobody turns it off. -->
+      <ServerGarbageCollection>false</ServerGarbageCollection>
+      <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+      <TieredPGO>true</TieredPGO>
   </PropertyGroup>
 
     <ItemGroup>

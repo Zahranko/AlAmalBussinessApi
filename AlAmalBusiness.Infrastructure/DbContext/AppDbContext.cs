@@ -50,6 +50,27 @@ public class AppDbContext : IdentityDbContext<User>
             .HasForeignKey(l => l.ClosedReasonId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Every list page filters on Status (open vs. completed) and sorts by
+        // CreatedDate DESC with OFFSET/FETCH, and the queue/KPI counts range
+        // on CreatedDate — without these both the COUNT and the page were a
+        // full scan + sort of Leads on every request.
+        modelBuilder.Entity<Lead>().HasIndex(l => new { l.Status, l.CreatedDate });
+        modelBuilder.Entity<Lead>().HasIndex(l => l.CreatedDate);
+
+        // Bounded lengths so these stop being nvarchar(max) LOB columns (read
+        // off-row, un-indexable). Sized generously above anything real.
+        modelBuilder.Entity<Lead>().Property(l => l.Name).HasMaxLength(200);
+        modelBuilder.Entity<Lead>().Property(l => l.NickName).HasMaxLength(100);
+        modelBuilder.Entity<Lead>().Property(l => l.PhoneNum).HasMaxLength(32);
+        modelBuilder.Entity<Lead>().Property(l => l.CountryKey).HasMaxLength(10);
+
+        // Dashboard "successes" KPI filters LeadHistories on Type + ResultingStatus.
+        modelBuilder.Entity<LeadHistory>().HasIndex(h => new { h.Type, h.ResultingStatus });
+
+        // Calendar feed reads each lead's latest call (ORDER BY CreatedAt DESC
+        // per LeadId); the plain FK index only covers LeadId.
+        modelBuilder.Entity<LeadCall>().HasIndex(c => new { c.LeadId, c.CreatedAt });
+
         modelBuilder.Entity<LeadHistory>()
             .HasOne(h => h.Lead)
             .WithMany()

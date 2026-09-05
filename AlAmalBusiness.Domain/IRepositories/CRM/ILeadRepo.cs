@@ -16,12 +16,16 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
         // No-tracking (with includes) — for read-only detail responses.
         Task<Lead?> GetLeadDetailAsync(int id);
 
-        Task<List<Lead>> GetAllLeadsAsync(bool excludeCompleted = false);
-        Task<List<Lead>> GetMineAsync(string userId, bool excludeCompleted = false);
-        Task<List<Lead>> GetCreatedByMeAsync(string userId, bool excludeCompleted = false);
+        // List queries project straight into LeadListRow (no entity
+        // materialization, no Includes) — see LeadListRow.
+        // GetAllLeadsAsync is the calendar feed: only leads with at least one
+        // logged call, each row carrying its latest call's date/note.
+        Task<List<LeadListRow>> GetAllLeadsAsync(bool excludeCompleted = false);
+        Task<List<LeadListRow>> GetMineAsync(string userId, bool excludeCompleted = false);
+        Task<List<LeadListRow>> GetCreatedByMeAsync(string userId, bool excludeCompleted = false);
 
-        Task<(List<Lead> Items, int TotalCount)> GetPagedAsync(LeadListQuery query);
-        Task<(List<Lead> Items, int TotalCount)> GetCreatedByMePagedAsync(string userId, LeadListQuery query);
+        Task<(List<LeadListRow> Items, int TotalCount)> GetPagedAsync(LeadListQuery query);
+        Task<(List<LeadListRow> Items, int TotalCount)> GetCreatedByMePagedAsync(string userId, LeadListQuery query);
 
         Task<int> CountAllAsync();
         Task<Dictionary<LeadStatus, int>> GetStatusCountsAsync(DateTime? from = null, DateTime? to = null);

@@ -7,6 +7,7 @@ using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories;
 using AlAmalBusiness.Domain.IRepositories.CRM;
 using AlAmalBusiness.Domain.Models.CRM;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,8 +26,21 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
         private readonly IClosedReasonRepo _closedReasonRepo;
         private readonly IUserRepo _userRepo;
         private readonly ILeadNotifier _notifier;
+        private readonly IMemoryCache _cache;
 
         private const int MaxCallsPerLead = 6;
+
+        // Admin-dashboard aggregates are cached in-process (no Redis on the
+        // shared host) and invalidated exactly on every lead write, so a
+        // dashboard opened by several people in a row costs one set of
+        // queries, not one per viewer. Per-user data (queue counts, paged
+        // lists) is never cached.
+        private static readonly TimeSpan StatsCacheTtl = TimeSpan.FromSeconds(60);
+        private static readonly string[] StatsCacheKeys =
+        {
+            "stats:kpis", "stats:status-band", "stats:sources", "stats:admin",
+            "stats:employee-cases:today", "stats:employee-cases:month"
+        };
 
         public LeadService(
             ILeadRepo leadRepo,
@@ -37,7 +51,8 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             IDoctorRepo doctorRepo,
             IClosedReasonRepo closedReasonRepo,
             IUserRepo userRepo,
-            ILeadNotifier notifier)
+            ILeadNotifier notifier,
+            IMemoryCache cache)
         {
             _leadRepo = leadRepo;
             _historyRepo = historyRepo;
@@ -48,6 +63,20 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             _closedReasonRepo = closedReasonRepo;
             _userRepo = userRepo;
             _notifier = notifier;
+            _cache = cache;
+        }
+
+        private Task<T> CachedAsync<T>(string key, Func<Task<T>> factory) =>
+            _cache.GetOrCreateAsync(key, entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = StatsCacheTtl;
+                return factory();
+            })!;
+
+        private void InvalidateStats()
+        {
+            foreach (var key in StatsCacheKeys)
+                _cache.Remove(key);
         }
 
         public async Task<CreateLeadResponse> CreateLeadAsync(CreateLeadDTO lead, string currentUserId)
@@ -96,6 +125,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 ActionDate = newLead.CreatedDate
             });
             await _leadRepo.SaveChangesAsync();
+            InvalidateStats();
 
             var detail = await _leadRepo.GetLeadDetailAsync(newLead.Id);
             var item = ToListItem(detail!);
@@ -109,7 +139,10 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
         {
             var lead = await _leadRepo.GetLeadByIdAsync(id);
             if (lead != null)
+            {
                 await _leadRepo.DeleteLeadAsync(lead);
+                InvalidateStats();
+            }
         }
 
         public async Task<LeadDetailResponse?> GetLeadDetailAsync(int id)
@@ -118,34 +151,30 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             return lead == null ? null : await ToDetailAsync(lead);
         }
 
-        // The only list endpoint enriched with last-call info today — it's
-        // what the case calendar (GET /api/Lead) reads to place cases by the
-        // date of their most recently logged call.
-        public async Task<List<LeadListItemResponse>> GetAllLeadsAsync(bool excludeCompleted = false)
-        {
-            var leads = await _leadRepo.GetAllLeadsAsync(excludeCompleted);
-            var lastCalls = await _callRepo.GetLastCallsByLeadIdsAsync(leads.Select(l => l.Id));
-            return leads.Select(l => ToListItem(l, lastCalls.GetValueOrDefault(l.Id))).ToList();
-        }
+        // The calendar feed (GET /api/Lead): only leads with at least one
+        // logged call, each carrying its latest call's date/note — the repo
+        // projects that in the same query, so this is one round trip.
+        public async Task<List<LeadListItemResponse>> GetAllLeadsAsync(bool excludeCompleted = false) =>
+            (await _leadRepo.GetAllLeadsAsync(excludeCompleted)).Select(ToListItem).ToList();
 
         public async Task<List<LeadListItemResponse>> GetMineAsync(string userId, bool excludeCompleted = false) =>
-            (await _leadRepo.GetMineAsync(userId, excludeCompleted)).Select(l => ToListItem(l)).ToList();
+            (await _leadRepo.GetMineAsync(userId, excludeCompleted)).Select(ToListItem).ToList();
 
         public async Task<List<LeadListItemResponse>> GetCreatedByMeAsync(string userId, bool excludeCompleted = false) =>
-            (await _leadRepo.GetCreatedByMeAsync(userId, excludeCompleted)).Select(l => ToListItem(l)).ToList();
+            (await _leadRepo.GetCreatedByMeAsync(userId, excludeCompleted)).Select(ToListItem).ToList();
 
         public async Task<PagedResultDTO<LeadListItemResponse>> GetPagedAsync(LeadListQuery query)
         {
             ClampPaging(query);
             var (items, total) = await _leadRepo.GetPagedAsync(query);
-            return new PagedResultDTO<LeadListItemResponse> { Items = items.Select(l => ToListItem(l)).ToList(), TotalCount = total, Page = query.Page, PageSize = query.PageSize };
+            return new PagedResultDTO<LeadListItemResponse> { Items = items.Select(ToListItem).ToList(), TotalCount = total, Page = query.Page, PageSize = query.PageSize };
         }
 
         public async Task<PagedResultDTO<LeadListItemResponse>> GetCreatedByMePagedAsync(string userId, LeadListQuery query)
         {
             ClampPaging(query);
             var (items, total) = await _leadRepo.GetCreatedByMePagedAsync(userId, query);
-            return new PagedResultDTO<LeadListItemResponse> { Items = items.Select(l => ToListItem(l)).ToList(), TotalCount = total, Page = query.Page, PageSize = query.PageSize };
+            return new PagedResultDTO<LeadListItemResponse> { Items = items.Select(ToListItem).ToList(), TotalCount = total, Page = query.Page, PageSize = query.PageSize };
         }
 
         private static void ClampPaging(LeadListQuery query)
@@ -458,7 +487,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             return new QueueCountsResponse { All = all, Today = today, Mine = mine, Unassigned = unassigned, Closed = closed };
         }
 
-        public async Task<DashboardKpiDTO> GetDashboardKpisAsync()
+        public Task<DashboardKpiDTO> GetDashboardKpisAsync() => CachedAsync("stats:kpis", async () =>
         {
             var now = DateTime.Now;
             var todayStart = now.Date;
@@ -469,29 +498,39 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             var priorMonthStart = monthStart.AddMonths(-1);
             var trendFrom = todayStart.AddDays(-6);
 
+            // Two queries in total — one per source — covering the widest
+            // window any tile needs (prior month start → next month start),
+            // bucketed per day; every count, delta and trend below is summed
+            // from those buckets in memory. Previously 3 queries per tile.
+            var rangeFrom = priorMonthStart < trendFrom ? priorMonthStart : trendFrom;
+            var leadsDaily = await _leadRepo.GetCreatedDailyCountsAsync(rangeFrom, nextMonthStart);
+            var successDaily = await _historyRepo.GetSucceededDailyCountsAsync(rangeFrom, nextMonthStart);
+
             return new DashboardKpiDTO
             {
-                LeadsMonth = await BuildKpiAsync(_leadRepo.CountCreatedInRangeAsync, _leadRepo.GetCreatedDailyCountsAsync,
-                    monthStart, nextMonthStart, priorMonthStart, monthStart, trendFrom, tomorrowStart),
-                LeadsToday = await BuildKpiAsync(_leadRepo.CountCreatedInRangeAsync, _leadRepo.GetCreatedDailyCountsAsync,
-                    todayStart, tomorrowStart, yesterdayStart, todayStart, trendFrom, tomorrowStart),
-                SuccessMonth = await BuildKpiAsync(_historyRepo.CountSucceededInRangeAsync, _historyRepo.GetSucceededDailyCountsAsync,
-                    monthStart, nextMonthStart, priorMonthStart, monthStart, trendFrom, tomorrowStart),
-                SuccessToday = await BuildKpiAsync(_historyRepo.CountSucceededInRangeAsync, _historyRepo.GetSucceededDailyCountsAsync,
-                    todayStart, tomorrowStart, yesterdayStart, todayStart, trendFrom, tomorrowStart)
+                LeadsMonth = BuildKpi(leadsDaily, monthStart, nextMonthStart, priorMonthStart, monthStart, trendFrom, tomorrowStart),
+                LeadsToday = BuildKpi(leadsDaily, todayStart, tomorrowStart, yesterdayStart, todayStart, trendFrom, tomorrowStart),
+                SuccessMonth = BuildKpi(successDaily, monthStart, nextMonthStart, priorMonthStart, monthStart, trendFrom, tomorrowStart),
+                SuccessToday = BuildKpi(successDaily, todayStart, tomorrowStart, yesterdayStart, todayStart, trendFrom, tomorrowStart)
             };
+        });
+
+        private static int SumRange(Dictionary<DateTime, int> daily, DateTime from, DateTime toExclusive)
+        {
+            var sum = 0;
+            foreach (var (day, count) in daily)
+                if (day >= from && day < toExclusive) sum += count;
+            return sum;
         }
 
-        private static async Task<KpiMetricDTO> BuildKpiAsync(
-            Func<DateTime, DateTime, Task<int>> countAsync,
-            Func<DateTime, DateTime, Task<Dictionary<DateTime, int>>> dailyCountsAsync,
+        private static KpiMetricDTO BuildKpi(
+            Dictionary<DateTime, int> daily,
             DateTime currentFrom, DateTime currentTo,
             DateTime priorFrom, DateTime priorTo,
             DateTime trendFrom, DateTime trendTo)
         {
-            var current = await countAsync(currentFrom, currentTo);
-            var prior = await countAsync(priorFrom, priorTo);
-            var daily = await dailyCountsAsync(trendFrom, trendTo);
+            var current = SumRange(daily, currentFrom, currentTo);
+            var prior = SumRange(daily, priorFrom, priorTo);
 
             var trend = new List<int>();
             for (var day = trendFrom; day < trendTo; day = day.AddDays(1))
@@ -503,11 +542,17 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             return new KpiMetricDTO { Value = current, DeltaPercent = deltaPercent, Direction = direction, Trend = trend };
         }
 
-        public async Task<List<EmployeeCaseCountDTO>> GetEmployeeCaseCountsAsync(string period)
+        public Task<List<EmployeeCaseCountDTO>> GetEmployeeCaseCountsAsync(string period)
+        {
+            var isToday = period == "today";
+            return CachedAsync($"stats:employee-cases:{(isToday ? "today" : "month")}", () => LoadEmployeeCaseCountsAsync(isToday));
+        }
+
+        private async Task<List<EmployeeCaseCountDTO>> LoadEmployeeCaseCountsAsync(bool isToday)
         {
             var now = DateTime.Now;
             DateTime from, to;
-            if (period == "today")
+            if (isToday)
             {
                 from = now.Date;
                 to = from.AddDays(1);
@@ -525,7 +570,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 .ToList();
         }
 
-        public async Task<LeadStatusBandDTO> GetStatusBandAsync()
+        public Task<LeadStatusBandDTO> GetStatusBandAsync() => CachedAsync("stats:status-band", async () =>
         {
             var statusCounts = await _leadRepo.GetStatusCountsAsync();
             return new LeadStatusBandDTO
@@ -533,9 +578,9 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 Total = statusCounts.Values.Sum(),
                 Statuses = statusCounts.Select(kv => new LeadStatusCountDTO { Status = kv.Key.ToString(), Count = kv.Value }).ToList()
             };
-        }
+        });
 
-        public async Task<List<ReferralSourceStatDTO>> GetLeadSourcesAsync()
+        public Task<List<ReferralSourceStatDTO>> GetLeadSourcesAsync() => CachedAsync("stats:sources", async () =>
         {
             var total = await _leadRepo.CountAllAsync();
             var refCounts = await _leadRepo.GetReferralSourceCountsAsync();
@@ -551,9 +596,9 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 })
                 .OrderByDescending(r => r.Count)
                 .ToList();
-        }
+        });
 
-        public async Task<AdminStatsDTO> GetStatsAsync()
+        public Task<AdminStatsDTO> GetStatsAsync() => CachedAsync("stats:admin", async () =>
         {
             var total = await _leadRepo.CountAllAsync();
             var statusCounts = await _leadRepo.GetStatusCountsAsync();
@@ -598,7 +643,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 ReferralSources = refStats,
                 Employees = empStats
             };
-        }
+        });
 
         public async Task<HospitalManagerStatsDTO> GetHospitalManagerStatsAsync(DateTime? from, DateTime? to)
         {
@@ -720,8 +765,12 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 throw new InvalidOperationException("This lead is closed. An admin must re-open it before any further action.");
         }
 
+        // Every mutation flow (claim / follow-up / reopen / admin update / log
+        // call / mark done) ends here after its SaveChangesAsync, so this is
+        // also where the dashboard aggregate cache is dropped.
         private async Task<LeadActionResponse> ReloadActionResponse(int id)
         {
+            InvalidateStats();
             var lead = await _leadRepo.GetLeadDetailAsync(id);
             return new LeadActionResponse { Success = true, Lead = await ToDetailAsync(lead!) };
         }
@@ -734,7 +783,29 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             catch { /* best-effort only */ }
         }
 
-        private static LeadListItemResponse ToListItem(Lead lead, LeadCall? lastCall = null) => new()
+        private static LeadListItemResponse ToListItem(LeadListRow row) => new()
+        {
+            Id = row.Id,
+            Name = row.Name,
+            CountryKey = row.CountryKey,
+            PhoneNum = row.PhoneNum,
+            NickName = row.NickName,
+            Status = row.Status,
+            CreatedByName = row.CreatedByName,
+            ClaimedByName = row.ClaimedByName,
+            CreatedDate = row.CreatedDate,
+            ReferalName = row.ReferalName,
+            ProcedureName = row.ProcedureName,
+            DoctorName = row.DoctorName,
+            PaymentWay = row.PaymentWay,
+            ClosedReason = row.ClosedReasonName,
+            LastCallDate = row.LastCallDate,
+            LastCallNote = row.LastCallNote
+        };
+
+        // Entity-based variant — only for the freshly created lead pushed to
+        // the LeadCreated notifier (it already has the detail entity loaded).
+        private static LeadListItemResponse ToListItem(Lead lead) => new()
         {
             Id = lead.Id,
             Name = lead.Name,
@@ -749,9 +820,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             ProcedureName = lead.Procedure?.Name,
             DoctorName = lead.Doctor?.Name,
             PaymentWay = lead.PaymentWay,
-            ClosedReason = lead.ClosedReason?.Name,
-            LastCallDate = lastCall?.Date,
-            LastCallNote = lastCall?.Note
+            ClosedReason = lead.ClosedReason?.Name
         };
 
         private async Task<LeadDetailResponse> ToDetailAsync(Lead lead)
