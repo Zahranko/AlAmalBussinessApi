@@ -58,12 +58,24 @@ public class LeadController : ControllerBase
         Ok(await _leadService.GetCreatedByMeAsync(CurrentUserId, excludeCompleted));
 
     [HttpGet("paged")]
-    public async Task<ActionResult<PagedResultDTO<LeadListItemResponse>>> GetPaged(
+    public async Task<ActionResult<LeadPagedResultResponse>> GetPaged(
         int page = 1, int pageSize = 12, string? search = null, string? status = null, string? scope = null,
         int? doctorId = null, string? createdByUserId = null, string? claimedByUserId = null)
     {
         var filter = await ResolveLeadFilterAsync("leads-paged", page, pageSize, search, status, scope, doctorId, createdByUserId, claimedByUserId);
-        return Ok(await _leadService.GetPagedAsync(BuildScopedQuery(filter)));
+        var paged = await _leadService.GetPagedAsync(BuildScopedQuery(filter));
+        // Echo back the filter that was actually applied (explicit, or
+        // restored from cache) so the frontend can re-populate its search
+        // box/dropdowns/pagination on a fresh page load instead of showing
+        // them blank while the underlying data is correctly filtered.
+        return Ok(new LeadPagedResultResponse
+        {
+            Items = paged.Items,
+            TotalCount = paged.TotalCount,
+            Page = paged.Page,
+            PageSize = paged.PageSize,
+            Filter = filter,
+        });
     }
 
     // Case-queue tab badges (all/today/mine/unassigned/closed). Deliberately
