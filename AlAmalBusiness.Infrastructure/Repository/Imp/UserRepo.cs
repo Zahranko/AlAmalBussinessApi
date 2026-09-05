@@ -72,7 +72,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
 
             return await _userManager.AddToRolesAsync(user, userRoles.Except(currentRoles));
         }
-        public async Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName)
+        public async Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
@@ -86,6 +86,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
 
             user.UserName = userName;
             user.FullName = fullName;
+            user.DepartmentId = departmentId;
             return await _userManager.UpdateAsync(user);
 
         }
@@ -113,10 +114,14 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
             user.IsActive = false;
             return await _userManager.UpdateAsync(user);
+        }
 
-
-
-
+        public async Task<IdentityResult> EnableUserAsync(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
+            user.IsActive = true;
+            return await _userManager.UpdateAsync(user);
         }
 
         public async Task<User?> GetUserByIdAsync(string id)

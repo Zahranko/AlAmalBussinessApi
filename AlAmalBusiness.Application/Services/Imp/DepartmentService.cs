@@ -42,6 +42,7 @@ namespace AlAmalBusiness.Application.Services.Imp
                 Success = true,
                 Department = new DepartmentDTO
                 {
+                    Id = departmentEntity.Id,
                     Name = departmentEntity.Name,
                     IsActive = departmentEntity.IsActive
                 }
@@ -59,6 +60,7 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             return departments.Select(d => new DepartmentDTO
             {
+                Id = d.Id,
                 Name = d.Name,
                 IsActive = d.IsActive
             });
@@ -81,6 +83,7 @@ namespace AlAmalBusiness.Application.Services.Imp
                 Success = true,
                 Department = new DepartmentDTO
                 {
+                    Id = department.Id,
                     Name = department.Name,
                     IsActive = department.IsActive
                 }
@@ -124,6 +127,7 @@ namespace AlAmalBusiness.Application.Services.Imp
                 Success = true,
                 Department = new DepartmentDTO
                 {
+                    Id = departmentEntity.Id,
                     Name = departmentEntity.Name,
                     IsActive = departmentEntity.IsActive
                 }

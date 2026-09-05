@@ -92,8 +92,22 @@ public class UserController : ControllerBase
     [HttpPost("DisableUser/{id}")]
     public async Task<IActionResult> DisableUser(string id)
     {
-        
+
             var res = await _userServices.DisableUserAsync(id);
+            if (res.IsSuccess == true)
+            {
+                return Ok(res.Message);
+            }
+            else
+            {
+                return BadRequest(res.Message);
+            }
+        }
+    [HttpPost("EnableUser/{id}")]
+    public async Task<IActionResult> EnableUser(string id)
+    {
+
+            var res = await _userServices.EnableUserAsync(id);
             if (res.IsSuccess == true)
             {
                 return Ok(res.Message);

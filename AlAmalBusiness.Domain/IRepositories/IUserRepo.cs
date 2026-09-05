@@ -13,9 +13,10 @@ namespace AlAmalBusiness.Domain.IRepositories
         Task<IEnumerable<User>> GetAllUserAsync();
         Task<IEnumerable<string>> GetRolesAsync(string id);
         Task<IdentityResult> UpdateRolesAsync(string id, List<string> userRoles);
-        Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName);
+        Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId);
         Task<IdentityResult> ResetPasswordAsync(string id, string password);
         Task<IdentityResult> DisableUserAsync(string id);
+        Task<IdentityResult> EnableUserAsync(string id);
         Task<User?> GetUserByIdAsync(string id);
     }
 }

@@ -15,6 +15,7 @@ namespace AlAmalBusiness.Application.Services.Interface
         Task<UpdateUserResponse> UpdateUserAsync(string id,UpdateUserDto updateDTO);
         Task<UpdateUserResponse> ResetPasswordAsync(string id,ResetPasswordDTO updateDTO);
         Task<UpdateUserResponse> DisableUserAsync(string id);
+        Task<UpdateUserResponse> EnableUserAsync(string id);
         Task<GetUserResponse> GetUserById(string id);
     }
 }

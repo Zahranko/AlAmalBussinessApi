@@ -67,16 +67,28 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             foreach (var user in getUsers)
             {
-                var roles = await _userRepo.GetRolesAsync(user.Id);
-                users.Add(new GetUserResponse
-                {
-                    UserId = user.Id,
-                    UserName = user.UserName,
-                    FullName = user.FullName,
-                    Roles = roles.ToList()
-                });
+                users.Add(await ToResponseAsync(user));
             }
             return users;
+        }
+
+        // Shared by every path that hands a User entity back to a caller
+        // (list, get-by-id, and the response of a successful update) so
+        // DepartmentId/IsActive/Roles are never forgotten on one of them —
+        // GetUserResponse.DepartmentId used to be left at its default (0) on
+        // every response because nothing here ever set it.
+        private async Task<GetUserResponse> ToResponseAsync(User user)
+        {
+            var roles = await _userRepo.GetRolesAsync(user.Id);
+            return new GetUserResponse
+            {
+                UserId = user.Id,
+                UserName = user.UserName,
+                FullName = user.FullName,
+                DepartmentId = user.DepartmentId,
+                IsActive = user.IsActive,
+                Roles = roles.ToList()
+            };
         }
 
         public async Task<UpdateUserResponse> ResetPasswordAsync(string id, ResetPasswordDTO updateDTO)
@@ -111,23 +123,21 @@ namespace AlAmalBusiness.Application.Services.Imp
 
         public async Task<UpdateUserResponse> UpdateUserAsync(string id, UpdateUserDto updateDTO)
         {
-            var updateUser = await _userRepo.UpdateUserAsync(id, updateDTO.UserName!, updateDTO.FullName!);
+            var department = await _depRepo.GetDepartmentByIdAsync(updateDTO.DepartmentId);
+            if (department == null)
+            {
+                return new UpdateUserResponse { IsSuccess = false, Message = "Department not found." };
+            }
+
+            var updateUser = await _userRepo.UpdateUserAsync(id, updateDTO.UserName!, updateDTO.FullName!, updateDTO.DepartmentId);
 
             if (updateUser.Succeeded)
             {
-                var updatedRoles = await _userRepo.GetRolesAsync(id);
-
+                var updatedUser = await _userRepo.GetUserByIdAsync(id);
                 return new UpdateUserResponse
                 {
                     IsSuccess = true,
-                   
-                    User = new GetUserResponse
-                    {
-                        UserId = id,
-                        UserName = updateDTO.UserName,
-                        FullName = updateDTO.FullName,
-                        Roles = updatedRoles.ToList()
-                    }
+                    User = await ToResponseAsync(updatedUser!)
                 };
             }
             else
@@ -152,6 +162,21 @@ namespace AlAmalBusiness.Application.Services.Imp
             }
         }
 
+        public async Task<UpdateUserResponse> EnableUserAsync(string id)
+        {
+            var enableUser = await _userRepo.EnableUserAsync(id);
+
+            if (enableUser.Succeeded)
+            {
+                return new UpdateUserResponse { IsSuccess = true, Message = "Employee enabled successfully." };
+            }
+            else
+            {
+                var errors = string.Join(", ", enableUser.Errors.Select(e => e.Description));
+                return new UpdateUserResponse { IsSuccess = false, Message = errors };
+            }
+        }
+
         public async Task<GetUserResponse> GetUserById(string id)
         {
             var user = await _userRepo.GetUserByIdAsync(id);
@@ -159,13 +184,7 @@ namespace AlAmalBusiness.Application.Services.Imp
             {
                 return null!;
             }
-            return new GetUserResponse
-            {
-                UserId = user.Id,
-                UserName = user.UserName,
-                FullName = user.FullName,
-                Roles = (await _userRepo.GetRolesAsync(user.Id)).ToList()
-            };
+            return await ToResponseAsync(user);
         }
 
       

@@ -9,7 +9,8 @@ namespace AlAmalBusiness.Application.DTOs.Users.Response
         public string? UserId { get; set; }
         public string? UserName { get; set; }
         public string? FullName { get; set; }
-        public int departmentId { get; set; }
+        public int DepartmentId { get; set; }
+        public bool IsActive { get; set; }
         public List<string> Roles { get; set; } = new List<string>();
 
     }
