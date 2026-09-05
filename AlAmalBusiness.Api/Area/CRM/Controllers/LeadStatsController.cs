@@ -34,9 +34,11 @@ namespace AlAmalBusiness.Api.Area.CRM.Controllers
         public async Task<ActionResult<DashboardKpiDTO>> GetKpis() =>
             Ok(await _leadService.GetDashboardKpisAsync());
 
-        // "Cases per employee" chart data. period=today|month (default month).
+        // "Cases per employee" chart data. period=all|month|today, all-time by
+        // default — the whole-history figure is the one the admin dashboard
+        // opens on, with the two date windows as narrower views of it.
         [HttpGet("employee-cases")]
-        public async Task<ActionResult<List<EmployeeCaseCountDTO>>> GetEmployeeCases(string period = "month") =>
+        public async Task<ActionResult<List<EmployeeCaseCountDTO>>> GetEmployeeCases(string period = "all") =>
             Ok(await _leadService.GetEmployeeCaseCountsAsync(period));
 
         // Dashboard status band — all-time count per LeadStatus.

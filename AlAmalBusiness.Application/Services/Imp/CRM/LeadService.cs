@@ -39,7 +39,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
         private static readonly string[] StatsCacheKeys =
         {
             "stats:kpis", "stats:status-band", "stats:sources", "stats:admin",
-            "stats:employee-cases:today", "stats:employee-cases:month"
+            "stats:employee-cases:all", "stats:employee-cases:today", "stats:employee-cases:month"
         };
 
         public LeadService(
@@ -542,28 +542,36 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             return new KpiMetricDTO { Value = current, DeltaPercent = deltaPercent, Direction = direction, Trend = trend };
         }
 
+        // "all" (the default), "month" or "today" — anything unrecognised is
+        // treated as all-time rather than silently falling into a date window
+        // the caller never asked for.
         public Task<List<EmployeeCaseCountDTO>> GetEmployeeCaseCountsAsync(string period)
         {
-            var isToday = period == "today";
-            return CachedAsync($"stats:employee-cases:{(isToday ? "today" : "month")}", () => LoadEmployeeCaseCountsAsync(isToday));
+            var normalized = period == "today" ? "today" : period == "month" ? "month" : "all";
+            return CachedAsync($"stats:employee-cases:{normalized}", () => LoadEmployeeCaseCountsAsync(normalized));
         }
 
-        private async Task<List<EmployeeCaseCountDTO>> LoadEmployeeCaseCountsAsync(bool isToday)
+        private async Task<List<EmployeeCaseCountDTO>> LoadEmployeeCaseCountsAsync(string period)
         {
-            var now = DateTime.Now;
-            DateTime from, to;
-            if (isToday)
+            List<(string UserId, string? Username, int Count)> counts;
+
+            if (period == "all")
             {
-                from = now.Date;
-                to = from.AddDays(1);
+                // Reuse the all-time per-creator grouping the admin stats
+                // already run, rather than inventing a date range wide enough
+                // to mean "everything".
+                counts = (await _leadRepo.GetLeadCountsByCreatorAsync())
+                    .Select(c => (UserId: c.UserId, Username: c.Username, Count: c.Total))
+                    .ToList();
             }
             else
             {
-                from = new DateTime(now.Year, now.Month, 1);
-                to = from.AddMonths(1);
+                var now = DateTime.Now;
+                var from = period == "today" ? now.Date : new DateTime(now.Year, now.Month, 1);
+                var to = period == "today" ? from.AddDays(1) : from.AddMonths(1);
+                counts = await _leadRepo.GetCreatedCountsByUserInRangeAsync(from, to);
             }
 
-            var counts = await _leadRepo.GetCreatedCountsByUserInRangeAsync(from, to);
             return counts
                 .Select(c => new EmployeeCaseCountDTO { UserId = c.UserId, Username = c.Username ?? "Unknown", Count = c.Count })
                 .OrderByDescending(c => c.Count)
