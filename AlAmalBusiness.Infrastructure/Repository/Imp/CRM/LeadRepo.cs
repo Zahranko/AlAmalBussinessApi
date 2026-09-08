@@ -1,4 +1,4 @@
-using AlAmalBusiness.DbContext.Infrastructure;
+﻿using AlAmalBusiness.DbContext.Infrastructure;
 using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories.CRM;
 using AlAmalBusiness.Domain.Models.CRM;
@@ -338,14 +338,21 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
             return groups.ToDictionary(g => g.Day, g => g.Count);
         }
 
-        public async Task<List<(string UserId, string? Username, int Count)>> GetCreatedCountsByUserInRangeAsync(DateTime from, DateTime toExclusive)
+        public async Task<List<(string UserId, string? Username, int Total, int Success, int Closed)>> GetCreatedCountsByUserInRangeAsync(DateTime from, DateTime toExclusive)
         {
             var groups = await _context.Leads
                 .Where(l => l.CreatedById != null && l.CreatedDate >= from && l.CreatedDate < toExclusive)
                 .GroupBy(l => l.CreatedById!)
-                .Select(g => new { UserId = g.Key, Username = g.Max(l => l.CreatedBy!.UserName), Count = g.Count() })
+                .Select(g => new
+                {
+                    UserId = g.Key,
+                    Username = g.Max(l => l.CreatedBy!.UserName),
+                    Total = g.Count(),
+                    Success = g.Count(l => l.Status == LeadStatus.Success),
+                    Closed = g.Count(l => l.Status == LeadStatus.Closed)
+                })
                 .ToListAsync();
-            return groups.Select(g => (g.UserId, g.Username, g.Count)).ToList();
+            return groups.Select(g => (g.UserId, g.Username, g.Total, g.Success, g.Closed)).ToList();
         }
 
         public Task SaveChangesAsync() => _context.SaveChangesAsync();

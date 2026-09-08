@@ -1,4 +1,4 @@
-using AlAmalBusiness.Domain.Constants;
+﻿using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.Models.CRM;
 using System;
 using System.Collections.Generic;
@@ -47,7 +47,7 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
         // Dashboard KPI support — counts/trend of leads created within [from, toExclusive).
         Task<int> CountCreatedInRangeAsync(DateTime from, DateTime toExclusive);
         Task<Dictionary<DateTime, int>> GetCreatedDailyCountsAsync(DateTime from, DateTime toExclusive);
-        Task<List<(string UserId, string? Username, int Count)>> GetCreatedCountsByUserInRangeAsync(DateTime from, DateTime toExclusive);
+        Task<List<(string UserId, string? Username, int Total, int Success, int Closed)>> GetCreatedCountsByUserInRangeAsync(DateTime from, DateTime toExclusive);
 
         Task SaveChangesAsync();
     }

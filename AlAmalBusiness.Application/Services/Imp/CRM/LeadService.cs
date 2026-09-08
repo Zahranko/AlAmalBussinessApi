@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs;
+﻿using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.CRM.Lead;
 using AlAmalBusiness.Application.DTOs.CRM.Lead.Response;
 using AlAmalBusiness.Application.DTOs.CRM.Stats;
@@ -553,16 +553,14 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
 
         private async Task<List<EmployeeCaseCountDTO>> LoadEmployeeCaseCountsAsync(string period)
         {
-            List<(string UserId, string? Username, int Count)> counts;
+            List<(string UserId, string? Username, int Total, int Success, int Closed)> counts;
 
             if (period == "all")
             {
                 // Reuse the all-time per-creator grouping the admin stats
                 // already run, rather than inventing a date range wide enough
                 // to mean "everything".
-                counts = (await _leadRepo.GetLeadCountsByCreatorAsync())
-                    .Select(c => (UserId: c.UserId, Username: c.Username, Count: c.Total))
-                    .ToList();
+                counts = await _leadRepo.GetLeadCountsByCreatorAsync();
             }
             else
             {
@@ -573,7 +571,14 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             }
 
             return counts
-                .Select(c => new EmployeeCaseCountDTO { UserId = c.UserId, Username = c.Username ?? "Unknown", Count = c.Count })
+                .Select(c => new EmployeeCaseCountDTO
+                {
+                    UserId = c.UserId,
+                    Username = c.Username ?? "Unknown",
+                    Count = c.Total,
+                    Success = c.Success,
+                    Closed = c.Closed
+                })
                 .OrderByDescending(c => c.Count)
                 .ToList();
         }
