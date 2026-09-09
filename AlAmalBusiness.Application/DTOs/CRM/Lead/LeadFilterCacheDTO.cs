@@ -12,5 +12,8 @@ namespace AlAmalBusiness.Application.DTOs.CRM.Lead
         public int? DoctorId { get; set; }
         public string? CreatedByUserId { get; set; }
         public string? ClaimedByUserId { get; set; }
+        // A single day to restrict the list to, matched against CreatedDate
+        // (LeadListQuery.ExactDate). Time component is ignored.
+        public DateTime? Date { get; set; }
     }
 }

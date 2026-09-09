@@ -60,9 +60,10 @@ public class LeadController : ControllerBase
     [HttpGet("paged")]
     public async Task<ActionResult<LeadPagedResultResponse>> GetPaged(
         int page = 1, int pageSize = 12, string? search = null, string? status = null, string? scope = null,
-        int? doctorId = null, string? createdByUserId = null, string? claimedByUserId = null)
+        int? doctorId = null, string? createdByUserId = null, string? claimedByUserId = null,
+        [FromQuery] DateTime? date = null)
     {
-        var filter = await ResolveLeadFilterAsync("leads-paged", page, pageSize, search, status, scope, doctorId, createdByUserId, claimedByUserId);
+        var filter = await ResolveLeadFilterAsync("leads-paged", page, pageSize, search, status, scope, doctorId, createdByUserId, claimedByUserId, date);
         var paged = await _leadService.GetPagedAsync(BuildScopedQuery(filter));
         // Echo back the filter that was actually applied (explicit, or
         // restored from cache) so the frontend can re-populate its search
@@ -104,7 +105,7 @@ public class LeadController : ControllerBase
     // exactly as sent and becomes the new "last filter" for next time.
     private async Task<LeadFilterCacheDTO> ResolveLeadFilterAsync(
         string endpointKey, int page, int pageSize, string? search, string? status, string? scope, int? doctorId,
-        string? createdByUserId = null, string? claimedByUserId = null)
+        string? createdByUserId = null, string? claimedByUserId = null, DateTime? date = null)
     {
         if (!Request.QueryString.HasValue)
         {
@@ -122,6 +123,7 @@ public class LeadController : ControllerBase
             DoctorId = doctorId,
             CreatedByUserId = createdByUserId,
             ClaimedByUserId = claimedByUserId,
+            Date = date,
         };
         await _filterCache.SaveFilterAsync(CurrentUserId, endpointKey, filter);
         return filter;
@@ -140,6 +142,10 @@ public class LeadController : ControllerBase
             DoctorId = filter.DoctorId,
             CreatedByUserId = filter.CreatedByUserId,
             ClaimedByUserId = filter.ClaimedByUserId,
+            // One day, matched on CreatedDate. Independent of the "today"
+            // scope below — the dashboard offers them as either/or, but a
+            // request that somehow sets both simply narrows to both.
+            ExactDate = filter.Date,
         };
         if (Enum.TryParse<LeadStatus>(filter.Status, ignoreCase: true, out var parsedStatus))
             query.Status = parsedStatus;
