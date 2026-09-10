@@ -1,5 +1,6 @@
 using AlAmalBusiness.Domain.Models;
 using AlAmalBusiness.Domain.Models.CRM;
+using AlAmalBusiness.Domain.Models.Feedback;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,8 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<LeadHistory> LeadHistories { get; set; }
       public DbSet<LeadCall> LeadCalls { get; set; }
       public DbSet<RefreshToken> RefreshTokens { get; set; }
+      public DbSet<PatientFeedback> Feedbacks { get; set; }
+      public DbSet<FeedbackHistory> FeedbackHistories { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -126,6 +129,65 @@ public class AppDbContext : IdentityDbContext<User>
             .WithMany()
             .HasForeignKey(c => c.ActorId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // ---------- Feedback ----------
+
+        // Restrict, so retiring a department (IsActive = false) is the only
+        // way it ever leaves the picker — old patient messages keep pointing
+        // at the department they were actually sent to.
+        modelBuilder.Entity<PatientFeedback>()
+            .HasOne(f => f.Department)
+            .WithMany()
+            .HasForeignKey(f => f.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PatientFeedback>()
+            .HasOne(f => f.AssignedTo)
+            .WithMany()
+            .HasForeignKey(f => f.AssignedToId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The reference number is the patient's only handle on their message,
+        // and staff look messages up by it — so it is both unique and indexed.
+        modelBuilder.Entity<PatientFeedback>()
+            .HasIndex(f => f.ReferenceNumber)
+            .IsUnique();
+
+        // The inbox always filters on the caller's department and sorts by
+        // CreatedDate DESC with OFFSET/FETCH; without this both the COUNT and
+        // the page are a full scan + sort of Feedbacks on every request.
+        modelBuilder.Entity<PatientFeedback>().HasIndex(f => new { f.DepartmentId, f.CreatedDate });
+        modelBuilder.Entity<PatientFeedback>().HasIndex(f => new { f.Status, f.CreatedDate });
+
+        // Bounded lengths so these stop being nvarchar(max) LOB columns (read
+        // off-row, un-indexable) — the search predicate runs over three of
+        // them. Details is deliberately left unbounded: it is free text the
+        // patient wrote, and no list query selects it.
+        modelBuilder.Entity<PatientFeedback>().Property(f => f.ReferenceNumber).HasMaxLength(32);
+        modelBuilder.Entity<PatientFeedback>().Property(f => f.FirstName).HasMaxLength(60);
+        modelBuilder.Entity<PatientFeedback>().Property(f => f.LastName).HasMaxLength(60);
+        modelBuilder.Entity<PatientFeedback>().Property(f => f.PhoneCountryCode).HasMaxLength(6);
+        modelBuilder.Entity<PatientFeedback>().Property(f => f.PhoneNumber).HasMaxLength(32);
+        modelBuilder.Entity<PatientFeedback>().Property(f => f.SubmittedFromIp).HasMaxLength(64);
+        modelBuilder.Entity<PatientFeedback>().Property(f => f.UserAgent).HasMaxLength(400);
+
+        modelBuilder.Entity<FeedbackHistory>()
+            .HasOne(h => h.Feedback)
+            .WithMany()
+            .HasForeignKey(h => h.FeedbackId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<FeedbackHistory>()
+            .HasOne(h => h.Actor)
+            .WithMany()
+            .HasForeignKey(h => h.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The timeline is always read as one message's entries in order.
+        modelBuilder.Entity<FeedbackHistory>().HasIndex(h => new { h.FeedbackId, h.CreatedAt });
+
+        modelBuilder.Entity<FeedbackHistory>().Property(h => h.FromDepartmentName).HasMaxLength(200);
+        modelBuilder.Entity<FeedbackHistory>().Property(h => h.ToDepartmentName).HasMaxLength(200);
 
     }
     }

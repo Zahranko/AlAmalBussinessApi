@@ -10,6 +10,7 @@ namespace AlAmalBusiness.Application.Services.Interface
     public interface IDepartmentService
     {
         Task<IEnumerable<DepartmentDTO>> GetAllDepartmentsAsync();
+        Task<IEnumerable<DepartmentDTO>> GetActiveDepartmentsAsync();
         Task<DepartmentResponse> GetDepartmentByIdAsync(int departmentId);
         Task<DepartmentResponse> CreateDepartmentAsync(DepartmentDTO department);
         Task<DepartmentResponse> UpdateDepartmentAsync(int id,DepartmentDTO department);

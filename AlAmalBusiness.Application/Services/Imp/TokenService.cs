@@ -1,4 +1,5 @@
 using AlAmalBusiness.Application.Services.Interface;
+using AlAmalBusiness.Domain.Constants;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
@@ -17,7 +18,7 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             _config = config;
                 }
-        public string GenerateToken(string sub, string userName, string? fullName, IEnumerable<string> roles)
+        public string GenerateToken(string sub, string userName, string? fullName, int departmentId, IEnumerable<string> roles)
         {
             var jwtSettings = _config.GetSection("JwtSettings");
             var key = new SymmetricSecurityKey(
@@ -28,7 +29,8 @@ namespace AlAmalBusiness.Application.Services.Imp
         {
             new(JwtRegisteredClaimNames.Sub, sub),
             new(JwtRegisteredClaimNames.UniqueName, userName),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(AppClaims.DepartmentId, departmentId.ToString())
         };
             if (!string.IsNullOrWhiteSpace(fullName))
                 claims.Add(new Claim(JwtRegisteredClaimNames.Name, fullName));

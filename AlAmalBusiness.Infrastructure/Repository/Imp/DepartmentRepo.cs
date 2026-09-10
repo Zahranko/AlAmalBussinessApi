@@ -44,6 +44,14 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             return await _context.Departments.ToListAsync();
         }
 
+        public async Task<IEnumerable<Departments>> GetActiveDepartmentsAsync()
+        {
+            return await _context.Departments
+                .Where(d => d.IsActive)
+                .OrderBy(d => d.Name)
+                .ToListAsync();
+        }
+
         public async Task<Departments?> GetDepartmentByIdAsync(int departmentId)
         {
             return await _context.Departments.FindAsync(departmentId);

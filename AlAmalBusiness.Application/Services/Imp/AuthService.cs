@@ -105,7 +105,7 @@ namespace AlAmalBusiness.Application.Services.Imp
         private async Task<LoginResult> IssueAsync(User user, System.Collections.Generic.List<string> roles, RefreshToken? spend = null)
         {
             var now = DateTime.UtcNow;
-            var accessToken = _tokenService.GenerateToken(user.Id, user.UserName ?? string.Empty, user.FullName, roles);
+            var accessToken = _tokenService.GenerateToken(user.Id, user.UserName ?? string.Empty, user.FullName, user.DepartmentId, roles);
 
             var raw = NewRawToken();
             var record = new RefreshToken

@@ -1,14 +1,18 @@
 using AlAmalBusiness.Api.Area.CRM.Hubs;
 using AlAmalBusiness.Application.Services.Imp;
 using AlAmalBusiness.Application.Services.Imp.CRM;
+using AlAmalBusiness.Application.Services.Imp.Feedback;
 using AlAmalBusiness.Application.Services.Interface;
 using AlAmalBusiness.Application.Services.Interface.CRM;
+using AlAmalBusiness.Application.Services.Interface.Feedback;
 using AlAmalBusiness.DbContext.Infrastructure;
 using AlAmalBusiness.Domain.IRepositories;
 using AlAmalBusiness.Domain.IRepositories.CRM;
+using AlAmalBusiness.Domain.IRepositories.Feedback;
 using AlAmalBusiness.Domain.Models;
 using AlAmalBusiness.Infrastructure.Repository.Imp;
 using AlAmalBusiness.Infrastructure.Repository.Imp.CRM;
+using AlAmalBusiness.Infrastructure.Repository.Imp.Feedback;
 using AlAmalBusiness.Infrastructure.Seeding;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -52,6 +56,8 @@ builder.Services.AddScoped<IDoctorRepo, DoctorRepo>();
 builder.Services.AddScoped<IProcedureRepo, ProcedureRepo>();
 builder.Services.AddScoped<IReferalSourceRepo, ReferalSourceRepo>();
 builder.Services.AddScoped<IClosedReasonRepo, ClosedReasonRepo>();
+builder.Services.AddScoped<IPatientFeedbackRepo, PatientFeedbackRepo>();
+builder.Services.AddScoped<IFeedbackHistoryRepo, FeedbackHistoryRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -64,6 +70,10 @@ builder.Services.AddScoped<IReferalSourceService, ReferalSourceService>();
 builder.Services.AddScoped<IClosedReasonService, ClosedReasonService>();
 builder.Services.AddScoped<ILeadExcelReportService, LeadExcelReportService>();
 builder.Services.AddScoped<ILeadNotifier, SignalRLeadNotifier>();
+builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+// Stateless and thread-safe (a static alphabet over the crypto RNG), so one
+// instance serves every request.
+builder.Services.AddSingleton<IReferenceNumberGenerator, ReferenceNumberGenerator>();
 builder.Services.AddScoped<IFilterCacheRepo, FilterCacheRepo>();
 builder.Services.AddScoped<IFilterCacheService, FilterCacheService>();
 builder.Services.AddSignalR();
@@ -194,6 +204,34 @@ builder.Services.AddRateLimiter(options =>
     // ==========================================
     // LAYER 2: ENDPOINT POLICY (Business Rules)
     // ==========================================
+    // The anonymous patient feedback form. Partitioned per client IP because
+    // there is no user to partition on, and deliberately far tighter than the
+    // guest bucket below: a patient submits one message, then leaves. This is
+    // the only write endpoint on the app reachable without a token, so it gets
+    // its own ceiling rather than sharing the general anonymous allowance
+    // with login attempts.
+    options.AddPolicy("PublicFormLimit", context =>
+    {
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous_ip";
+        if (whitelistedIps.Contains(ip))
+        {
+            return RateLimitPartition.GetNoLimiter(partitionKey: $"public_whitelist_{ip}");
+        }
+
+        // Enough for the dropdown fetch, a mistyped submission or two, and a
+        // retry — and nothing like enough to script the table full.
+        return RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: $"public_form_ip_{ip}",
+            factory: partition => new SlidingWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 10,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6
+            });
+    });
+
     options.AddPolicy("PerUserLimit", context =>
     {
         var isAuthenticated = context.User.Identity?.IsAuthenticated == true;

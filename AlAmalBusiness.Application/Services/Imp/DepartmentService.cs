@@ -66,6 +66,18 @@ namespace AlAmalBusiness.Application.Services.Imp
             });
         }
 
+        public async Task<IEnumerable<DepartmentDTO>> GetActiveDepartmentsAsync()
+        {
+            var departments = await _repo.GetActiveDepartmentsAsync();
+
+            return departments.Select(d => new DepartmentDTO
+            {
+                Id = d.Id,
+                Name = d.Name,
+                IsActive = d.IsActive
+            });
+        }
+
         public async Task<DepartmentResponse> GetDepartmentByIdAsync(int departmentId)
         {
             var department = await _repo.GetDepartmentByIdAsync(departmentId);
