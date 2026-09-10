@@ -233,13 +233,92 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             return await ReloadAsync(id, actor);
         }
 
+        // ---------- dashboard ----------
+
+        public async Task<FeedbackStatsResponse> GetStatsAsync(FeedbackStatsQuery query, FeedbackActor actor)
+        {
+            // Same rule as the inbox, and set here rather than trusted from
+            // the caller: a manager can pass departmentId all they like, the
+            // restriction below still pins them to their own.
+            query.RestrictToDepartmentId = VisibleDepartment(actor);
+
+            if (query.From.HasValue && query.To.HasValue && query.From > query.To)
+                (query.From, query.To) = (query.To, query.From);
+
+            var rows = await _feedbackRepo.GetStatsAsync(query);
+
+            var response = new FeedbackStatsResponse
+            {
+                From = query.From,
+                To = query.To,
+                DepartmentId = query.DepartmentId,
+                NewCount = CountOf(rows.Statuses, FeedbackStatus.New),
+                InReviewCount = CountOf(rows.Statuses, FeedbackStatus.InReview),
+                ResolvedCount = CountOf(rows.Statuses, FeedbackStatus.Resolved),
+                ArchivedCount = CountOf(rows.Statuses, FeedbackStatus.Archived),
+                ThanksCount = CountOf(rows.Types, FeedbackType.Thanks),
+                SuggestionCount = CountOf(rows.Types, FeedbackType.Suggestion),
+                ComplaintCount = CountOf(rows.Types, FeedbackType.Complaint),
+                AvgResolutionHours = ToHours(rows.AvgResolutionMinutes),
+                OldestOpenHours = ToHours(rows.OldestOpenMinutes)
+            };
+
+            response.Total = response.NewCount + response.InReviewCount + response.ResolvedCount + response.ArchivedCount;
+            response.ResolvedPercent = Percent(response.ResolvedCount, response.Total);
+
+            response.Resolvers = rows.Resolvers
+                .OrderByDescending(r => r.ResolvedCount)
+                .ThenBy(r => r.ActorName)
+                .Select(r => new FeedbackResolverStatResponse
+                {
+                    UserId = r.ActorId,
+                    UserName = r.ActorName,
+                    ResolvedCount = r.ResolvedCount,
+                    AvgResolutionHours = ToHours(r.AvgMinutes)
+                })
+                .ToList();
+
+            response.Departments = rows.Departments
+                .OrderByDescending(d => d.Total)
+                .ThenBy(d => d.Name)
+                .Select(d => new FeedbackDepartmentStatResponse
+                {
+                    DepartmentId = d.DepartmentId,
+                    Name = d.Name,
+                    Total = d.Total,
+                    OpenCount = d.NewCount + d.InReviewCount,
+                    ResolvedCount = d.ResolvedCount,
+                    ArchivedCount = d.ArchivedCount,
+                    ResolvedPercent = Percent(d.ResolvedCount, d.Total),
+                    AvgResolutionHours = ToHours(d.AvgMinutes)
+                })
+                .ToList();
+
+            return response;
+        }
+
+        private static int CountOf(List<FeedbackStatusCountRow> rows, FeedbackStatus status) =>
+            rows.FirstOrDefault(r => r.Status == status)?.Count ?? 0;
+
+        private static int CountOf(List<FeedbackTypeCountRow> rows, FeedbackType type) =>
+            rows.FirstOrDefault(r => r.Type == type)?.Count ?? 0;
+
+        // Null stays null: "nothing has been resolved yet" is not "resolved
+        // in zero hours", and the dashboard shows the two differently.
+        private static double? ToHours(double? minutes) =>
+            minutes.HasValue ? Math.Round(minutes.Value / 60.0, 1) : null;
+
+        private static double Percent(int part, int total) =>
+            total == 0 ? 0 : Math.Round(part * 100.0 / total, 1);
+
         // ---------- visibility ----------
 
-        // Who sees what: Admin and FManager see every department's messages.
-        // Everyone else is narrowed to the department their own account
-        // belongs to. An account with no department therefore sees an empty
-        // inbox by design — give them one, or the FManager role if they
-        // should see everything.
+        // Who sees what: only an Admin is unrestricted. Everyone else —
+        // FManager included — is narrowed to the department their own account
+        // belongs to: a manager runs one department's feedback, and their
+        // dashboard is that department's numbers. An account with no
+        // department therefore sees an empty inbox by design; give them one,
+        // or Admin if they are meant to see the whole hospital.
         //
         // Null means "no restriction".
         private static int? VisibleDepartment(FeedbackActor actor) =>

@@ -1,4 +1,5 @@
 using AlAmalBusiness.DbContext.Infrastructure;
+using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories.Feedback;
 using AlAmalBusiness.Domain.Models.Feedback;
 using Microsoft.EntityFrameworkCore;
@@ -103,6 +104,102 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Feedback
                 .ToListAsync();
 
             return (items, totalCount);
+        }
+
+        // ---------- dashboard ----------
+
+        // Six aggregate queries, none of which returns a message row. They all
+        // start from the same scoped, date-bounded set: the scoping the
+        // service resolved from the caller's roles, then the period, then an
+        // admin's optional single-department narrowing.
+        public async Task<FeedbackStatsRows> GetStatsAsync(FeedbackStatsQuery query)
+        {
+            var scoped = _context.Feedbacks.AsNoTracking();
+
+            if (query.RestrictToDepartmentId.HasValue)
+                scoped = scoped.Where(f => f.DepartmentId == query.RestrictToDepartmentId.Value);
+
+            if (query.DepartmentId.HasValue)
+                scoped = scoped.Where(f => f.DepartmentId == query.DepartmentId.Value);
+
+            // CreatedDate is a local DateTime, so the bounds are day
+            // boundaries: everything from 00:00 on From up to (not including)
+            // 00:00 the day after To.
+            if (query.From.HasValue)
+            {
+                var from = query.From.Value.ToDateTime(TimeOnly.MinValue);
+                scoped = scoped.Where(f => f.CreatedDate >= from);
+            }
+
+            if (query.To.HasValue)
+            {
+                var toExclusive = query.To.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+                scoped = scoped.Where(f => f.CreatedDate < toExclusive);
+            }
+
+            var rows = new FeedbackStatsRows();
+
+            rows.Statuses = await scoped
+                .GroupBy(f => f.Status)
+                .Select(g => new FeedbackStatusCountRow { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            rows.Types = await scoped
+                .GroupBy(f => f.Type)
+                .Select(g => new FeedbackTypeCountRow { Type = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            rows.AvgResolutionMinutes = await scoped
+                .Where(f => f.ResolvedAt != null)
+                .Select(f => (double?)EF.Functions.DateDiffMinute(f.CreatedDate, f.ResolvedAt!.Value))
+                .AverageAsync();
+
+            // MinAsync would throw on an empty set; Min() over a nullable
+            // projection answers null instead, which is what "nothing is
+            // waiting" has to read as.
+            var oldestOpen = await scoped
+                .Where(f => f.Status == FeedbackStatus.New || f.Status == FeedbackStatus.InReview)
+                .Select(f => (DateTime?)f.CreatedDate)
+                .MinAsync();
+
+            if (oldestOpen.HasValue)
+                rows.OldestOpenMinutes = (DateTime.Now - oldestOpen.Value).TotalMinutes;
+
+            // Who closed things out, from the timeline rather than from
+            // AssignedToId: the assignee is who picked it up, which is not
+            // always who resolved it.
+            rows.Resolvers = await (
+                from h in _context.FeedbackHistories.AsNoTracking()
+                join f in scoped on h.FeedbackId equals f.Id
+                where h.Type == FeedbackActions.StatusChanged && h.ToStatus == FeedbackStatus.Resolved
+                group new { h, f } by new { h.ActorId, ActorName = h.Actor!.UserName } into g
+                select new FeedbackResolverRow
+                {
+                    ActorId = g.Key.ActorId,
+                    ActorName = g.Key.ActorName,
+                    ResolvedCount = g.Count(),
+                    AvgMinutes = g.Average(x => (double?)EF.Functions.DateDiffMinute(x.f.CreatedDate, x.h.CreatedAt))
+                })
+                .ToListAsync();
+
+            rows.Departments = await scoped
+                .GroupBy(f => new { f.DepartmentId, Name = f.Department!.Name })
+                .Select(g => new FeedbackDepartmentRow
+                {
+                    DepartmentId = g.Key.DepartmentId,
+                    Name = g.Key.Name,
+                    Total = g.Count(),
+                    NewCount = g.Count(f => f.Status == FeedbackStatus.New),
+                    InReviewCount = g.Count(f => f.Status == FeedbackStatus.InReview),
+                    ResolvedCount = g.Count(f => f.Status == FeedbackStatus.Resolved),
+                    ArchivedCount = g.Count(f => f.Status == FeedbackStatus.Archived),
+                    AvgMinutes = g.Average(f => f.ResolvedAt == null
+                        ? (double?)null
+                        : EF.Functions.DateDiffMinute(f.CreatedDate, f.ResolvedAt.Value))
+                })
+                .ToListAsync();
+
+            return rows;
         }
 
         public async Task<PatientFeedback> CreateAsync(PatientFeedback feedback)

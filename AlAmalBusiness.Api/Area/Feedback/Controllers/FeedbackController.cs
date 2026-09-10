@@ -30,6 +30,9 @@ namespace AlAmalBusiness.Api.Area.Feedback.Controllers
         // was a second spelling of the same three, and is gone from AppRoles.
         private const string FeedbackAccess = nameof(AppRoles.FManager) + "," + nameof(AppRoles.FEmployee) + "," + nameof(AppRoles.FUser) + "," + nameof(AppRoles.Admin);
         private const string CanWork = nameof(AppRoles.FManager) + "," + nameof(AppRoles.FEmployee) + "," + nameof(AppRoles.Admin);
+        // The dashboard is a supervisor's screen: an employee works the
+        // queue, a manager reads how the queue is going.
+        private const string CanReport = nameof(AppRoles.FManager) + "," + nameof(AppRoles.Admin);
 
         private readonly IFeedbackService _feedbackService;
 
@@ -49,7 +52,9 @@ namespace AlAmalBusiness.Api.Area.Feedback.Controllers
 
                 return new FeedbackActor(
                     User.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                    User.IsInRole(nameof(AppRoles.Admin)) || User.IsInRole(nameof(AppRoles.FManager)),
+                    // Admin alone is unrestricted — a manager's reach is their
+                    // own department (see FeedbackService.VisibleDepartment).
+                    User.IsInRole(nameof(AppRoles.Admin)),
                     departmentId);
             }
         }
@@ -78,6 +83,25 @@ namespace AlAmalBusiness.Api.Area.Feedback.Controllers
             };
 
             return Ok(await _feedbackService.GetPagedAsync(query, Actor));
+        }
+
+        // The dashboard. A manager gets their own department's numbers; an
+        // admin gets every department's, and may narrow to one.
+        [HttpGet("stats")]
+        [Authorize(Roles = CanReport)]
+        public async Task<ActionResult<FeedbackStatsResponse>> GetStats(
+            DateOnly? fromDate = null,
+            DateOnly? toDate = null,
+            int? departmentId = null)
+        {
+            var query = new FeedbackStatsQuery
+            {
+                From = fromDate,
+                To = toDate,
+                DepartmentId = departmentId
+            };
+
+            return Ok(await _feedbackService.GetStatsAsync(query, Actor));
         }
 
         [HttpGet("{id:int}")]

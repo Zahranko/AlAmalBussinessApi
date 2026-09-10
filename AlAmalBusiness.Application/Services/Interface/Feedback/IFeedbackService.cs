@@ -29,5 +29,10 @@ namespace AlAmalBusiness.Application.Services.Interface.Feedback
         Task<FeedbackActionResponse> ForwardAsync(int id, ForwardFeedbackDTO request, FeedbackActor actor);
 
         Task<FeedbackActionResponse> AddNoteAsync(int id, AddFeedbackNoteDTO request, FeedbackActor actor);
+
+        // The manager/admin dashboard. Scoped the same way the inbox is: a
+        // manager gets their own department's numbers, an admin every
+        // department's, optionally narrowed to one.
+        Task<FeedbackStatsResponse> GetStatsAsync(FeedbackStatsQuery query, FeedbackActor actor);
     }
 }

@@ -18,6 +18,9 @@ namespace AlAmalBusiness.Domain.IRepositories.Feedback
 
         Task<(List<FeedbackListRow> Items, int TotalCount)> PageFeedbacksAsync(FeedbackListQuery query);
 
+        // The dashboard's numbers, aggregated in SQL — never a page-through.
+        Task<FeedbackStatsRows> GetStatsAsync(FeedbackStatsQuery query);
+
         Task<PatientFeedback> CreateAsync(PatientFeedback feedback);
 
         Task SaveChangesAsync();
