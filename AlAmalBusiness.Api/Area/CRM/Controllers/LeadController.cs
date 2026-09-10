@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs;
+﻿using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.CRM.Lead;
 using AlAmalBusiness.Application.DTOs.CRM.Lead.Response;
 using AlAmalBusiness.Application.Services.Interface;
@@ -64,19 +64,44 @@ public class LeadController : ControllerBase
         [FromQuery] DateTime? date = null)
     {
         var filter = await ResolveLeadFilterAsync("leads-paged", page, pageSize, search, status, scope, doctorId, createdByUserId, claimedByUserId, date);
-        var paged = await _leadService.GetPagedAsync(BuildScopedQuery(filter));
-        // Echo back the filter that was actually applied (explicit, or
-        // restored from cache) so the frontend can re-populate its search
-        // box/dropdowns/pagination on a fresh page load instead of showing
-        // them blank while the underlying data is correctly filtered.
-        return Ok(new LeadPagedResultResponse
+        return Ok(await PagedResponseAsync(BuildScopedQuery(filter), filter));
+    }
+
+    // The admin dashboard's Opportunities table. Same filters as the queue
+    // above, with two deliberate differences: it never hides Success/Closed
+    // leads — it is an overview of everything, not a work queue with its own
+    // Closed tab — and its last-used filter is remembered under its own key,
+    // so the dashboard and the case queue no longer overwrite each other's.
+    [HttpGet("dashboard/paged")]
+    [Authorize(Roles = AdminOnly)]
+    public async Task<ActionResult<LeadPagedResultResponse>> GetDashboardPaged(
+        int page = 1, int pageSize = 12, string? search = null, string? status = null, string? scope = null,
+        int? doctorId = null, string? createdByUserId = null, string? claimedByUserId = null,
+        [FromQuery] DateTime? date = null)
+    {
+        var filter = await ResolveLeadFilterAsync("leads-dashboard-paged", page, pageSize, search, status, scope, doctorId, createdByUserId, claimedByUserId, date);
+        var query = BuildScopedQuery(filter);
+        // An explicit status filter and the "closed" scope still work as they
+        // do everywhere else; what changes is the no-status default.
+        query.ExcludeCompletedByDefault = false;
+        return Ok(await PagedResponseAsync(query, filter));
+    }
+
+    // Echoes back the filter that was actually applied (explicit, or restored
+    // from cache) so the frontend can re-populate its search box/dropdowns/
+    // pagination on a fresh page load instead of showing them blank while the
+    // underlying data is correctly filtered.
+    private async Task<LeadPagedResultResponse> PagedResponseAsync(LeadListQuery query, LeadFilterCacheDTO filter)
+    {
+        var paged = await _leadService.GetPagedAsync(query);
+        return new LeadPagedResultResponse
         {
             Items = paged.Items,
             TotalCount = paged.TotalCount,
             Page = paged.Page,
             PageSize = paged.PageSize,
             Filter = filter,
-        });
+        };
     }
 
     // Case-queue tab badges (all/today/mine/unassigned/closed). Deliberately
