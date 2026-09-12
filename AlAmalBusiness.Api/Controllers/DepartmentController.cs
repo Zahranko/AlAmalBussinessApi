@@ -59,6 +59,24 @@ namespace AlAmalBusiness.Api.Controllers
                 return NotFound(department.Message);
             }
         }
+        // The order the public feedback form's dropdown lists departments
+        // in. Separate from UpdateDepartment because it is one atomic write
+        // across every row, not an edit to one of them.
+        [HttpPut("reorder")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
+        public async Task<IActionResult> ReorderDepartments(ReorderDepartmentsDTO request)
+        {
+            var result = await _departmentServices.ReorderDepartmentsAsync(request);
+            if (result.Success)
+            {
+                return NoContent();
+            }
+            else
+            {
+                return BadRequest(result.Message);
+            }
+        }
+
         [HttpPut("updateDepartment/{id}")]
         [Authorize(Roles = nameof(AppRoles.Admin))]
         public async Task<IActionResult> UpdateDepartment(int id, DepartmentDTO dto)

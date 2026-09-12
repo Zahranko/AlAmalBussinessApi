@@ -44,7 +44,8 @@ namespace AlAmalBusiness.Application.Services.Imp
                 {
                     Id = departmentEntity.Id,
                     Name = departmentEntity.Name,
-                    IsActive = departmentEntity.IsActive
+                    IsActive = departmentEntity.IsActive,
+                    DisplayOrder = departmentEntity.DisplayOrder
                 }
             };
         }
@@ -62,7 +63,8 @@ namespace AlAmalBusiness.Application.Services.Imp
             {
                 Id = d.Id,
                 Name = d.Name,
-                IsActive = d.IsActive
+                IsActive = d.IsActive,
+                DisplayOrder = d.DisplayOrder
             });
         }
 
@@ -74,7 +76,8 @@ namespace AlAmalBusiness.Application.Services.Imp
             {
                 Id = d.Id,
                 Name = d.Name,
-                IsActive = d.IsActive
+                IsActive = d.IsActive,
+                DisplayOrder = d.DisplayOrder
             });
         }
 
@@ -97,7 +100,8 @@ namespace AlAmalBusiness.Application.Services.Imp
                 {
                     Id = department.Id,
                     Name = department.Name,
-                    IsActive = department.IsActive
+                    IsActive = department.IsActive,
+                    DisplayOrder = department.DisplayOrder
                 }
             };
         }
@@ -141,9 +145,34 @@ namespace AlAmalBusiness.Application.Services.Imp
                 {
                     Id = departmentEntity.Id,
                     Name = departmentEntity.Name,
-                    IsActive = departmentEntity.IsActive
+                    IsActive = departmentEntity.IsActive,
+                    DisplayOrder = departmentEntity.DisplayOrder
                 }
             };
+        }
+
+        public async Task<DepartmentResponse> ReorderDepartmentsAsync(ReorderDepartmentsDTO request)
+        {
+            if (request?.DepartmentIds == null || request.DepartmentIds.Count == 0)
+            {
+                return new DepartmentResponse
+                {
+                    Success = false,
+                    Message = "No departments to reorder."
+                };
+            }
+
+            var reordered = await _repo.ReorderAsync(request.DepartmentIds);
+
+            return reordered
+                ? new DepartmentResponse { Success = true }
+                : new DepartmentResponse
+                {
+                    Success = false,
+                    // The caller's list didn't match the table — almost always
+                    // a second admin adding a department in another tab.
+                    Message = "The department list has changed. Reload and try again."
+                };
         }
     }
 }

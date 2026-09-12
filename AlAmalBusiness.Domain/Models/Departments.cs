@@ -13,6 +13,11 @@ namespace AlAmalBusiness.Domain.Models
         [Required]
         public string? Name { get; set; }
         public bool IsActive { get; set; } = true;
+
+        // Position in the public feedback form's department dropdown
+        // (1-based, contiguous). Admin-controlled from the console's
+        // Settings -> Departments screen; new departments land last.
+        public int DisplayOrder { get; set; }
         public ICollection<User> Users { get; set; } = new List<User>();
 
     }

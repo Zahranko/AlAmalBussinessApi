@@ -14,5 +14,8 @@ namespace AlAmalBusiness.Application.Services.Interface
         Task<DepartmentResponse> GetDepartmentByIdAsync(int departmentId);
         Task<DepartmentResponse> CreateDepartmentAsync(DepartmentDTO department);
         Task<DepartmentResponse> UpdateDepartmentAsync(int id,DepartmentDTO department);
+        // Admin-only: rewrites the order the public feedback form lists
+        // departments in. Takes every id, in the order to store.
+        Task<DepartmentResponse> ReorderDepartmentsAsync(ReorderDepartmentsDTO request);
     }
 }
