@@ -35,10 +35,12 @@ namespace AlAmalBusiness.Api.Area.Feedback.Controllers
         private const string CanReport = nameof(AppRoles.FManager) + "," + nameof(AppRoles.Admin);
 
         private readonly IFeedbackService _feedbackService;
+        private readonly IFeedbackExcelReportService _excelReportService;
 
-        public FeedbackController(IFeedbackService feedbackService)
+        public FeedbackController(IFeedbackService feedbackService, IFeedbackExcelReportService excelReportService)
         {
             _feedbackService = feedbackService;
+            _excelReportService = excelReportService;
         }
 
         // Built from the caller's own validated token, never from the request
@@ -102,6 +104,31 @@ namespace AlAmalBusiness.Api.Area.Feedback.Controllers
             };
 
             return Ok(await _feedbackService.GetStatsAsync(query, Actor));
+        }
+
+        // The same numbers as the dashboard, as a workbook. It goes back
+        // through GetStatsAsync rather than taking anything on trust, so a
+        // manager exporting gets the one department their token allows and an
+        // admin gets every department — the export can't widen what the
+        // screen already scoped.
+        [HttpGet("stats/export")]
+        [Authorize(Roles = CanReport)]
+        public async Task<IActionResult> ExportStats(
+            DateOnly? fromDate = null,
+            DateOnly? toDate = null,
+            int? departmentId = null)
+        {
+            var query = new FeedbackStatsQuery
+            {
+                From = fromDate,
+                To = toDate,
+                DepartmentId = departmentId
+            };
+
+            var stats = await _feedbackService.GetStatsAsync(query, Actor);
+            var bytes = _excelReportService.Build(stats);
+            var fileName = $"feedback-report-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
 
         [HttpGet("{id:int}")]

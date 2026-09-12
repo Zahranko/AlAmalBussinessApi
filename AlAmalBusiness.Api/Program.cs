@@ -71,6 +71,7 @@ builder.Services.AddScoped<IClosedReasonService, ClosedReasonService>();
 builder.Services.AddScoped<ILeadExcelReportService, LeadExcelReportService>();
 builder.Services.AddScoped<ILeadNotifier, SignalRLeadNotifier>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+builder.Services.AddScoped<IFeedbackExcelReportService, FeedbackExcelReportService>();
 // Stateless and thread-safe (a static alphabet over the crypto RNG), so one
 // instance serves every request.
 builder.Services.AddSingleton<IReferenceNumberGenerator, ReferenceNumberGenerator>();
