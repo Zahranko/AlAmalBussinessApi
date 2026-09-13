@@ -7,6 +7,7 @@ using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories;
 using AlAmalBusiness.Domain.IRepositories.Feedback;
 using AlAmalBusiness.Domain.Models.Feedback;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -25,6 +26,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
         private readonly IUserRepo _userRepo;
         private readonly IEmailQueue _emailQueue;
         private readonly ILogger<FeedbackService> _logger;
+        private readonly string? _consoleBaseUrl;
 
         private const int MaxPageSize = 100;
         private const int DefaultPageSize = 12;
@@ -37,8 +39,12 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             IReferenceNumberGenerator references,
             IUserRepo userRepo,
             IEmailQueue emailQueue,
-            ILogger<FeedbackService> logger)
+            ILogger<FeedbackService> logger,
+            IConfiguration config)
         {
+            // Console base URL for the email's "open message" button; blank
+            // leaves the button out rather than linking somewhere wrong.
+            _consoleBaseUrl = config["Email:ConsoleBaseUrl"]?.TrimEnd('/');
             _feedbackRepo = feedbackRepo;
             _historyRepo = historyRepo;
             _departmentRepo = departmentRepo;
@@ -115,9 +121,11 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
                     return;
                 }
 
+                var link = string.IsNullOrWhiteSpace(_consoleBaseUrl) ? null : $"{_consoleBaseUrl}/fb/inbox/{feedback.Id}";
+
                 foreach (var to in recipients)
                 {
-                    if (!_emailQueue.Enqueue(FeedbackEmailTemplate.Build(to, feedback, departmentName)))
+                    if (!_emailQueue.Enqueue(FeedbackEmailTemplate.Build(to, feedback, departmentName, link)))
                         _logger.LogWarning("Feedback {Reference}: email to {To} was not queued.", feedback.ReferenceNumber, to);
                 }
             }

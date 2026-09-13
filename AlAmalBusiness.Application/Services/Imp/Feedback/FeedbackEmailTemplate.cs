@@ -14,7 +14,10 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
     // anonymous, so its fields are untrusted input landing in a staff inbox.
     internal static class FeedbackEmailTemplate
     {
-        public static EmailMessage Build(string to, PatientFeedback feedback, string? departmentName)
+        // `link` opens the message in the console (/fb/inbox/{id}); a manager
+        // who isn't signed in is sent through login and back to it. Null
+        // leaves the button out.
+        public static EmailMessage Build(string to, PatientFeedback feedback, string? departmentName, string? link)
         {
             var typeLabel = TypeLabel(feedback.Type);
             var department = string.IsNullOrWhiteSpace(departmentName) ? "-" : departmentName;
@@ -54,6 +57,15 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             html.Append("</table>");
             html.Append("<h3 style=\"margin:16px 0 6px;font-size:15px;\">التفاصيل</h3>");
             html.Append($"<div dir=\"auto\" style=\"white-space:pre-wrap;text-align:center;background:#f9fafb;border:1px solid #e5e7eb;padding:10px;\">{Encode(details)}</div>");
+            if (link != null)
+            {
+                // A table-cell button with a bgcolor, not a styled <a> alone —
+                // Outlook drops padding and background on inline links.
+                html.Append("<table role=\"presentation\" align=\"center\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:20px auto 0;\"><tr>");
+                html.Append("<td align=\"center\" bgcolor=\"#0f766e\" style=\"border-radius:6px;\">");
+                html.Append($"<a href=\"{Encode(link)}\" target=\"_blank\" style=\"display:inline-block;padding:10px 24px;font-family:Tahoma,Arial,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:6px;\">فتح الرسالة</a>");
+                html.Append("</td></tr></table>");
+            }
             html.Append("<p style=\"margin-top:16px;color:#6b7280;font-size:12px;\">هذه رسالة تلقائية من نظام ملاحظات المراجعين في مستشفى الأمل، يرجى عدم الرد عليها.</p>");
             html.Append("</div>");
             html.Append("</td></tr></table>");
@@ -66,6 +78,11 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             text.AppendLine();
             text.AppendLine("التفاصيل:");
             text.AppendLine(details);
+            if (link != null)
+            {
+                text.AppendLine();
+                text.AppendLine($"فتح الرسالة: {link}");
+            }
 
             return new EmailMessage(to, subject, html.ToString(), text.ToString());
         }
