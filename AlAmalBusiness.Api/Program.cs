@@ -1,4 +1,5 @@
 using AlAmalBusiness.Api.Area.CRM.Hubs;
+using AlAmalBusiness.Api.Email;
 using AlAmalBusiness.Application.Services.Imp;
 using AlAmalBusiness.Application.Services.Imp.CRM;
 using AlAmalBusiness.Application.Services.Imp.Feedback;
@@ -75,6 +76,12 @@ builder.Services.AddScoped<IFeedbackExcelReportService, FeedbackExcelReportServi
 // Stateless and thread-safe (a static alphabet over the crypto RNG), so one
 // instance serves every request.
 builder.Services.AddSingleton<IReferenceNumberGenerator, ReferenceNumberGenerator>();
+// Outgoing email (Hostinger SMTP). One queue instance shared by every request
+// and the background sender that drains it — see ChannelEmailQueue.
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName));
+builder.Services.AddSingleton<ChannelEmailQueue>();
+builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<ChannelEmailQueue>());
+builder.Services.AddHostedService<SmtpEmailBackgroundService>();
 builder.Services.AddScoped<IFilterCacheRepo, FilterCacheRepo>();
 builder.Services.AddScoped<IFilterCacheService, FilterCacheService>();
 builder.Services.AddSignalR();

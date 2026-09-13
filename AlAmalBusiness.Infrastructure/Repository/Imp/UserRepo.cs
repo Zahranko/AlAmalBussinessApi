@@ -72,7 +72,25 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
 
             return await _userManager.AddToRolesAsync(user, userRoles.Except(currentRoles));
         }
-        public async Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId)
+        public async Task<List<string>> GetActiveEmailsInRoleAsync(string role, int departmentId)
+        {
+            // One query straight to the Identity tables — UserManager's
+            // GetUsersInRoleAsync would pull every user in the role (password
+            // hashes included) just to read one column.
+            return await (
+                from u in _context.Users
+                join ur in _context.UserRoles on u.Id equals ur.UserId
+                join r in _context.Roles on ur.RoleId equals r.Id
+                where r.Name == role
+                    && u.IsActive
+                    && u.DepartmentId == departmentId
+                    && u.Email != null && u.Email != ""
+                select u.Email!)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        public async Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId, string? email)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
@@ -87,6 +105,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             user.UserName = userName;
             user.FullName = fullName;
             user.DepartmentId = departmentId;
+            // UpdateAsync re-normalizes NormalizedEmail along with the username.
+            user.Email = email;
             return await _userManager.UpdateAsync(user);
 
         }

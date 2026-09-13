@@ -18,6 +18,11 @@ namespace AlAmalBusiness.Application.DTOs.Users
         public string? FullName { get; set; }
         [Required]
         public int DepartmentId { get; set; }
+        // Optional. Where system notifications for this user go (e.g. an
+        // FManager gets new-feedback emails for their department). Blank is
+        // stored as no email; format is checked in UserServices.
+        [StringLength(256)]
+        public string? Email { get; set; }
         public List<string> Roles { get; set; } = new List<string>();
 
     }

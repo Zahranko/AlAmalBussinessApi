@@ -47,6 +47,9 @@ jobs:
           $config = Get-Content $path -Raw | ConvertFrom-Json
           $config.ConnectionStrings.DefaultConnection = "${{ secrets.PROD_DB_CONNECTION_STRING }}"
           $config.JwtSettings.Key = "${{ secrets.PROD_JWT_KEY }}"
+          $config.Email.Username = "${{ secrets.PROD_SMTP_USERNAME }}"
+          $config.Email.Password = "${{ secrets.PROD_SMTP_PASSWORD }}"
+          $config.Email.FromAddress = "${{ secrets.PROD_SMTP_USERNAME }}"
           $config | ConvertTo-Json -Depth 10 | Set-Content $path
 
       - name: Remove local dev config from publish output

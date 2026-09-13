@@ -28,11 +28,16 @@ namespace AlAmalBusiness.Application.Services.Imp
             {
                 return new CreateUserResult { IsSuccess = false, Message = "Department not found." };
             }
+            if (!TryNormalizeEmail(user.Email, out var email))
+            {
+                return new CreateUserResult { IsSuccess = false, Message = "Email address is not valid." };
+            }
             var newUser = new User
             {
                 UserName = user.UserName,
                 FullName = user.FullName,
                 DepartmentId = user.DepartmentId,
+                Email = email,
             };
 
             var result = await _userRepo.CreateUserAsync(newUser, user.Password!);
@@ -85,10 +90,26 @@ namespace AlAmalBusiness.Application.Services.Imp
                 UserId = user.Id,
                 UserName = user.UserName,
                 FullName = user.FullName,
+                Email = user.Email,
                 DepartmentId = user.DepartmentId,
                 IsActive = user.IsActive,
                 Roles = roles.ToList()
             };
+        }
+
+        // Blank means "no email" (null), anything else must parse as a plain
+        // address — no display name, since this goes straight into SMTP RCPT.
+        private static bool TryNormalizeEmail(string? value, out string? email)
+        {
+            email = null;
+            if (string.IsNullOrWhiteSpace(value)) return true;
+
+            var trimmed = value.Trim();
+            if (!System.Net.Mail.MailAddress.TryCreate(trimmed, out var parsed) || parsed.Address != trimmed)
+                return false;
+
+            email = trimmed;
+            return true;
         }
 
         public async Task<UpdateUserResponse> ResetPasswordAsync(string id, ResetPasswordDTO updateDTO)
@@ -129,7 +150,12 @@ namespace AlAmalBusiness.Application.Services.Imp
                 return new UpdateUserResponse { IsSuccess = false, Message = "Department not found." };
             }
 
-            var updateUser = await _userRepo.UpdateUserAsync(id, updateDTO.UserName!, updateDTO.FullName!, updateDTO.DepartmentId);
+            if (!TryNormalizeEmail(updateDTO.Email, out var email))
+            {
+                return new UpdateUserResponse { IsSuccess = false, Message = "Email address is not valid." };
+            }
+
+            var updateUser = await _userRepo.UpdateUserAsync(id, updateDTO.UserName!, updateDTO.FullName!, updateDTO.DepartmentId, email);
 
             if (updateUser.Succeeded)
             {

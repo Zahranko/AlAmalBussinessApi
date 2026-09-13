@@ -13,7 +13,10 @@ namespace AlAmalBusiness.Domain.IRepositories
         Task<IEnumerable<User>> GetAllUserAsync();
         Task<IEnumerable<string>> GetRolesAsync(string id);
         Task<IdentityResult> UpdateRolesAsync(string id, List<string> userRoles);
-        Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId);
+        Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId, string? email);
+        // Distinct email addresses of active users in the given role and
+        // department that have one set — e.g. who to notify about new feedback.
+        Task<List<string>> GetActiveEmailsInRoleAsync(string role, int departmentId);
         Task<IdentityResult> ResetPasswordAsync(string id, string password);
         Task<IdentityResult> DisableUserAsync(string id);
         Task<IdentityResult> EnableUserAsync(string id);

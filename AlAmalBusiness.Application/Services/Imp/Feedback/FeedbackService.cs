@@ -1,11 +1,13 @@
 using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Feedback;
 using AlAmalBusiness.Application.DTOs.Feedback.Response;
+using AlAmalBusiness.Application.Services.Interface;
 using AlAmalBusiness.Application.Services.Interface.Feedback;
 using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories;
 using AlAmalBusiness.Domain.IRepositories.Feedback;
 using AlAmalBusiness.Domain.Models.Feedback;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +22,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
         private readonly IFeedbackHistoryRepo _historyRepo;
         private readonly IDepartmentRepo _departmentRepo;
         private readonly IReferenceNumberGenerator _references;
+        private readonly IUserRepo _userRepo;
+        private readonly IEmailQueue _emailQueue;
+        private readonly ILogger<FeedbackService> _logger;
 
         private const int MaxPageSize = 100;
         private const int DefaultPageSize = 12;
@@ -29,12 +34,18 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             IPatientFeedbackRepo feedbackRepo,
             IFeedbackHistoryRepo historyRepo,
             IDepartmentRepo departmentRepo,
-            IReferenceNumberGenerator references)
+            IReferenceNumberGenerator references,
+            IUserRepo userRepo,
+            IEmailQueue emailQueue,
+            ILogger<FeedbackService> logger)
         {
             _feedbackRepo = feedbackRepo;
             _historyRepo = historyRepo;
             _departmentRepo = departmentRepo;
             _references = references;
+            _userRepo = userRepo;
+            _emailQueue = emailQueue;
+            _logger = logger;
         }
 
         // ---------- public (anonymous) ----------
@@ -76,12 +87,44 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
 
             await _feedbackRepo.CreateAsync(feedback);
 
+            await NotifyDepartmentManagersAsync(feedback, department.Name);
+
             return new FeedbackCreatedResponse
             {
                 Success = true,
                 ReferenceNumber = feedback.ReferenceNumber,
                 CreatedDate = feedback.CreatedDate
             };
+        }
+
+        // Emails every active FManager of the message's department who has an
+        // email address on their account. Best-effort: the message is already
+        // saved, so nothing here may fail the patient's submit — a lookup
+        // failure is logged and swallowed, and the actual SMTP send happens
+        // later on the email queue's background worker.
+        private async Task NotifyDepartmentManagersAsync(PatientFeedback feedback, string? departmentName)
+        {
+            try
+            {
+                var recipients = await _userRepo.GetActiveEmailsInRoleAsync(AppRoles.FManager, feedback.DepartmentId);
+                if (recipients.Count == 0)
+                {
+                    _logger.LogInformation(
+                        "Feedback {Reference}: no active FManager with an email in department {DepartmentId}, no email sent.",
+                        feedback.ReferenceNumber, feedback.DepartmentId);
+                    return;
+                }
+
+                foreach (var to in recipients)
+                {
+                    if (!_emailQueue.Enqueue(FeedbackEmailTemplate.Build(to, feedback, departmentName)))
+                        _logger.LogWarning("Feedback {Reference}: email to {To} was not queued.", feedback.ReferenceNumber, to);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Feedback {Reference}: failed to queue manager notification.", feedback.ReferenceNumber);
+            }
         }
 
         // ---------- staff inbox ----------
