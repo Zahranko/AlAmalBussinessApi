@@ -71,6 +71,21 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
             return stats == null ? NotFound() : Ok(stats);
         }
 
+        // The individual responses, newest first, with the name/phone a
+        // patient chose to leave. contactOnly=true hides the anonymous ones.
+        [HttpGet("{id:int}/submissions")]
+        public async Task<IActionResult> GetSubmissions(
+            int id,
+            DateOnly? fromDate = null,
+            DateOnly? toDate = null,
+            bool contactOnly = false,
+            int page = 1,
+            int pageSize = 20)
+        {
+            var result = await _questionnaireService.GetSubmissionsAsync(id, Actor, fromDate, toDate, contactOnly, page, pageSize);
+            return result == null ? NotFound() : Ok(result);
+        }
+
         [HttpPost]
         public Task<IActionResult> Create(SaveQuestionnaireDTO request) =>
             Run(() => _questionnaireService.CreateAsync(request, Actor));

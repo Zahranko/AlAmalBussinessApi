@@ -154,6 +154,37 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                 from, to)
             .CountAsync();
 
+        public async Task<(List<QuestionnaireSubmissionRow> Items, int TotalCount)> PageSubmissionsAsync(
+            int questionnaireId, DateOnly? from, DateOnly? to, bool contactOnly, int page, int pageSize)
+        {
+            var q = InPeriod(
+                _context.QuestionnaireSubmissions.AsNoTracking().Where(s => s.QuestionnaireId == questionnaireId),
+                from, to);
+
+            if (contactOnly)
+                q = q.Where(s => s.Name != null || s.PhoneNumber != null);
+
+            var total = await q.CountAsync();
+
+            // The per-response average is a correlated subquery over that
+            // response's own answers — one statement, no answer rows returned.
+            var items = await q
+                .OrderByDescending(s => s.CreatedDate)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(s => new QuestionnaireSubmissionRow
+                {
+                    Id = s.Id,
+                    CreatedDate = s.CreatedDate,
+                    Name = s.Name,
+                    PhoneNumber = s.PhoneNumber,
+                    AverageRating = s.Answers.Average(a => (double?)(int)a.Rating)
+                })
+                .ToListAsync();
+
+            return (items, total);
+        }
+
         public void Add(Questionnaire questionnaire) => _context.Questionnaires.Add(questionnaire);
 
         public void Remove(Questionnaire questionnaire) => _context.Questionnaires.Remove(questionnaire);

@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AlAmalBusiness.Domain.Models.Questionnaires
 {
-    // One patient's filled-in questionnaire. Anonymous: no name, no phone —
-    // just the answers and the audit bits the server captures itself.
+    // One patient's filled-in questionnaire. Anonymous unless the patient
+    // chooses to leave a name and/or phone number — both optional.
     public class QuestionnaireSubmission
     {
         [Key]
@@ -13,6 +13,12 @@ namespace AlAmalBusiness.Domain.Models.Questionnaires
 
         public int QuestionnaireId { get; set; }
         public Questionnaire? Questionnaire { get; set; }
+
+        public string? Name { get; set; }
+
+        // Digits only (a leading + kept), as the patient typed it otherwise —
+        // no country picker on the page, so no national-zero stripping.
+        public string? PhoneNumber { get; set; }
 
         public string? SubmittedFromIp { get; set; }
         public string? UserAgent { get; set; }

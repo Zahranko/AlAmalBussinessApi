@@ -117,6 +117,15 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
         public int VeryBad { get; set; }
     }
 
+    public class QuestionnaireSubmissionResponse
+    {
+        public int Id { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public string? Name { get; set; }
+        public string? PhoneNumber { get; set; }
+        public double? AverageRating { get; set; }
+    }
+
     // ---------- public page ----------
 
     // Everything the anonymous page needs to render, and nothing else — no

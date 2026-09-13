@@ -1,3 +1,4 @@
+using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Feedback;
 using AlAmalBusiness.Application.DTOs.Questionnaires;
 using AlAmalBusiness.Application.DTOs.Questionnaires.Response;
@@ -20,6 +21,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
         private readonly IDepartmentRepo _departmentRepo;
 
         private const int MaxQuestions = 50;
+        private const int DefaultPageSize = 20;
+        private const int MaxPageSize = 100;
 
         private static readonly Regex SlugPattern = new(@"^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.Compiled);
 
@@ -139,6 +142,37 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 SatisfactionPercent = Percent(overall.Good + overall.VeryGood, Total(overall)),
                 Distribution = overall,
                 Questions = questions
+            };
+        }
+
+        public async Task<PagedResultDTO<QuestionnaireSubmissionResponse>?> GetSubmissionsAsync(
+            int id, QuestionnaireActor actor, DateOnly? from, DateOnly? to, bool contactOnly, int page, int pageSize)
+        {
+            var questionnaire = await _repo.GetDetailAsync(id);
+            if (questionnaire == null || !CanSee(questionnaire.DepartmentId, actor))
+                return null;
+
+            if (from.HasValue && to.HasValue && from > to)
+                (from, to) = (to, from);
+
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize <= 0 ? DefaultPageSize : pageSize, 1, MaxPageSize);
+
+            var (items, total) = await _repo.PageSubmissionsAsync(id, from, to, contactOnly, page, pageSize);
+
+            return new PagedResultDTO<QuestionnaireSubmissionResponse>
+            {
+                Items = items.Select(s => new QuestionnaireSubmissionResponse
+                {
+                    Id = s.Id,
+                    CreatedDate = s.CreatedDate,
+                    Name = s.Name,
+                    PhoneNumber = s.PhoneNumber,
+                    AverageRating = s.AverageRating.HasValue ? Round2(s.AverageRating.Value) : null
+                }).ToList(),
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
             };
         }
 
@@ -292,9 +326,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             if (answers.Count != questionIds.Count)
                 return Rejected("يرجى الإجابة على جميع الأسئلة");
 
+            // Both optional; a phone, when given, has to be a plausible number.
+            var phone = NormalizePhone(request.PhoneNumber);
+            if (!string.IsNullOrWhiteSpace(request.PhoneNumber) && phone == null)
+                return Rejected("رقم الهاتف غير صحيح");
+
             var submission = new QuestionnaireSubmission
             {
                 QuestionnaireId = questionnaire.Id,
+                Name = Truncate(Clean(request.Name), 100),
+                PhoneNumber = phone,
                 SubmittedFromIp = context.IpAddress,
                 UserAgent = Truncate(context.UserAgent, 400),
                 CreatedDate = DateTime.Now
@@ -438,6 +479,19 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             total == 0 ? null : Math.Round(part * 100.0 / total, 1);
 
         private static double Round2(double value) => Math.Round(value, 2);
+
+        // Separators dropped, a leading + kept; 7-15 digits or it isn't a phone.
+        // Null for blank or implausible input.
+        private static string? NormalizePhone(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+
+            var trimmed = value.Trim();
+            var digits = Regex.Replace(trimmed, @"\D", string.Empty);
+            if (digits.Length < 7 || digits.Length > 15) return null;
+
+            return trimmed.StartsWith('+') ? $"+{digits}" : digits;
+        }
 
         private static string? Clean(string? value) =>
             string.IsNullOrWhiteSpace(value) ? null : value.Trim();

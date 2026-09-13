@@ -235,6 +235,8 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<QuestionnaireSubmission>().HasIndex(s => new { s.QuestionnaireId, s.CreatedDate });
         modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.SubmittedFromIp).HasMaxLength(64);
         modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.UserAgent).HasMaxLength(400);
+        modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.Name).HasMaxLength(100);
+        modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.PhoneNumber).HasMaxLength(20);
 
         modelBuilder.Entity<QuestionnaireAnswer>()
             .HasOne(a => a.Submission)

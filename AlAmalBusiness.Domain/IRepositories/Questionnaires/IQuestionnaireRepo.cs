@@ -36,6 +36,10 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
 
         Task<int> CountSubmissionsAsync(int questionnaireId, DateOnly? from, DateOnly? to);
 
+        // Newest first. contactOnly narrows to responses that left a name or phone.
+        Task<(List<QuestionnaireSubmissionRow> Items, int TotalCount)> PageSubmissionsAsync(
+            int questionnaireId, DateOnly? from, DateOnly? to, bool contactOnly, int page, int pageSize);
+
         void Add(Questionnaire questionnaire);
         void Remove(Questionnaire questionnaire);
         void RemoveQuestion(QuestionnaireQuestion question);

@@ -24,6 +24,17 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         public DateTime? LastSubmissionDate { get; set; }
     }
 
+    // One response in the results screen's list — the patient's optional
+    // contact details and their own average, not the individual answers.
+    public class QuestionnaireSubmissionRow
+    {
+        public int Id { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public string? Name { get; set; }
+        public string? PhoneNumber { get; set; }
+        public double? AverageRating { get; set; }
+    }
+
     public class QuestionRatingCountRow
     {
         public int QuestionId { get; set; }
