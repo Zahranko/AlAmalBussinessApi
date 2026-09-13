@@ -36,6 +36,19 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         public double? AverageRating { get; set; }
     }
 
+    // One questionnaire's numbers for one calendar month. RatingSum/AnswerCount
+    // give the average, Positive/AnswerCount the satisfied share.
+    public class QuestionnaireMonthRow
+    {
+        public int QuestionnaireId { get; set; }
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public int Submissions { get; set; }
+        public int AnswerCount { get; set; }
+        public int RatingSum { get; set; }
+        public int Positive { get; set; }
+    }
+
     // One rating inside one response, for the export's per-response sheet.
     public class QuestionnaireAnswerExportRow
     {

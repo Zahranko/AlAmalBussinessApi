@@ -138,6 +138,9 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
         // True when the period held more responses than the export cap.
         public bool Truncated { get; set; }
         public int ExportCap { get; set; }
+        // Month-by-month history ending at the period's last month, and that
+        // month against every month before it — the Trend sheet.
+        public QuestionnaireTrend Trend { get; set; } = new();
     }
 
     public class QuestionnaireExportResponseRow

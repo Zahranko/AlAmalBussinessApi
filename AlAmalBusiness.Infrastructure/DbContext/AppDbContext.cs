@@ -28,6 +28,7 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<QuestionnaireQuestion> QuestionnaireQuestions { get; set; }
       public DbSet<QuestionnaireSubmission> QuestionnaireSubmissions { get; set; }
       public DbSet<QuestionnaireAnswer> QuestionnaireAnswers { get; set; }
+      public DbSet<QuestionnaireReportRun> QuestionnaireReportRuns { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -238,6 +239,9 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.Name).HasMaxLength(100);
         modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.PhoneNumber).HasMaxLength(20);
         modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.Notes).HasMaxLength(2000);
+
+        // The monthly report's once-per-month guarantee rests on this index.
+        modelBuilder.Entity<QuestionnaireReportRun>().HasIndex(r => new { r.Year, r.Month }).IsUnique();
 
         modelBuilder.Entity<QuestionnaireAnswer>()
             .HasOne(a => a.Submission)

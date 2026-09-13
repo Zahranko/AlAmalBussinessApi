@@ -183,6 +183,10 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
         // 1 GB shared pool and ClosedXML builds the whole file in memory.
         private const int ExportCap = 20000;
 
+        // How many months a trend chart shows, and where "all history" starts.
+        internal const int TrendMonths = 12;
+        internal static readonly DateTime HistoryStart = new(2000, 1, 1);
+
         public async Task<QuestionnaireExportData?> GetExportDataAsync(int id, QuestionnaireActor actor, DateOnly? from, DateOnly? to)
         {
             // Goes through GetStatsAsync so the export can never widen what the
@@ -193,9 +197,15 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             var (submissions, answers) = await _repo.GetExportRowsAsync(id, stats.From, stats.To, ExportCap);
             var bySubmission = answers.ToLookup(a => a.SubmissionId);
 
+            // The trend always ends at the period's last month (today for "all
+            // time") and looks back over the whole history before it.
+            var endDate = stats.To ?? DateOnly.FromDateTime(DateTime.Today);
+            var months = await _repo.GetMonthlyAsync(new[] { id }, HistoryStart, endDate.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
             return new QuestionnaireExportData
             {
                 Stats = stats,
+                Trend = QuestionnaireTrendBuilder.Build(months, endDate.Year, endDate.Month, TrendMonths),
                 ExportCap = ExportCap,
                 Truncated = stats.SubmissionCount > submissions.Count,
                 Responses = submissions.Select(s => new QuestionnaireExportResponseRow

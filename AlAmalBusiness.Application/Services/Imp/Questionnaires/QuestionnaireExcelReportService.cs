@@ -5,18 +5,27 @@ using ClosedXML.Excel;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 {
     // Questionnaire results as workbooks, in the feedback report's style
     // (FeedbackExcelReportService): a bold title, an italic period line, a
-    // tinted header row, centred values.
+    // tinted header row, centred values — plus native Excel charts bound to
+    // the cells (ExcelChartWriter).
     //
     // Scoping is never decided here — QuestionnaireService has already pinned
     // a QManager to their own department before any of this runs.
     public class QuestionnaireExcelReportService : IQuestionnaireExcelReportService
     {
         private static readonly XLColor HeaderFill = XLColor.FromHtml("#EEF2FF");
+
+        private const string AverageColor = "08517D";
+        private const string SatisfiedColor = "159F8A";
+        private const string ResponsesColor = "169FD9";
+
+        private const string AverageFormat = "0.00";
+        private const string PercentFormat = "0.0%";
 
         private static readonly (QuestionRating Rating, string Label)[] Ratings =
         [
@@ -29,37 +38,37 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
         public byte[] Build(QuestionnaireExportData data)
         {
+            var charts = new List<ChartSpec>();
             using var workbook = new XLWorkbook();
 
-            WriteSummary(workbook.Worksheets.Add("Summary"), data.Stats);
-            WriteQuestions(workbook.Worksheets.Add("By Question"), data.Stats);
+            WriteSummary(workbook.Worksheets.Add("Summary"), data);
+            WriteQuestions(workbook.Worksheets.Add("By Question"), data.Stats, charts);
+            WriteTrend(workbook.Worksheets.Add("Trend"), data.Trend, charts);
             WriteResponses(workbook.Worksheets.Add("Responses"), data);
 
-            return Save(workbook);
+            return ExcelChartWriter.AddCharts(Save(workbook), charts);
         }
 
         public byte[] BuildOverview(QuestionnaireListResponse list)
         {
+            var charts = new List<ChartSpec>();
             using var workbook = new XLWorkbook();
-            var sheet = workbook.Worksheets.Add("Questionnaires");
+            const string sheetName = "Questionnaires";
+            var sheet = workbook.Worksheets.Add(sheetName);
 
             WriteTitle(sheet, "Al Amal Hospital - Patient Questionnaires", list.From, list.To);
 
             var row = 4;
-            foreach (var (label, value) in new (string, string)[]
-            {
-                ("Questionnaires", $"{list.QuestionnaireCount} ({list.ActiveCount} active)"),
-                ("Responses", list.TotalSubmissions.ToString()),
-                ("Average rating (out of 5)", Average(list.AverageRating)),
-                ("Satisfied (Good or Very good)", PercentText(list.SatisfactionPercent))
-            })
-            {
-                sheet.Cell(row, 1).Value = label;
-                sheet.Cell(row, 1).Style.Font.Bold = true;
-                sheet.Cell(row, 2).Value = value;
-                Center(sheet.Cell(row, 2));
-                row++;
-            }
+            sheet.Cell(row, 1).Value = "Questionnaires";
+            sheet.Cell(row++, 2).Value = $"{list.QuestionnaireCount} ({list.ActiveCount} active)";
+            sheet.Cell(row, 1).Value = "Responses";
+            sheet.Cell(row++, 2).Value = list.TotalSubmissions;
+            sheet.Cell(row, 1).Value = "Average rating (out of 5)";
+            WriteAverage(sheet.Cell(row++, 2), list.AverageRating);
+            sheet.Cell(row, 1).Value = "Satisfied (Good or Very good)";
+            WritePercent(sheet.Cell(row++, 2), list.SatisfactionPercent);
+            sheet.Range(4, 1, row - 1, 1).Style.Font.Bold = true;
+            Center(sheet.Range(4, 2, row - 1, 2));
 
             row++;
             string[] headers = ["Questionnaire", "Link", "Department", "Status", "Questions", "Responses", "Average", "Satisfied", "Last response"];
@@ -76,12 +85,32 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 sheet.Cell(row, 5).Value = q.QuestionCount;
                 sheet.Cell(row, 6).Value = q.SubmissionCount;
                 WriteAverage(sheet.Cell(row, 7), q.AverageRating);
-                sheet.Cell(row, 8).Value = PercentText(q.SatisfactionPercent);
+                WritePercent(sheet.Cell(row, 8), q.SatisfactionPercent);
                 sheet.Cell(row, 9).Value = q.LastSubmissionDate?.ToString("yyyy-MM-dd HH:mm") ?? "-";
                 CenterRow(sheet, row, headers.Length);
             }
 
-            if (row == headerRow) WriteNoData(sheet, ref row, "No questionnaires.");
+            if (row == headerRow)
+            {
+                WriteNoData(sheet, ref row, "No questionnaires.");
+            }
+            else
+            {
+                var first = headerRow + 1;
+                var titles = list.Questionnaires.Select(q => q.Title).ToList();
+                var height = Math.Max(16, titles.Count * 2 + 8);
+                var top = row + 1; // 0-based row index of the line after the table, plus a gap
+
+                charts.Add(new ChartSpec(sheetName, "Average rating (out of 5)", ChartKind.Bar,
+                    ExcelChartWriter.Ref(sheetName, 1, first, row), titles,
+                    ExcelChartWriter.Ref(sheetName, 7, first, row), list.Questionnaires.Select(q => q.AverageRating).ToList(),
+                    "Average", AverageColor, AverageFormat, 0, 5, 0, top, 3, top + height));
+
+                charts.Add(new ChartSpec(sheetName, "Satisfied (Good or Very good)", ChartKind.Bar,
+                    ExcelChartWriter.Ref(sheetName, 1, first, row), titles,
+                    ExcelChartWriter.Ref(sheetName, 8, first, row), list.Questionnaires.Select(q => Fraction(q.SatisfactionPercent)).ToList(),
+                    "Satisfied", SatisfiedColor, PercentFormat, 0, 1, 3, top, 9, top + height));
+            }
 
             sheet.Column(1).Width = 36;
             sheet.Column(2).Width = 20;
@@ -89,29 +118,25 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             sheet.Columns(4, headers.Length).Width = 14;
             sheet.Column(headers.Length).Width = 18;
 
-            return Save(workbook);
+            return ExcelChartWriter.AddCharts(Save(workbook), charts);
         }
 
         // ---------- per-questionnaire sheets ----------
 
-        private static void WriteSummary(IXLWorksheet sheet, QuestionnaireStatsResponse stats)
+        private static void WriteSummary(IXLWorksheet sheet, QuestionnaireExportData data)
         {
+            var stats = data.Stats;
             WriteTitle(sheet, $"Al Amal Hospital - {stats.Title}", stats.From, stats.To);
             sheet.Cell(3, 1).Value = $"Department: {stats.DepartmentName ?? "-"}   ·   Link: /{stats.Slug}   ·   {(stats.IsActive ? "Active" : "Inactive")}";
             sheet.Cell(3, 1).Style.Font.Italic = true;
 
             var row = 5;
-            foreach (var (label, value) in new (string, string)[]
-            {
-                ("Responses", stats.SubmissionCount.ToString()),
-                ("Average rating (out of 5)", Average(stats.AverageRating)),
-                ("Satisfied (Good or Very good)", PercentText(stats.SatisfactionPercent))
-            })
-            {
-                sheet.Cell(row, 1).Value = label;
-                sheet.Cell(row, 2).Value = value;
-                row++;
-            }
+            sheet.Cell(row, 1).Value = "Responses";
+            sheet.Cell(row++, 2).Value = stats.SubmissionCount;
+            sheet.Cell(row, 1).Value = "Average rating (out of 5)";
+            WriteAverage(sheet.Cell(row++, 2), stats.AverageRating);
+            sheet.Cell(row, 1).Value = "Satisfied (Good or Very good)";
+            WritePercent(sheet.Cell(row++, 2), stats.SatisfactionPercent);
             sheet.Range(5, 1, row - 1, 1).Style.Font.Bold = true;
 
             row++;
@@ -126,18 +151,25 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 var count = CountOf(stats.Distribution, rating);
                 sheet.Cell(row, 1).Value = label;
                 sheet.Cell(row, 2).Value = count;
-                sheet.Cell(row, 3).Value = $"{Percent(count, total)}%";
+                sheet.Cell(row, 3).Value = total == 0 ? 0 : (double)count / total;
+                sheet.Cell(row, 3).Style.NumberFormat.Format = PercentFormat;
                 row++;
             }
 
-            Center(sheet.Range(5, 2, row, 3));
+            row++;
+            sheet.Cell(row, 1).Value = "Charts are on the By Question and Trend sheets.";
+            sheet.Cell(row, 1).Style.Font.Italic = true;
+            sheet.Cell(row, 1).Style.Font.FontColor = XLColor.Gray;
+
+            Center(sheet.Range(5, 2, row - 1, 3));
             sheet.Column(1).Width = 34;
             sheet.Column(2).Width = 14;
             sheet.Column(3).Width = 10;
         }
 
-        private static void WriteQuestions(IXLWorksheet sheet, QuestionnaireStatsResponse stats)
+        private static void WriteQuestions(IXLWorksheet sheet, QuestionnaireStatsResponse stats, List<ChartSpec> charts)
         {
+            const string sheetName = "By Question";
             WriteTitle(sheet, "By question", stats.From, stats.To);
 
             var headers = new List<string> { "#", "Question", "Answers", "Average", "Satisfied" };
@@ -147,14 +179,17 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
             var row = headerRow;
             var number = 0;
+            var labels = new List<string>();
             foreach (var q in stats.Questions)
             {
                 row++;
+                var label = q.IsArchived ? $"{q.Text} (removed from the page)" : q.Text;
+                labels.Add(label);
                 sheet.Cell(row, 1).Value = q.IsArchived ? "-" : (++number).ToString();
-                sheet.Cell(row, 2).Value = q.IsArchived ? $"{q.Text} (removed from the page)" : q.Text;
+                sheet.Cell(row, 2).Value = label;
                 sheet.Cell(row, 3).Value = q.AnswerCount;
                 WriteAverage(sheet.Cell(row, 4), q.AverageRating);
-                sheet.Cell(row, 5).Value = PercentText(q.SatisfactionPercent);
+                WritePercent(sheet.Cell(row, 5), q.SatisfactionPercent);
                 var col = 6;
                 foreach (var (rating, _) in Ratings)
                     sheet.Cell(row, col++).Value = CountOf(q.Distribution, rating);
@@ -165,11 +200,121 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 sheet.Cell(row, 2).Style.Alignment.WrapText = true;
             }
 
-            if (row == headerRow) WriteNoData(sheet, ref row, "No questions.");
+            if (row == headerRow)
+            {
+                WriteNoData(sheet, ref row, "No questions.");
+            }
+            else
+            {
+                var first = headerRow + 1;
+                var height = Math.Max(16, labels.Count * 3 + 6);
+                var top = row + 1;
+
+                // Stacked, same width (columns B..G), so the two read as a pair.
+                charts.Add(new ChartSpec(sheetName, "Average rating per question (out of 5)", ChartKind.Bar,
+                    ExcelChartWriter.Ref(sheetName, 2, first, row), labels,
+                    ExcelChartWriter.Ref(sheetName, 4, first, row), stats.Questions.Select(q => q.AverageRating).ToList(),
+                    "Average", AverageColor, AverageFormat, 0, 5, 1, top, 7, top + height));
+
+                charts.Add(new ChartSpec(sheetName, "Satisfied per question (Good or Very good)", ChartKind.Bar,
+                    ExcelChartWriter.Ref(sheetName, 2, first, row), labels,
+                    ExcelChartWriter.Ref(sheetName, 5, first, row), stats.Questions.Select(q => Fraction(q.SatisfactionPercent)).ToList(),
+                    "Satisfied", SatisfiedColor, PercentFormat, 0, 1, 1, top + height + 1, 7, top + height * 2 + 1));
+            }
 
             sheet.Column(1).Width = 5;
             sheet.Column(2).Width = 50;
             sheet.Columns(3, headers.Count).Width = 12;
+        }
+
+        private static void WriteTrend(IXLWorksheet sheet, QuestionnaireTrend trend, List<ChartSpec> charts)
+        {
+            const string sheetName = "Trend";
+            sheet.Cell(1, 1).Value = "Month by month";
+            sheet.Cell(1, 1).Style.Font.Bold = true;
+            sheet.Cell(1, 1).Style.Font.FontSize = 14;
+            sheet.Cell(2, 1).Value = $"{trend.ReportMonth.Label} against every month before it. Blank = nobody answered that month.";
+            sheet.Cell(2, 1).Style.Font.Italic = true;
+
+            string[] headers = ["Month", "Responses", "Average", "Satisfied"];
+            const int headerRow = 4;
+            WriteHeader(sheet, headerRow, headers);
+
+            var row = headerRow;
+            foreach (var m in trend.Months)
+            {
+                row++;
+                sheet.Cell(row, 1).Value = m.Label;
+                sheet.Cell(row, 2).Value = m.Submissions;
+                WriteAverage(sheet.Cell(row, 3), m.AverageRating);
+                WritePercent(sheet.Cell(row, 4), m.SatisfactionPercent);
+                CenterRow(sheet, row, headers.Length);
+            }
+            var lastMonthRow = row;
+            // The report month stands out in the table the way it does in the email.
+            sheet.Range(lastMonthRow, 1, lastMonthRow, headers.Length).Style.Font.Bold = true;
+
+            row += 2;
+            sheet.Cell(row, 1).Value = "This month vs before";
+            sheet.Cell(row, 1).Style.Font.Bold = true;
+            sheet.Cell(row, 1).Style.Font.FontSize = 12;
+            row++;
+            var compareHeader = row;
+            WriteHeader(sheet, compareHeader, ["Period", "Responses", "Average", "Satisfied"]);
+            foreach (var p in new[] { trend.PreviousMonths, trend.ReportMonth })
+            {
+                row++;
+                sheet.Cell(row, 1).Value = p.Label;
+                sheet.Cell(row, 2).Value = p.Submissions;
+                WriteAverage(sheet.Cell(row, 3), p.AverageRating);
+                WritePercent(sheet.Cell(row, 4), p.SatisfactionPercent);
+                CenterRow(sheet, row, headers.Length);
+            }
+
+            var avgDelta = trend.ReportMonth.AverageRating - trend.PreviousMonths.AverageRating;
+            var satDelta = trend.ReportMonth.SatisfactionPercent - trend.PreviousMonths.SatisfactionPercent;
+            row++;
+            sheet.Cell(row, 1).Value = "Change";
+            sheet.Cell(row, 1).Style.Font.Bold = true;
+            if (avgDelta is double a) { sheet.Cell(row, 3).Value = Math.Round(a, 2); sheet.Cell(row, 3).Style.NumberFormat.Format = "+0.00;-0.00;0.00"; }
+            if (satDelta is double s) { sheet.Cell(row, 4).Value = Math.Round(s / 100, 3); sheet.Cell(row, 4).Style.NumberFormat.Format = "+0.0%;-0.0%;0.0%"; }
+            CenterRow(sheet, row, headers.Length);
+
+            sheet.Column(1).Width = 22;
+            sheet.Columns(2, 4).Width = 13;
+
+            // Charts to the right of the tables: the monthly lines on the left
+            // column of charts, the "this month vs before" pair beside them.
+            var firstMonth = headerRow + 1;
+            var months = trend.Months.Select(m => m.Label).ToList();
+            var compareFirst = compareHeader + 1;
+            var compareLast = compareHeader + 2;
+            var compareLabels = new[] { trend.PreviousMonths.Label, trend.ReportMonth.Label };
+
+            charts.Add(new ChartSpec(sheetName, "Average rating by month (out of 5)", ChartKind.Line,
+                ExcelChartWriter.Ref(sheetName, 1, firstMonth, lastMonthRow), months,
+                ExcelChartWriter.Ref(sheetName, 3, firstMonth, lastMonthRow), trend.Months.Select(m => m.AverageRating).ToList(),
+                "Average", AverageColor, AverageFormat, 1, 5, 5, 3, 14, 20));
+
+            charts.Add(new ChartSpec(sheetName, "Satisfied by month", ChartKind.Column,
+                ExcelChartWriter.Ref(sheetName, 1, firstMonth, lastMonthRow), months,
+                ExcelChartWriter.Ref(sheetName, 4, firstMonth, lastMonthRow), trend.Months.Select(m => Fraction(m.SatisfactionPercent)).ToList(),
+                "Satisfied", SatisfiedColor, PercentFormat, 0, 1, 5, 21, 14, 38));
+
+            charts.Add(new ChartSpec(sheetName, "Responses by month", ChartKind.Column,
+                ExcelChartWriter.Ref(sheetName, 1, firstMonth, lastMonthRow), months,
+                ExcelChartWriter.Ref(sheetName, 2, firstMonth, lastMonthRow), trend.Months.Select(m => (double?)m.Submissions).ToList(),
+                "Responses", ResponsesColor, "0", 0, null, 5, 39, 14, 56));
+
+            charts.Add(new ChartSpec(sheetName, "Average: this month vs before", ChartKind.Column,
+                ExcelChartWriter.Ref(sheetName, 1, compareFirst, compareLast), compareLabels,
+                ExcelChartWriter.Ref(sheetName, 3, compareFirst, compareLast), [trend.PreviousMonths.AverageRating, trend.ReportMonth.AverageRating],
+                "Average", AverageColor, AverageFormat, 0, 5, 15, 3, 21, 20));
+
+            charts.Add(new ChartSpec(sheetName, "Satisfied: this month vs before", ChartKind.Column,
+                ExcelChartWriter.Ref(sheetName, 1, compareFirst, compareLast), compareLabels,
+                ExcelChartWriter.Ref(sheetName, 4, compareFirst, compareLast), [Fraction(trend.PreviousMonths.SatisfactionPercent), Fraction(trend.ReportMonth.SatisfactionPercent)],
+                "Satisfied", SatisfiedColor, PercentFormat, 0, 1, 15, 21, 21, 38));
         }
 
         private static void WriteResponses(IXLWorksheet sheet, QuestionnaireExportData data)
@@ -274,17 +419,23 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             sheet.Cell(row, 1).Style.Font.Italic = true;
         }
 
-        // Null is not zero: "nothing answered" reads as a dash, the same
-        // distinction the screen draws.
+        // Real numbers, so the charts can read the cells. Null stays blank —
+        // "nothing answered" is a gap on a chart, not a zero.
         private static void WriteAverage(IXLCell cell, double? value)
         {
-            if (value is null) cell.Value = "-";
-            else cell.Value = Math.Round(value.Value, 2);
+            if (value is null) return;
+            cell.Value = Math.Round(value.Value, 2);
+            cell.Style.NumberFormat.Format = AverageFormat;
         }
 
-        private static string Average(double? value) => value is null ? "-" : $"{value.Value:0.00}";
+        private static void WritePercent(IXLCell cell, double? percent)
+        {
+            if (percent is null) return;
+            cell.Value = Math.Round(percent.Value / 100, 3);
+            cell.Style.NumberFormat.Format = PercentFormat;
+        }
 
-        private static string PercentText(double? value) => value is null ? "-" : $"{value}%";
+        private static double? Fraction(double? percent) => percent is null ? null : Math.Round(percent.Value / 100, 3);
 
         private static int CountOf(RatingDistributionResponse d, QuestionRating rating) => rating switch
         {
@@ -298,9 +449,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
         private static int Total(RatingDistributionResponse d) => d.VeryGood + d.Good + d.Mid + d.Bad + d.VeryBad;
 
         private static string LabelOf(QuestionRating rating) => Array.Find(Ratings, r => r.Rating == rating).Label;
-
-        private static double Percent(int part, int total) =>
-            total == 0 ? 0 : Math.Round(part * 100d / total, 1);
 
         private static string FormatDate(DateOnly? date) => date?.ToString("yyyy-MM-dd") ?? "All time";
 

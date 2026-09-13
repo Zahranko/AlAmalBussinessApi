@@ -17,13 +17,21 @@ namespace AlAmalBusiness.Api.Email
         public string FromAddress { get; set; } = string.Empty;
         public string FromName { get; set; } = string.Empty;
 
+        // Local development only: when set, every outgoing email is written to
+        // this folder as an .eml file (open it in Outlook) instead of going to
+        // the SMTP server. Never set in a tracked appsettings file.
+        public string? PickupDirectory { get; set; }
+
+        public bool UsesPickupDirectory => !string.IsNullOrWhiteSpace(PickupDirectory);
+
         // Enabled alone isn't enough: a production deploy whose SMTP secret
         // wasn't set must quietly send nothing, not crash-loop the app.
         public bool IsUsable =>
             Enabled
-            && !string.IsNullOrWhiteSpace(Host)
-            && !string.IsNullOrWhiteSpace(Username)
-            && !string.IsNullOrWhiteSpace(Password)
-            && !string.IsNullOrWhiteSpace(FromAddress);
+            && (UsesPickupDirectory
+                || (!string.IsNullOrWhiteSpace(Host)
+                    && !string.IsNullOrWhiteSpace(Username)
+                    && !string.IsNullOrWhiteSpace(Password)
+                    && !string.IsNullOrWhiteSpace(FromAddress)));
     }
 }

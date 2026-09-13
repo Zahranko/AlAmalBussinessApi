@@ -80,6 +80,10 @@ builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 builder.Services.AddScoped<IFeedbackExcelReportService, FeedbackExcelReportService>();
 builder.Services.AddScoped<IQuestionnaireService, QuestionnaireService>();
 builder.Services.AddScoped<IQuestionnaireExcelReportService, QuestionnaireExcelReportService>();
+builder.Services.AddScoped<IQuestionnaireMonthlyReportService, QuestionnaireMonthlyReportService>();
+// Emails last month's questionnaire report to each department's QManagers,
+// once per month (QuestionnaireReport section) — see the scheduler.
+builder.Services.AddHostedService<AlAmalBusiness.Api.Area.Questionnaires.QuestionnaireMonthlyReportScheduler>();
 // Stateless and thread-safe (a static alphabet over the crypto RNG), so one
 // instance serves every request.
 builder.Services.AddSingleton<IReferenceNumberGenerator, ReferenceNumberGenerator>();

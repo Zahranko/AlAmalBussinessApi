@@ -45,6 +45,18 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         Task<(List<QuestionnaireSubmissionRow> Submissions, List<QuestionnaireAnswerExportRow> Answers)> GetExportRowsAsync(
             int questionnaireId, DateOnly? from, DateOnly? to, int max);
 
+        // Per-month numbers for these questionnaires, for submissions in
+        // [from, toExclusive). Two grouped queries, no answer rows. Months with
+        // nothing in them are simply absent.
+        Task<List<QuestionnaireMonthRow>> GetMonthlyAsync(IReadOnlyCollection<int> questionnaireIds, DateTime from, DateTime toExclusive);
+
+        // Claims a month for the monthly report. False when it was already
+        // claimed (the unique (Year, Month) index refused the insert).
+        Task<QuestionnaireReportRun?> TryClaimReportRunAsync(int year, int month);
+
+        // The scheduler's cheap "already done?" check before it builds anything.
+        Task<bool> HasReportRunAsync(int year, int month);
+
         void Add(Questionnaire questionnaire);
         void Remove(Questionnaire questionnaire);
         void RemoveQuestion(QuestionnaireQuestion question);

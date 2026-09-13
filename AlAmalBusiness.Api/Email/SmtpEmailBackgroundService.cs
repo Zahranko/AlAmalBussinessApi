@@ -83,10 +83,27 @@ namespace AlAmalBusiness.Api.Email
         private async Task SendAsync(EmailMessage message, CancellationToken ct)
         {
             var mime = new MimeMessage();
-            mime.From.Add(new MailboxAddress(_settings.FromName, _settings.FromAddress));
+            mime.From.Add(new MailboxAddress(_settings.FromName,
+                string.IsNullOrWhiteSpace(_settings.FromAddress) ? "noreply@localhost" : _settings.FromAddress));
             mime.To.Add(MailboxAddress.Parse(message.To));
             mime.Subject = message.Subject;
-            mime.Body = new BodyBuilder { HtmlBody = message.HtmlBody, TextBody = message.TextBody }.ToMessageBody();
+            var body = new BodyBuilder { HtmlBody = message.HtmlBody, TextBody = message.TextBody };
+            if (message.Attachments != null)
+            {
+                foreach (var attachment in message.Attachments)
+                    body.Attachments.Add(attachment.FileName, attachment.Content, ContentType.Parse(attachment.ContentType));
+            }
+            mime.Body = body.ToMessageBody();
+
+            // Dev pickup folder: the exact message, as a file, and no network.
+            if (_settings.UsesPickupDirectory)
+            {
+                Directory.CreateDirectory(_settings.PickupDirectory!);
+                var safeTo = string.Concat(message.To.Split(Path.GetInvalidFileNameChars()));
+                var path = Path.Combine(_settings.PickupDirectory!, $"{DateTime.Now:yyyyMMdd-HHmmss-fff}-{safeTo}.eml");
+                await mime.WriteToAsync(path, ct);
+                return;
+            }
 
             // 465 is implicit TLS; anything else (587) upgrades with STARTTLS.
             // Never falls back to plaintext.

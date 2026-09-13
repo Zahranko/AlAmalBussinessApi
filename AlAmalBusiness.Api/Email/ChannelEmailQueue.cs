@@ -33,6 +33,8 @@ namespace AlAmalBusiness.Api.Email
 
         public ChannelReader<EmailMessage> Reader => _channel.Reader;
 
+        public bool IsEnabled => _enabled;
+
         public bool Enqueue(EmailMessage message) =>
             _enabled && _channel.Writer.TryWrite(message);
     }

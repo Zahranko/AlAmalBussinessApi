@@ -32,11 +32,64 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
 
         private readonly IQuestionnaireService _questionnaireService;
         private readonly IQuestionnaireExcelReportService _excelReportService;
+        private readonly IQuestionnaireMonthlyReportService _monthlyReportService;
 
-        public QuestionnaireController(IQuestionnaireService questionnaireService, IQuestionnaireExcelReportService excelReportService)
+        public QuestionnaireController(
+            IQuestionnaireService questionnaireService,
+            IQuestionnaireExcelReportService excelReportService,
+            IQuestionnaireMonthlyReportService monthlyReportService)
         {
             _questionnaireService = questionnaireService;
             _excelReportService = excelReportService;
+            _monthlyReportService = monthlyReportService;
+        }
+
+        // ---------- monthly report (Admin only) ----------
+        //
+        // The email the scheduler sends on the 1st, rendered for a month
+        // without sending anything. Defaults to last month. It shows every
+        // department's copy, with who it would go to — which is why it is
+        // Admin-only: a QManager must not see another department's report.
+        [HttpGet("monthly-report/preview")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
+        public async Task<IActionResult> PreviewMonthlyReport(int? year = null, int? month = null, int? departmentId = null)
+        {
+            var (y, m) = ResolveMonth(year, month);
+            if (y == 0) return BadRequest(new { message = "Invalid month." });
+            return Content(await _monthlyReportService.RenderPreviewAsync(y, m, departmentId), "text/html; charset=utf-8");
+        }
+
+        // The workbook a month's email attaches for one questionnaire.
+        [HttpGet("{id:int}/monthly-report/attachment")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
+        public async Task<IActionResult> MonthlyReportAttachment(int id, int? year = null, int? month = null)
+        {
+            var (y, m) = ResolveMonth(year, month);
+            if (y == 0) return BadRequest(new { message = "Invalid month." });
+            var file = await _monthlyReportService.BuildAttachmentAsync(id, y, m);
+            return file is { } f ? File(f.Content, XlsxContentType, f.FileName) : NotFound();
+        }
+
+        // Sends a month's report right now, whether or not the scheduler
+        // already did — for a resend, or to try it out.
+        [HttpPost("monthly-report/send")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
+        public async Task<IActionResult> SendMonthlyReport(int? year = null, int? month = null)
+        {
+            var (y, m) = ResolveMonth(year, month);
+            if (y == 0) return BadRequest(new { message = "Invalid month." });
+            return Ok(await _monthlyReportService.SendNowAsync(y, m));
+        }
+
+        // Last month unless both are given; (0, 0) for nonsense.
+        private static (int Year, int Month) ResolveMonth(int? year, int? month)
+        {
+            if (year is null || month is null)
+            {
+                var last = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
+                return (last.Year, last.Month);
+            }
+            return year is >= 2000 and <= 2100 && month is >= 1 and <= 12 ? (year.Value, month.Value) : (0, 0);
         }
 
         // From the caller's own validated token, never the request body — the

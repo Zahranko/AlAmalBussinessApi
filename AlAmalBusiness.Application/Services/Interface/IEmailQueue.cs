@@ -11,5 +11,9 @@ namespace AlAmalBusiness.Application.Services.Interface
     public interface IEmailQueue
     {
         bool Enqueue(EmailMessage message);
+
+        // False when email isn't configured — Enqueue would drop everything.
+        // The monthly report checks it before marking a month as sent.
+        bool IsEnabled { get; }
     }
 }

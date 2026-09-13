@@ -217,6 +217,77 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
             return (submissions, answers);
         }
 
+        public async Task<List<QuestionnaireMonthRow>> GetMonthlyAsync(IReadOnlyCollection<int> questionnaireIds, DateTime from, DateTime toExclusive)
+        {
+            if (questionnaireIds.Count == 0) return new List<QuestionnaireMonthRow>();
+            var ids = questionnaireIds.ToList();
+
+            var submissions = _context.QuestionnaireSubmissions.AsNoTracking()
+                .Where(s => ids.Contains(s.QuestionnaireId) && s.CreatedDate >= from && s.CreatedDate < toExclusive);
+
+            var counts = await submissions
+                .GroupBy(s => new { s.QuestionnaireId, s.CreatedDate.Year, s.CreatedDate.Month })
+                .Select(g => new { g.Key.QuestionnaireId, g.Key.Year, g.Key.Month, Count = g.Count() })
+                .ToListAsync();
+
+            var ratings = await (
+                from a in _context.QuestionnaireAnswers.AsNoTracking()
+                join s in submissions on a.SubmissionId equals s.Id
+                group a by new { s.QuestionnaireId, s.CreatedDate.Year, s.CreatedDate.Month } into g
+                select new
+                {
+                    g.Key.QuestionnaireId,
+                    g.Key.Year,
+                    g.Key.Month,
+                    Answers = g.Count(),
+                    Sum = g.Sum(a => (int)a.Rating),
+                    Positive = g.Count(a => a.Rating == QuestionRating.Good || a.Rating == QuestionRating.VeryGood)
+                })
+                .ToListAsync();
+
+            var byKey = ratings.ToDictionary(r => (r.QuestionnaireId, r.Year, r.Month));
+
+            return counts
+                .Select(c =>
+                {
+                    byKey.TryGetValue((c.QuestionnaireId, c.Year, c.Month), out var r);
+                    return new QuestionnaireMonthRow
+                    {
+                        QuestionnaireId = c.QuestionnaireId,
+                        Year = c.Year,
+                        Month = c.Month,
+                        Submissions = c.Count,
+                        AnswerCount = r?.Answers ?? 0,
+                        RatingSum = r?.Sum ?? 0,
+                        Positive = r?.Positive ?? 0
+                    };
+                })
+                .ToList();
+        }
+
+        public Task<bool> HasReportRunAsync(int year, int month) =>
+            _context.QuestionnaireReportRuns.AnyAsync(r => r.Year == year && r.Month == month);
+
+        public async Task<QuestionnaireReportRun?> TryClaimReportRunAsync(int year, int month)
+        {
+            if (await _context.QuestionnaireReportRuns.AnyAsync(r => r.Year == year && r.Month == month))
+                return null;
+
+            var run = new QuestionnaireReportRun { Year = year, Month = month, StartedAt = DateTime.Now };
+            _context.QuestionnaireReportRuns.Add(run);
+            try
+            {
+                await _context.SaveChangesAsync();
+                return run;
+            }
+            catch (DbUpdateException)
+            {
+                // Another process claimed it between the check and the insert.
+                _context.Entry(run).State = EntityState.Detached;
+                return null;
+            }
+        }
+
         public void Add(Questionnaire questionnaire) => _context.Questionnaires.Add(questionnaire);
 
         public void Remove(Questionnaire questionnaire) => _context.Questionnaires.Remove(questionnaire);
