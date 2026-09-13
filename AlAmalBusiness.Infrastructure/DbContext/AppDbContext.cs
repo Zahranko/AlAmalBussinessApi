@@ -237,6 +237,7 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.UserAgent).HasMaxLength(400);
         modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.Name).HasMaxLength(100);
         modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.PhoneNumber).HasMaxLength(20);
+        modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.Notes).HasMaxLength(2000);
 
         modelBuilder.Entity<QuestionnaireAnswer>()
             .HasOne(a => a.Submission)

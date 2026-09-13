@@ -168,6 +168,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                     CreatedDate = s.CreatedDate,
                     Name = s.Name,
                     PhoneNumber = s.PhoneNumber,
+                    Notes = s.Notes,
                     AverageRating = s.AverageRating.HasValue ? Round2(s.AverageRating.Value) : null
                 }).ToList(),
                 TotalCount = total,
@@ -336,6 +337,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 QuestionnaireId = questionnaire.Id,
                 Name = Truncate(Clean(request.Name), 100),
                 PhoneNumber = phone,
+                Notes = Truncate(Clean(request.Notes), 2000),
                 SubmittedFromIp = context.IpAddress,
                 UserAgent = Truncate(context.UserAgent, 400),
                 CreatedDate = DateTime.Now

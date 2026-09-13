@@ -17,6 +17,9 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires
         // stripped; this only keeps junk out.
         [RegularExpression(@"^[0-9+\s\-()]{0,20}$", ErrorMessage = "رقم الهاتف غير صحيح")]
         public string? PhoneNumber { get; set; }
+
+        [StringLength(2000, ErrorMessage = "الملاحظات يجب ألا تتجاوز 2000 حرف")]
+        public string? Notes { get; set; }
     }
 
     public class SubmitAnswerDTO

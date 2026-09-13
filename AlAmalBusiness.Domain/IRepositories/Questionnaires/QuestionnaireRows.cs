@@ -32,6 +32,7 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         public DateTime CreatedDate { get; set; }
         public string? Name { get; set; }
         public string? PhoneNumber { get; set; }
+        public string? Notes { get; set; }
         public double? AverageRating { get; set; }
     }
 

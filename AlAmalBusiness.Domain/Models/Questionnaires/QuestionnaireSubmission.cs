@@ -20,6 +20,9 @@ namespace AlAmalBusiness.Domain.Models.Questionnaires
         // no country picker on the page, so no national-zero stripping.
         public string? PhoneNumber { get; set; }
 
+        // Optional free text from the box at the bottom of the page.
+        public string? Notes { get; set; }
+
         public string? SubmittedFromIp { get; set; }
         public string? UserAgent { get; set; }
 

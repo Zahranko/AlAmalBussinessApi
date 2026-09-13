@@ -123,6 +123,7 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
         public DateTime CreatedDate { get; set; }
         public string? Name { get; set; }
         public string? PhoneNumber { get; set; }
+        public string? Notes { get; set; }
         public double? AverageRating { get; set; }
     }
 

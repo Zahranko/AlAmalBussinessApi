@@ -161,8 +161,9 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                 _context.QuestionnaireSubmissions.AsNoTracking().Where(s => s.QuestionnaireId == questionnaireId),
                 from, to);
 
+            // "Left something": a name, a phone, or a note.
             if (contactOnly)
-                q = q.Where(s => s.Name != null || s.PhoneNumber != null);
+                q = q.Where(s => s.Name != null || s.PhoneNumber != null || s.Notes != null);
 
             var total = await q.CountAsync();
 
@@ -178,6 +179,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                     CreatedDate = s.CreatedDate,
                     Name = s.Name,
                     PhoneNumber = s.PhoneNumber,
+                    Notes = s.Notes,
                     AverageRating = s.Answers.Average(a => (double?)(int)a.Rating)
                 })
                 .ToListAsync();
