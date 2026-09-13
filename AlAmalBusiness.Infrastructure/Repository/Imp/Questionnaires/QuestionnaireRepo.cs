@@ -187,6 +187,36 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
             return (items, total);
         }
 
+        public async Task<(List<QuestionnaireSubmissionRow> Submissions, List<QuestionnaireAnswerExportRow> Answers)> GetExportRowsAsync(
+            int questionnaireId, DateOnly? from, DateOnly? to, int max)
+        {
+            var newest = InPeriod(
+                    _context.QuestionnaireSubmissions.AsNoTracking().Where(s => s.QuestionnaireId == questionnaireId),
+                    from, to)
+                .OrderByDescending(s => s.CreatedDate)
+                .Take(max);
+
+            var submissions = await newest
+                .Select(s => new QuestionnaireSubmissionRow
+                {
+                    Id = s.Id,
+                    CreatedDate = s.CreatedDate,
+                    Name = s.Name,
+                    PhoneNumber = s.PhoneNumber,
+                    Notes = s.Notes,
+                    AverageRating = s.Answers.Average(a => (double?)(int)a.Rating)
+                })
+                .ToListAsync();
+
+            var answers = await (
+                from a in _context.QuestionnaireAnswers.AsNoTracking()
+                join s in newest on a.SubmissionId equals s.Id
+                select new QuestionnaireAnswerExportRow { SubmissionId = a.SubmissionId, QuestionId = a.QuestionId, Rating = a.Rating })
+                .ToListAsync();
+
+            return (submissions, answers);
+        }
+
         public void Add(Questionnaire questionnaire) => _context.Questionnaires.Add(questionnaire);
 
         public void Remove(Questionnaire questionnaire) => _context.Questionnaires.Remove(questionnaire);

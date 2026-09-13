@@ -127,6 +127,29 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
         public double? AverageRating { get; set; }
     }
 
+    // ---------- export ----------
+
+    // Everything the per-questionnaire workbook needs, already scoped: the
+    // results screen's numbers plus each response with its ratings.
+    public class QuestionnaireExportData
+    {
+        public QuestionnaireStatsResponse Stats { get; set; } = new();
+        public List<QuestionnaireExportResponseRow> Responses { get; set; } = new();
+        // True when the period held more responses than the export cap.
+        public bool Truncated { get; set; }
+        public int ExportCap { get; set; }
+    }
+
+    public class QuestionnaireExportResponseRow
+    {
+        public DateTime CreatedDate { get; set; }
+        public string? Name { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? Notes { get; set; }
+        public double? AverageRating { get; set; }
+        public Dictionary<int, AlAmalBusiness.Domain.Constants.QuestionRating> Ratings { get; set; } = new();
+    }
+
     // ---------- public page ----------
 
     // Everything the anonymous page needs to render, and nothing else — no

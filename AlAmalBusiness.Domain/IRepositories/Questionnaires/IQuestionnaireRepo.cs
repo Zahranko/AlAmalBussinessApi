@@ -40,6 +40,11 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         Task<(List<QuestionnaireSubmissionRow> Items, int TotalCount)> PageSubmissionsAsync(
             int questionnaireId, DateOnly? from, DateOnly? to, bool contactOnly, int page, int pageSize);
 
+        // The export's per-response sheet: newest responses in the period (at
+        // most `max`), and every rating those responses gave. Two flat queries.
+        Task<(List<QuestionnaireSubmissionRow> Submissions, List<QuestionnaireAnswerExportRow> Answers)> GetExportRowsAsync(
+            int questionnaireId, DateOnly? from, DateOnly? to, int max);
+
         void Add(Questionnaire questionnaire);
         void Remove(Questionnaire questionnaire);
         void RemoveQuestion(QuestionnaireQuestion question);

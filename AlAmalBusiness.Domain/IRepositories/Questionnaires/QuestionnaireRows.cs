@@ -36,6 +36,14 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         public double? AverageRating { get; set; }
     }
 
+    // One rating inside one response, for the export's per-response sheet.
+    public class QuestionnaireAnswerExportRow
+    {
+        public int SubmissionId { get; set; }
+        public int QuestionId { get; set; }
+        public QuestionRating Rating { get; set; }
+    }
+
     public class QuestionRatingCountRow
     {
         public int QuestionId { get; set; }

@@ -28,11 +28,15 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
     {
         private const string QuestionnaireAccess = nameof(AppRoles.Admin) + "," + nameof(AppRoles.QManager);
 
-        private readonly IQuestionnaireService _questionnaireService;
+        private const string XlsxContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-        public QuestionnaireController(IQuestionnaireService questionnaireService)
+        private readonly IQuestionnaireService _questionnaireService;
+        private readonly IQuestionnaireExcelReportService _excelReportService;
+
+        public QuestionnaireController(IQuestionnaireService questionnaireService, IQuestionnaireExcelReportService excelReportService)
         {
             _questionnaireService = questionnaireService;
+            _excelReportService = excelReportService;
         }
 
         // From the caller's own validated token, never the request body — the
@@ -55,6 +59,28 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
         [HttpGet]
         public async Task<ActionResult<QuestionnaireListResponse>> GetAll(DateOnly? fromDate = null, DateOnly? toDate = null) =>
             Ok(await _questionnaireService.GetListAsync(Actor, fromDate, toDate));
+
+        // The list as a workbook. Goes back through GetListAsync, so a QManager's
+        // file holds their own department and an admin's holds every one.
+        [HttpGet("export")]
+        public async Task<IActionResult> ExportList(DateOnly? fromDate = null, DateOnly? toDate = null)
+        {
+            var list = await _questionnaireService.GetListAsync(Actor, fromDate, toDate);
+            var fileName = $"questionnaires-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+            return File(_excelReportService.BuildOverview(list), XlsxContentType, fileName);
+        }
+
+        // One questionnaire's results as a workbook: summary, per question, and
+        // every response with its ratings, name, phone and notes.
+        [HttpGet("{id:int}/export")]
+        public async Task<IActionResult> Export(int id, DateOnly? fromDate = null, DateOnly? toDate = null)
+        {
+            var data = await _questionnaireService.GetExportDataAsync(id, Actor, fromDate, toDate);
+            if (data == null) return NotFound();
+
+            var fileName = $"questionnaire-{data.Stats.Slug}-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+            return File(_excelReportService.Build(data), XlsxContentType, fileName);
+        }
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)

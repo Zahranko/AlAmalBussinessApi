@@ -24,6 +24,10 @@ namespace AlAmalBusiness.Application.Services.Interface.Questionnaires
         Task<PagedResultDTO<QuestionnaireSubmissionResponse>?> GetSubmissionsAsync(
             int id, QuestionnaireActor actor, DateOnly? from, DateOnly? to, bool contactOnly, int page, int pageSize);
 
+        // The workbook's data for one questionnaire — the same scoping as the
+        // results screen (null when not visible), plus each response's ratings.
+        Task<QuestionnaireExportData?> GetExportDataAsync(int id, QuestionnaireActor actor, DateOnly? from, DateOnly? to);
+
         Task<QuestionnaireActionResponse> CreateAsync(SaveQuestionnaireDTO request, QuestionnaireActor actor);
 
         Task<QuestionnaireActionResponse> UpdateAsync(int id, SaveQuestionnaireDTO request, QuestionnaireActor actor);

@@ -79,6 +79,7 @@ builder.Services.AddScoped<ILeadNotifier, SignalRLeadNotifier>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 builder.Services.AddScoped<IFeedbackExcelReportService, FeedbackExcelReportService>();
 builder.Services.AddScoped<IQuestionnaireService, QuestionnaireService>();
+builder.Services.AddScoped<IQuestionnaireExcelReportService, QuestionnaireExcelReportService>();
 // Stateless and thread-safe (a static alphabet over the crypto RNG), so one
 // instance serves every request.
 builder.Services.AddSingleton<IReferenceNumberGenerator, ReferenceNumberGenerator>();

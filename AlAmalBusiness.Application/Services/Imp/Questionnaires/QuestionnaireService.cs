@@ -177,6 +177,39 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             };
         }
 
+        // ---------- export ----------
+
+        // A hard ceiling on response rows in one workbook: the API runs in a
+        // 1 GB shared pool and ClosedXML builds the whole file in memory.
+        private const int ExportCap = 20000;
+
+        public async Task<QuestionnaireExportData?> GetExportDataAsync(int id, QuestionnaireActor actor, DateOnly? from, DateOnly? to)
+        {
+            // Goes through GetStatsAsync so the export can never widen what the
+            // screen already scoped — null for another department's id.
+            var stats = await GetStatsAsync(id, actor, from, to);
+            if (stats == null) return null;
+
+            var (submissions, answers) = await _repo.GetExportRowsAsync(id, stats.From, stats.To, ExportCap);
+            var bySubmission = answers.ToLookup(a => a.SubmissionId);
+
+            return new QuestionnaireExportData
+            {
+                Stats = stats,
+                ExportCap = ExportCap,
+                Truncated = stats.SubmissionCount > submissions.Count,
+                Responses = submissions.Select(s => new QuestionnaireExportResponseRow
+                {
+                    CreatedDate = s.CreatedDate,
+                    Name = s.Name,
+                    PhoneNumber = s.PhoneNumber,
+                    Notes = s.Notes,
+                    AverageRating = s.AverageRating.HasValue ? Round2(s.AverageRating.Value) : null,
+                    Ratings = bySubmission[s.Id].ToDictionary(a => a.QuestionId, a => a.Rating)
+                }).ToList()
+            };
+        }
+
         // ---------- manage ----------
 
         public async Task<QuestionnaireActionResponse> CreateAsync(SaveQuestionnaireDTO request, QuestionnaireActor actor)
