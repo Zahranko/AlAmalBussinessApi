@@ -1,6 +1,7 @@
 using AlAmalBusiness.Domain.Models;
 using AlAmalBusiness.Domain.Models.CRM;
 using AlAmalBusiness.Domain.Models.Feedback;
+using AlAmalBusiness.Domain.Models.Questionnaires;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +24,10 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<RefreshToken> RefreshTokens { get; set; }
       public DbSet<PatientFeedback> Feedbacks { get; set; }
       public DbSet<FeedbackHistory> FeedbackHistories { get; set; }
+      public DbSet<Questionnaire> Questionnaires { get; set; }
+      public DbSet<QuestionnaireQuestion> QuestionnaireQuestions { get; set; }
+      public DbSet<QuestionnaireSubmission> QuestionnaireSubmissions { get; set; }
+      public DbSet<QuestionnaireAnswer> QuestionnaireAnswers { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -188,6 +193,64 @@ public class AppDbContext : IdentityDbContext<User>
 
         modelBuilder.Entity<FeedbackHistory>().Property(h => h.FromDepartmentName).HasMaxLength(200);
         modelBuilder.Entity<FeedbackHistory>().Property(h => h.ToDepartmentName).HasMaxLength(200);
+
+        // ---------- Questionnaires ----------
+
+        // Restrict, like PatientFeedback: a department is retired with
+        // IsActive, never deleted out from under its questionnaires.
+        modelBuilder.Entity<Questionnaire>()
+            .HasOne(q => q.Department)
+            .WithMany()
+            .HasForeignKey(q => q.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Questionnaire>()
+            .HasOne(q => q.CreatedBy)
+            .WithMany()
+            .HasForeignKey(q => q.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The slug is the public page's address, so it must be unique; the
+        // public lookup reads by it on every page open.
+        modelBuilder.Entity<Questionnaire>().HasIndex(q => q.Slug).IsUnique();
+        modelBuilder.Entity<Questionnaire>().Property(q => q.Slug).HasMaxLength(60);
+        modelBuilder.Entity<Questionnaire>().Property(q => q.Title).HasMaxLength(200);
+        modelBuilder.Entity<Questionnaire>().Property(q => q.Description).HasMaxLength(1000);
+
+        modelBuilder.Entity<QuestionnaireQuestion>()
+            .HasOne(x => x.Questionnaire)
+            .WithMany(q => q.Questions)
+            .HasForeignKey(x => x.QuestionnaireId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<QuestionnaireQuestion>().Property(x => x.Text).HasMaxLength(500);
+
+        modelBuilder.Entity<QuestionnaireSubmission>()
+            .HasOne(s => s.Questionnaire)
+            .WithMany()
+            .HasForeignKey(s => s.QuestionnaireId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Every results query is "this questionnaire's submissions in a period".
+        modelBuilder.Entity<QuestionnaireSubmission>().HasIndex(s => new { s.QuestionnaireId, s.CreatedDate });
+        modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.SubmittedFromIp).HasMaxLength(64);
+        modelBuilder.Entity<QuestionnaireSubmission>().Property(s => s.UserAgent).HasMaxLength(400);
+
+        modelBuilder.Entity<QuestionnaireAnswer>()
+            .HasOne(a => a.Submission)
+            .WithMany(s => s.Answers)
+            .HasForeignKey(a => a.SubmissionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Restrict, not Cascade: a questionnaire already cascades to answers
+        // through its submissions, and SQL Server refuses a second cascade
+        // path. Nothing needs it anyway — an answered question is archived,
+        // never deleted.
+        modelBuilder.Entity<QuestionnaireAnswer>()
+            .HasOne(a => a.Question)
+            .WithMany(x => x.Answers)
+            .HasForeignKey(a => a.QuestionId)
+            .OnDelete(DeleteBehavior.Restrict);
 
     }
     }

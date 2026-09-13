@@ -6,14 +6,18 @@ using AlAmalBusiness.Application.Services.Imp.Feedback;
 using AlAmalBusiness.Application.Services.Interface;
 using AlAmalBusiness.Application.Services.Interface.CRM;
 using AlAmalBusiness.Application.Services.Interface.Feedback;
+using AlAmalBusiness.Application.Services.Imp.Questionnaires;
+using AlAmalBusiness.Application.Services.Interface.Questionnaires;
 using AlAmalBusiness.DbContext.Infrastructure;
 using AlAmalBusiness.Domain.IRepositories;
 using AlAmalBusiness.Domain.IRepositories.CRM;
 using AlAmalBusiness.Domain.IRepositories.Feedback;
+using AlAmalBusiness.Domain.IRepositories.Questionnaires;
 using AlAmalBusiness.Domain.Models;
 using AlAmalBusiness.Infrastructure.Repository.Imp;
 using AlAmalBusiness.Infrastructure.Repository.Imp.CRM;
 using AlAmalBusiness.Infrastructure.Repository.Imp.Feedback;
+using AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires;
 using AlAmalBusiness.Infrastructure.Seeding;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -59,6 +63,7 @@ builder.Services.AddScoped<IReferalSourceRepo, ReferalSourceRepo>();
 builder.Services.AddScoped<IClosedReasonRepo, ClosedReasonRepo>();
 builder.Services.AddScoped<IPatientFeedbackRepo, PatientFeedbackRepo>();
 builder.Services.AddScoped<IFeedbackHistoryRepo, FeedbackHistoryRepo>();
+builder.Services.AddScoped<IQuestionnaireRepo, QuestionnaireRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -73,6 +78,7 @@ builder.Services.AddScoped<ILeadExcelReportService, LeadExcelReportService>();
 builder.Services.AddScoped<ILeadNotifier, SignalRLeadNotifier>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 builder.Services.AddScoped<IFeedbackExcelReportService, FeedbackExcelReportService>();
+builder.Services.AddScoped<IQuestionnaireService, QuestionnaireService>();
 // Stateless and thread-safe (a static alphabet over the crypto RNG), so one
 // instance serves every request.
 builder.Services.AddSingleton<IReferenceNumberGenerator, ReferenceNumberGenerator>();

@@ -25,7 +25,8 @@ namespace AlAmalBusiness.Infrastructure.Seeding
                 AppRoles.CUser,
                 AppRoles.FManager,
                 AppRoles.FEmployee,
-                AppRoles.FUser
+                AppRoles.FUser,
+                AppRoles.QManager
             };
             // Runs on every cold start — one SELECT for the existing names
             // rather than one RoleExistsAsync round trip per role.
