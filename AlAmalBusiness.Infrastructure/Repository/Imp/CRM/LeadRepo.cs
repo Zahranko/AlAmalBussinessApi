@@ -31,8 +31,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
         private static IQueryable<Lead> ExcludeCompleted(IQueryable<Lead> q) =>
             q.Where(l => l.Status != LeadStatus.Success && l.Status != LeadStatus.Closed);
 
-        // Lead.CreatedDate defaults to DateTime.Now (local), not UtcNow — compare
-        // against local day boundaries to match, no UTC conversion needed.
+        // Lead.CreatedDate defaults to AppClock.Now (Jordan time), not UtcNow — compare
+        // against Jordan day boundaries (AppClock.Today), no UTC conversion needed.
         private static IQueryable<Lead> ApplyDateRange(IQueryable<Lead> q, DateTime? from, DateTime? to)
         {
             if (from.HasValue)
@@ -227,7 +227,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
 
             if (query.TodayOnly)
             {
-                var today = DateTime.Now.Date;
+                var today = AppClock.Now.Date;
                 q = q.Where(l => l.CreatedDate >= today && l.CreatedDate < today.AddDays(1));
             }
 
@@ -258,7 +258,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
         // to a separate SQL box, so the trip count is what matters.
         public async Task<(int All, int Today, int Mine, int Unassigned, int Closed)> GetQueueCountsAsync(string userId)
         {
-            var today = DateTime.Now.Date;
+            var today = AppClock.Now.Date;
             var tomorrow = today.AddDays(1);
 
             var row = await _context.Leads.AsNoTracking()

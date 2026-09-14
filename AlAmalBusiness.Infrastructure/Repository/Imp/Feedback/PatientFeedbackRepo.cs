@@ -163,7 +163,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Feedback
                 .MinAsync();
 
             if (oldestOpen.HasValue)
-                rows.OldestOpenMinutes = (DateTime.Now - oldestOpen.Value).TotalMinutes;
+                rows.OldestOpenMinutes = (AppClock.Now - oldestOpen.Value).TotalMinutes;
 
             // Who closed things out, from the timeline rather than from
             // AssignedToId: the assignee is who picked it up, which is not

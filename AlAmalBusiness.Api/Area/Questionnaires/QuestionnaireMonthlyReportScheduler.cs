@@ -1,3 +1,4 @@
+using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Application.Services.Interface.Questionnaires;
 
 namespace AlAmalBusiness.Api.Area.Questionnaires
@@ -63,7 +64,7 @@ namespace AlAmalBusiness.Api.Area.Questionnaires
         private async Task CheckAsync()
         {
             // Local time, like every CreatedDate the report counts.
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             if (now.Day < _sendDay || (now.Day == _sendDay && now.Hour < _sendHour))
                 return;
 

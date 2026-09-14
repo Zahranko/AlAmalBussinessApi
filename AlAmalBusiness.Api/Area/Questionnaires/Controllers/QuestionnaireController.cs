@@ -86,7 +86,7 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
         {
             if (year is null || month is null)
             {
-                var last = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
+                var last = new DateTime(AppClock.Today.Year, AppClock.Today.Month, 1).AddMonths(-1);
                 return (last.Year, last.Month);
             }
             return year is >= 2000 and <= 2100 && month is >= 1 and <= 12 ? (year.Value, month.Value) : (0, 0);
@@ -119,7 +119,7 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
         public async Task<IActionResult> ExportList(DateOnly? fromDate = null, DateOnly? toDate = null)
         {
             var list = await _questionnaireService.GetListAsync(Actor, fromDate, toDate);
-            var fileName = $"questionnaires-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+            var fileName = $"questionnaires-{AppClock.Now:yyyyMMdd-HHmm}.xlsx";
             return File(_excelReportService.BuildOverview(list), XlsxContentType, fileName);
         }
 
@@ -131,7 +131,7 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
             var data = await _questionnaireService.GetExportDataAsync(id, Actor, fromDate, toDate);
             if (data == null) return NotFound();
 
-            var fileName = $"questionnaire-{data.Stats.Slug}-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+            var fileName = $"questionnaire-{data.Stats.Slug}-{AppClock.Now:yyyyMMdd-HHmm}.xlsx";
             return File(_excelReportService.Build(data), XlsxContentType, fileName);
         }
 

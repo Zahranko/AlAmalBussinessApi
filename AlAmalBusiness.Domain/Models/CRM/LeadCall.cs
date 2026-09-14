@@ -1,3 +1,4 @@
+using AlAmalBusiness.Domain.Constants;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -19,6 +20,6 @@ namespace AlAmalBusiness.Domain.Models.CRM
         public string? Note { get; set; }
         public bool IsDone { get; set; } = false;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
     }
 }

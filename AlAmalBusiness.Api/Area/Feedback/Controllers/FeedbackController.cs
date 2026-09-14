@@ -127,7 +127,7 @@ namespace AlAmalBusiness.Api.Area.Feedback.Controllers
 
             var stats = await _feedbackService.GetStatsAsync(query, Actor);
             var bytes = _excelReportService.Build(stats);
-            var fileName = $"feedback-report-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+            var fileName = $"feedback-report-{AppClock.Now:yyyyMMdd-HHmm}.xlsx";
             return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
 

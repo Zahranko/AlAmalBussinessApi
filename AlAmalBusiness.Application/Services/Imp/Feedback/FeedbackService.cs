@@ -60,7 +60,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
         {
             // Rules DataAnnotations can't express. Arabic messages — a patient
             // reads these.
-            var today = DateOnly.FromDateTime(DateTime.Today);
+            var today = DateOnly.FromDateTime(AppClock.Today);
             if (request.VisitDate > today)
                 return Rejected("تاريخ الزيارة لا يمكن أن يكون في المستقبل");
 
@@ -88,7 +88,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
                 Details = Clean(request.Details),
                 SubmittedFromIp = context.IpAddress,
                 UserAgent = Truncate(context.UserAgent, 400),
-                CreatedDate = DateTime.Now
+                CreatedDate = AppClock.Now
             };
 
             await _feedbackRepo.CreateAsync(feedback);
@@ -183,7 +183,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
 
             var previous = feedback.Status;
             feedback.Status = request.Status;
-            feedback.ResolvedAt = request.Status == FeedbackStatus.Resolved ? DateTime.Now : null;
+            feedback.ResolvedAt = request.Status == FeedbackStatus.Resolved ? AppClock.Now : null;
 
             _historyRepo.Add(new FeedbackHistory
             {
@@ -409,7 +409,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
                     return candidate;
             }
 
-            return $"{_references.Next()}-{DateTime.Now:ffff}";
+            return $"{_references.Next()}-{AppClock.Now:ffff}";
         }
 
         private static string DigitsOnly(string value) => Regex.Replace(value, @"\D", string.Empty);

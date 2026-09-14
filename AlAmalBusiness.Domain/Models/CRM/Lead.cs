@@ -18,7 +18,7 @@ namespace AlAmalBusiness.Domain.Models.CRM
         public string? PhoneNum { get; set; }
         public string? NickName { get; set; }
         public string? Description { get; set; }
-        public DateTime? CreatedDate { get; set; } = DateTime.Now;
+        public DateTime? CreatedDate { get; set; } = AppClock.Now;
         public PaymentWays? PaymentWay { get; set; }
         public LeadStatus Status { get; set; } = LeadStatus.New; 
 

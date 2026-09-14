@@ -27,6 +27,6 @@ namespace AlAmalBusiness.Domain.Models.CRM
         public ClosedReason? ClosedReason { get; set; }
 
         public string? Note { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
     }
 }

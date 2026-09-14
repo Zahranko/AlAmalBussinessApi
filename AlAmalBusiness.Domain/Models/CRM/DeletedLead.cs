@@ -1,3 +1,4 @@
+using AlAmalBusiness.Domain.Constants;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -21,7 +22,7 @@ namespace AlAmalBusiness.Domain.Models.CRM
         public string? DeletedById { get; set; }
         public User? DeletedBy { get; set; }
 
-        public DateTime DeletedAt { get; set; } = DateTime.Now;
+        public DateTime DeletedAt { get; set; } = AppClock.Now;
 
         [MaxLength(500)]
         public string? Reason { get; set; }

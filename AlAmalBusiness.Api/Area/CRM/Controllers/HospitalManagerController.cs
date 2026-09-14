@@ -46,7 +46,7 @@ namespace AlAmalBusiness.Api.Area.CRM.Controllers
             var filter = await ResolveDateRangeAsync(from, to);
             var stats = await _leadService.GetHospitalManagerStatsAsync(filter.From, filter.To);
             var bytes = _excelReportService.Build(stats);
-            var fileName = $"hospital-report-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+            var fileName = $"hospital-report-{AppClock.Now:yyyyMMdd-HHmm}.xlsx";
             return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
 
@@ -75,7 +75,7 @@ namespace AlAmalBusiness.Api.Area.CRM.Controllers
 
             var bytes = _excelReportService.BuildDoctorLeads(export);
             var safeName = string.Concat(export.DoctorName.Where(char.IsLetterOrDigit));
-            var fileName = $"doctor-leads-{safeName}-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+            var fileName = $"doctor-leads-{safeName}-{AppClock.Now:yyyyMMdd-HHmm}.xlsx";
             return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
     }

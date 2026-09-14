@@ -70,7 +70,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
             var result = await EnqueueAsync(reports, year, month);
 
-            run.CompletedAt = DateTime.Now;
+            run.CompletedAt = AppClock.Now;
             run.EmailsQueued = result.EmailsQueued;
             await _repo.SaveChangesAsync();
 

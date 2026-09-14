@@ -31,6 +31,6 @@ namespace AlAmalBusiness.Domain.Models.Feedback
         public string? ToDepartmentName { get; set; }
 
         public string? Note { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
     }
 }

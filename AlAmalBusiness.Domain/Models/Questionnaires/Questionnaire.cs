@@ -1,3 +1,4 @@
+using AlAmalBusiness.Domain.Constants;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -42,7 +43,7 @@ namespace AlAmalBusiness.Domain.Models.Questionnaires
         public User? CreatedBy { get; set; }
 
         // Local time, matching Lead/PatientFeedback.CreatedDate.
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = AppClock.Now;
 
         public ICollection<QuestionnaireQuestion> Questions { get; set; } = new List<QuestionnaireQuestion>();
     }

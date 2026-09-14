@@ -1,3 +1,4 @@
+using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Application.DTOs.Email;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -100,7 +101,7 @@ namespace AlAmalBusiness.Api.Email
             {
                 Directory.CreateDirectory(_settings.PickupDirectory!);
                 var safeTo = string.Concat(message.To.Split(Path.GetInvalidFileNameChars()));
-                var path = Path.Combine(_settings.PickupDirectory!, $"{DateTime.Now:yyyyMMdd-HHmmss-fff}-{safeTo}.eml");
+                var path = Path.Combine(_settings.PickupDirectory!, $"{AppClock.Now:yyyyMMdd-HHmmss-fff}-{safeTo}.eml");
                 await mime.WriteToAsync(path, ct);
                 return;
             }

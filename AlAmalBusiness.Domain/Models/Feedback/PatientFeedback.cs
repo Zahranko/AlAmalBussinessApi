@@ -58,7 +58,7 @@ namespace AlAmalBusiness.Domain.Models.Feedback
 
         // Local time, matching Lead.CreatedDate — the date filters below
         // compare against local day boundaries accordingly.
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = AppClock.Now;
 
         public string FullName => $"{FirstName} {LastName}".Trim();
     }

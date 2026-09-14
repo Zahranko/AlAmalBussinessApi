@@ -273,7 +273,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
             if (await _context.QuestionnaireReportRuns.AnyAsync(r => r.Year == year && r.Month == month))
                 return null;
 
-            var run = new QuestionnaireReportRun { Year = year, Month = month, StartedAt = DateTime.Now };
+            var run = new QuestionnaireReportRun { Year = year, Month = month, StartedAt = AppClock.Now };
             _context.QuestionnaireReportRuns.Add(run);
             try
             {

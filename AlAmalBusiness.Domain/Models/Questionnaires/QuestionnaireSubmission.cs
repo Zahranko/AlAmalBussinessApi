@@ -1,3 +1,4 @@
+using AlAmalBusiness.Domain.Constants;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -28,7 +29,7 @@ namespace AlAmalBusiness.Domain.Models.Questionnaires
 
         // Local time — the results screen's date bounds are local day
         // boundaries, same as the feedback dashboard's.
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = AppClock.Now;
 
         public ICollection<QuestionnaireAnswer> Answers { get; set; } = new List<QuestionnaireAnswer>();
     }

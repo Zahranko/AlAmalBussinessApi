@@ -141,7 +141,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
         {
             var lead = await GetLeadOrThrow(id);
             var trimmedReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
-            var now = DateTime.Now;
+            var now = AppClock.Now;
 
             lead.IsDeleted = true;
             _leadRepo.AddDeletedRecord(new DeletedLead
@@ -238,7 +238,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 Type = LeadActions.Restored,
                 ResultingStatus = lead.Status,
                 Note = note,
-                ActionDate = DateTime.Now
+                ActionDate = AppClock.Now
             });
             await _leadRepo.SaveChangesAsync();
 
@@ -298,7 +298,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 LeadId = lead.Id,
                 ActorId = userId,
                 Type = LeadActions.Claimed,
-                ActionDate = DateTime.Now
+                ActionDate = AppClock.Now
             });
             await _leadRepo.SaveChangesAsync();
 
@@ -319,7 +319,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 ActorId = userId,
                 Type = LeadActions.FollowUp,
                 ResultingStatus = request.Status,
-                ActionDate = request.Date ?? DateTime.Now,
+                ActionDate = request.Date ?? AppClock.Now,
                 Note = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim()
             };
 
@@ -425,7 +425,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                     ActorId = userId,
                     Type = LeadActions.Edited,
                     Note = string.Join("; ", changes),
-                    ActionDate = DateTime.Now
+                    ActionDate = AppClock.Now
                 });
             }
         }
@@ -444,7 +444,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 ActorId = adminUserId,
                 Type = LeadActions.ReOpened,
                 ResultingStatus = LeadStatus.New,
-                ActionDate = DateTime.Now
+                ActionDate = AppClock.Now
             });
             await _leadRepo.SaveChangesAsync();
 
@@ -552,7 +552,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                     ActorId = adminUserId,
                     Type = LeadActions.Edited,
                     Note = string.Join("; ", changes),
-                    ActionDate = DateTime.Now
+                    ActionDate = AppClock.Now
                 });
             }
 
@@ -589,7 +589,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
 
         public Task<DashboardKpiDTO> GetDashboardKpisAsync() => CachedAsync("stats:kpis", async () =>
         {
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var todayStart = now.Date;
             var tomorrowStart = todayStart.AddDays(1);
             var yesterdayStart = todayStart.AddDays(-1);
@@ -664,7 +664,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             }
             else
             {
-                var now = DateTime.Now;
+                var now = AppClock.Now;
                 var from = period == "today" ? now.Date : new DateTime(now.Year, now.Month, 1);
                 var to = period == "today" ? from.AddDays(1) : from.AddMonths(1);
                 counts = await _leadRepo.GetCreatedCountsByUserInRangeAsync(from, to);

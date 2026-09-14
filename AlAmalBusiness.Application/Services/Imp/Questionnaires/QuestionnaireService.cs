@@ -199,7 +199,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
             // The trend always ends at the period's last month (today for "all
             // time") and looks back over the whole history before it.
-            var endDate = stats.To ?? DateOnly.FromDateTime(DateTime.Today);
+            var endDate = stats.To ?? DateOnly.FromDateTime(AppClock.Today);
             var months = await _repo.GetMonthlyAsync(new[] { id }, HistoryStart, endDate.AddDays(1).ToDateTime(TimeOnly.MinValue));
 
             return new QuestionnaireExportData
@@ -235,7 +235,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 DepartmentId = fields.DepartmentId,
                 IsActive = request.IsActive,
                 CreatedById = actor.UserId,
-                CreatedDate = DateTime.Now
+                CreatedDate = AppClock.Now
             };
 
             var order = 1;
@@ -383,7 +383,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 Notes = Truncate(Clean(request.Notes), 2000),
                 SubmittedFromIp = context.IpAddress,
                 UserAgent = Truncate(context.UserAgent, 400),
-                CreatedDate = DateTime.Now
+                CreatedDate = AppClock.Now
             };
 
             foreach (var answer in answers)

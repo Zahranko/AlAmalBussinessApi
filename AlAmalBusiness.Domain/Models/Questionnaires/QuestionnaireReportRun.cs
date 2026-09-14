@@ -1,3 +1,4 @@
+using AlAmalBusiness.Domain.Constants;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -16,7 +17,7 @@ namespace AlAmalBusiness.Domain.Models.Questionnaires
         public int Year { get; set; }
         public int Month { get; set; }
 
-        public DateTime StartedAt { get; set; } = DateTime.Now;
+        public DateTime StartedAt { get; set; } = AppClock.Now;
         public DateTime? CompletedAt { get; set; }
 
         public int EmailsQueued { get; set; }
