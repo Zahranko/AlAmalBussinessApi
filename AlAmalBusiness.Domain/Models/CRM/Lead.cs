@@ -44,6 +44,10 @@ namespace AlAmalBusiness.Domain.Models.CRM
         public int? ClosedReasonId { get; set; }
         public ClosedReason? ClosedReason { get; set; }
 
+        // Soft delete — see DeletedLead. Filtered out of every query by
+        // AppDbContext's global query filter; only the admin recycle-bin
+        // queries use IgnoreQueryFilters() to see these.
+        public bool IsDeleted { get; set; } = false;
 
 
 

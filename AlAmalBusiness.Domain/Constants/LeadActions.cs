@@ -11,7 +11,9 @@ namespace AlAmalBusiness.Domain.Constants
         ReOpened,
         Edited,
         FollowUp,
-
+        // Stored as int — append only, never reorder.
+        Deleted,
+        Restored,
 
 
     }

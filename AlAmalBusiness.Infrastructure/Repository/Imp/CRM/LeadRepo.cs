@@ -49,17 +49,71 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
             return lead;
         }
 
-        public async Task DeleteLeadAsync(Lead lead)
-        {
-            _context.Leads.Remove(lead);
-            await _context.SaveChangesAsync();
-        }
-
         public Task<Lead?> GetLeadByIdAsync(int id) =>
             WithLeadIncludes().FirstOrDefaultAsync(l => l.Id == id);
 
         public Task<Lead?> GetLeadDetailAsync(int id) =>
             WithLeadIncludes().AsNoTracking().FirstOrDefaultAsync(l => l.Id == id);
+
+        public Task<Lead?> GetDeletedLeadAsync(int id, bool tracked)
+        {
+            var q = WithLeadIncludes().IgnoreQueryFilters().Where(l => l.Id == id && l.IsDeleted);
+            if (!tracked) q = q.AsNoTracking();
+            return q.FirstOrDefaultAsync();
+        }
+
+        public Task<DeletedLead?> GetDeletedRecordAsync(int leadId) =>
+            _context.DeletedLeads
+                .IgnoreQueryFilters()
+                .Include(d => d.DeletedBy)
+                .FirstOrDefaultAsync(d => d.LeadId == leadId);
+
+        public void AddDeletedRecord(DeletedLead record) => _context.DeletedLeads.Add(record);
+
+        public void RemoveDeletedRecord(DeletedLead record) => _context.DeletedLeads.Remove(record);
+
+        public async Task<(List<DeletedLeadRow> Items, int TotalCount)> GetDeletedPagedAsync(string? search, int page, int pageSize)
+        {
+            var q = _context.DeletedLeads.AsNoTracking().IgnoreQueryFilters();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                // Same leading-zero-tolerant phone match as the live lead search.
+                var term = search.Trim();
+                var termNoZero = term.TrimStart('0');
+                q = q.Where(d =>
+                    (d.Lead!.Name != null && d.Lead.Name.Contains(term)) ||
+                    (d.Lead.NickName != null && d.Lead.NickName.Contains(term)) ||
+                    (d.Lead.PhoneNum != null && (d.Lead.PhoneNum.Contains(term) || d.Lead.PhoneNum.Contains(termNoZero))));
+            }
+
+            var totalCount = await q.CountAsync();
+            var items = await q
+                .OrderByDescending(d => d.DeletedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(d => new DeletedLeadRow
+                {
+                    LeadId = d.LeadId,
+                    Name = d.Lead!.Name,
+                    CountryKey = d.Lead.CountryKey,
+                    PhoneNum = d.Lead.PhoneNum,
+                    NickName = d.Lead.NickName,
+                    Status = d.Lead.Status,
+                    CreatedDate = d.Lead.CreatedDate,
+                    CreatedByName = d.Lead.CreatedBy!.UserName,
+                    ClaimedByName = d.Lead.ClaimedBy!.UserName,
+                    ProcedureName = d.Lead.Procedure!.Name,
+                    ReferalName = d.Lead.Referal!.Name,
+                    DeletedById = d.DeletedById,
+                    DeletedByName = d.DeletedBy!.UserName,
+                    DeletedAt = d.DeletedAt,
+                    Reason = d.Reason
+                })
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
 
         // Projection shared by every list query — see LeadListRow. Names come
         // through the navigations inside the same SELECT (LEFT JOINs on the

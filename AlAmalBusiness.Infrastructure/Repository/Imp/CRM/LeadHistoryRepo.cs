@@ -40,7 +40,10 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
                 .ToListAsync();
 
         private static IQueryable<LeadHistory> SucceededInRange(IQueryable<LeadHistory> q, DateTime from, DateTime toExclusive) =>
-            q.Where(h => h.Type == LeadActions.FollowUp && h.ResultingStatus == LeadStatus.Success
+            // Queried from LeadHistories directly, so the Lead query filter
+            // doesn't apply by itself — exclude soft-deleted leads explicitly.
+            q.Where(h => !h.Lead!.IsDeleted
+                && h.Type == LeadActions.FollowUp && h.ResultingStatus == LeadStatus.Success
                 && (h.ActionDate ?? h.CreatedAt) >= from && (h.ActionDate ?? h.CreatedAt) < toExclusive);
 
         public Task<int> CountSucceededInRangeAsync(DateTime from, DateTime toExclusive) =>

@@ -9,12 +9,20 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
     public interface ILeadRepo
     {
         Task<Lead> CreateLeadAsync(Lead lead);
-        Task DeleteLeadAsync(Lead lead);
 
         // Tracked (with includes) — for mutation flows (claim/follow-up/admin-update).
         Task<Lead?> GetLeadByIdAsync(int id);
         // No-tracking (with includes) — for read-only detail responses.
         Task<Lead?> GetLeadDetailAsync(int id);
+
+        // Admin recycle bin. Soft-deleted leads are invisible to every other
+        // method here (global query filter); these are the only ways to reach
+        // them. GetDeletedLeadAsync is tracked when tracked = true (restore).
+        Task<Lead?> GetDeletedLeadAsync(int id, bool tracked);
+        Task<DeletedLead?> GetDeletedRecordAsync(int leadId);
+        void AddDeletedRecord(DeletedLead record);
+        void RemoveDeletedRecord(DeletedLead record);
+        Task<(List<DeletedLeadRow> Items, int TotalCount)> GetDeletedPagedAsync(string? search, int page, int pageSize);
 
         // List queries project straight into LeadListRow (no entity
         // materialization, no Includes) — see LeadListRow.

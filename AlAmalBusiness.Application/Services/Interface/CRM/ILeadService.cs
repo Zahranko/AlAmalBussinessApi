@@ -13,7 +13,13 @@ namespace AlAmalBusiness.Application.Services.Interface.CRM
     {
         Task<CreateLeadResponse> CreateLeadAsync(CreateLeadDTO lead, string currentUserId);
         Task<LeadDetailResponse?> GetLeadDetailAsync(int id);
-        Task DeleteLeadAsync(int id);
+
+        // Admin recycle bin: delete hides the lead everywhere and records who
+        // deleted it; restore brings it back with the same id, timeline and calls.
+        Task<DeletedLeadDetailResponse> DeleteLeadAsync(int id, string adminUserId, string? reason);
+        Task<PagedResultDTO<DeletedLeadListItemResponse>> GetDeletedPagedAsync(string? search, int page, int pageSize);
+        Task<DeletedLeadDetailResponse?> GetDeletedLeadDetailAsync(int id);
+        Task<LeadActionResponse> RestoreLeadAsync(int id, string adminUserId);
 
         Task<List<LeadListItemResponse>> GetAllLeadsAsync(bool excludeCompleted = false);
         Task<List<LeadListItemResponse>> GetMineAsync(string userId, bool excludeCompleted = false);

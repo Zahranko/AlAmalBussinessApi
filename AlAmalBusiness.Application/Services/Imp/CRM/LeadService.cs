@@ -135,14 +135,114 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             return new CreateLeadResponse { Success = true, Lead = item };
         }
 
-        public async Task DeleteLeadAsync(int id)
+        // Admin-only soft delete. The row stays (same id, timeline, calls) so a
+        // restore is exact; the global query filter hides it everywhere else.
+        public async Task<DeletedLeadDetailResponse> DeleteLeadAsync(int id, string adminUserId, string? reason)
         {
-            var lead = await _leadRepo.GetLeadByIdAsync(id);
-            if (lead != null)
+            var lead = await GetLeadOrThrow(id);
+            var trimmedReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+            var now = DateTime.Now;
+
+            lead.IsDeleted = true;
+            _leadRepo.AddDeletedRecord(new DeletedLead
             {
-                await _leadRepo.DeleteLeadAsync(lead);
-                InvalidateStats();
+                LeadId = lead.Id,
+                DeletedById = adminUserId,
+                DeletedAt = now,
+                Reason = trimmedReason
+            });
+            _historyRepo.Add(new LeadHistory
+            {
+                LeadId = lead.Id,
+                ActorId = adminUserId,
+                Type = LeadActions.Deleted,
+                Note = trimmedReason,
+                ActionDate = now
+            });
+            await _leadRepo.SaveChangesAsync();
+            InvalidateStats();
+
+            return (await GetDeletedLeadDetailAsync(lead.Id))!;
+        }
+
+        public async Task<PagedResultDTO<DeletedLeadListItemResponse>> GetDeletedPagedAsync(string? search, int page, int pageSize)
+        {
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize <= 0 ? 12 : pageSize, 1, 100);
+
+            var (rows, total) = await _leadRepo.GetDeletedPagedAsync(search, page, pageSize);
+            return new PagedResultDTO<DeletedLeadListItemResponse>
+            {
+                Items = rows.Select(r => new DeletedLeadListItemResponse
+                {
+                    Id = r.LeadId,
+                    Name = r.Name,
+                    CountryKey = r.CountryKey,
+                    PhoneNum = r.PhoneNum,
+                    NickName = r.NickName,
+                    Status = r.Status,
+                    CreatedDate = r.CreatedDate,
+                    CreatedByName = r.CreatedByName,
+                    ClaimedByName = r.ClaimedByName,
+                    ProcedureName = r.ProcedureName,
+                    ReferalName = r.ReferalName,
+                    DeletedById = r.DeletedById,
+                    DeletedByName = r.DeletedByName,
+                    DeletedAt = r.DeletedAt,
+                    Reason = r.Reason
+                }).ToList(),
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<DeletedLeadDetailResponse?> GetDeletedLeadDetailAsync(int id)
+        {
+            var lead = await _leadRepo.GetDeletedLeadAsync(id, tracked: false);
+            if (lead == null)
+                return null;
+
+            var record = await _leadRepo.GetDeletedRecordAsync(id);
+            return new DeletedLeadDetailResponse
+            {
+                Lead = await ToDetailAsync(lead),
+                DeletedById = record?.DeletedById,
+                DeletedByName = record?.DeletedBy?.UserName,
+                DeletedAt = record?.DeletedAt,
+                Reason = record?.Reason
+            };
+        }
+
+        // The restore note snapshots who deleted it and why, because the
+        // DeletedLeads row itself is removed once the lead is back.
+        public async Task<LeadActionResponse> RestoreLeadAsync(int id, string adminUserId)
+        {
+            var lead = await _leadRepo.GetDeletedLeadAsync(id, tracked: true)
+                ?? throw new InvalidOperationException("This lead is not in the deleted leads list.");
+
+            var record = await _leadRepo.GetDeletedRecordAsync(id);
+            string? note = null;
+            if (record != null)
+            {
+                note = $"Deleted by {record.DeletedBy?.UserName ?? "?"} on {record.DeletedAt:yyyy-MM-dd HH:mm}"
+                    + (string.IsNullOrWhiteSpace(record.Reason) ? "" : $": {record.Reason}");
+                _leadRepo.RemoveDeletedRecord(record);
             }
+
+            lead.IsDeleted = false;
+            _historyRepo.Add(new LeadHistory
+            {
+                LeadId = lead.Id,
+                ActorId = adminUserId,
+                Type = LeadActions.Restored,
+                ResultingStatus = lead.Status,
+                Note = note,
+                ActionDate = DateTime.Now
+            });
+            await _leadRepo.SaveChangesAsync();
+
+            return await ReloadActionResponse(lead.Id);
         }
 
         public async Task<LeadDetailResponse?> GetLeadDetailAsync(int id)

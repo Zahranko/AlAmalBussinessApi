@@ -222,6 +222,35 @@ public class LeadController : ControllerBase
     public Task<ActionResult<LeadActionResponse>> Update(int id, AdminUpdateLeadDTO request) =>
         Run(() => _leadService.AdminUpdateLeadAsync(id, CurrentUserId, request));
 
+    // ---------- Admin recycle bin ----------
+    // Delete never removes the row: the lead disappears from every list,
+    // dashboard and export, lands in "deleted leads" with who/when/why, and
+    // can be restored with its id, timeline and calls intact.
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = AdminOnly)]
+    public Task<ActionResult<DeletedLeadDetailResponse>> Delete(int id, [FromBody] DeleteLeadDTO? request) =>
+        Run(() => _leadService.DeleteLeadAsync(id, CurrentUserId, request?.Reason));
+
+    [HttpGet("deleted")]
+    [Authorize(Roles = AdminOnly)]
+    public async Task<ActionResult<PagedResultDTO<DeletedLeadListItemResponse>>> GetDeleted(
+        int page = 1, int pageSize = 12, string? search = null) =>
+        Ok(await _leadService.GetDeletedPagedAsync(search, page, pageSize));
+
+    [HttpGet("deleted/{id:int}")]
+    [Authorize(Roles = AdminOnly)]
+    public async Task<IActionResult> GetDeletedById(int id)
+    {
+        var detail = await _leadService.GetDeletedLeadDetailAsync(id);
+        return detail is null ? NotFound() : Ok(detail);
+    }
+
+    [HttpPost("deleted/{id:int}/restore")]
+    [Authorize(Roles = AdminOnly)]
+    public Task<ActionResult<LeadActionResponse>> Restore(int id) =>
+        Run(() => _leadService.RestoreLeadAsync(id, CurrentUserId));
+
     // Admin-only case-list filter dropdown — active users.
     [HttpGet("active-users")]
     [Authorize(Roles = AdminOnly)]

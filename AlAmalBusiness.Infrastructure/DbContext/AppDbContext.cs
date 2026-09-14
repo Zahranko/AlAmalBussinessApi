@@ -21,6 +21,7 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<ClosedReason> ClosedReasons { get; set; }
       public DbSet<LeadHistory> LeadHistories { get; set; }
       public DbSet<LeadCall> LeadCalls { get; set; }
+      public DbSet<DeletedLead> DeletedLeads { get; set; }
       public DbSet<RefreshToken> RefreshTokens { get; set; }
       public DbSet<PatientFeedback> Feedbacks { get; set; }
       public DbSet<FeedbackHistory> FeedbackHistories { get; set; }
@@ -135,6 +136,30 @@ public class AppDbContext : IdentityDbContext<User>
             .WithMany()
             .HasForeignKey(c => c.ActorId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Admin soft delete: a deleted lead disappears from every Leads query
+        // (queues, calendar, dashboards, KPIs, exports) without touching each
+        // one. The recycle-bin queries in LeadRepo opt out with
+        // IgnoreQueryFilters(). LeadHistories/LeadCalls are read by LeadId, so
+        // anything aggregating them across leads must exclude deleted leads
+        // itself (see LeadHistoryRepo.SucceededInRange).
+        modelBuilder.Entity<Lead>().HasQueryFilter(l => !l.IsDeleted);
+
+        modelBuilder.Entity<DeletedLead>()
+            .HasOne(d => d.Lead)
+            .WithMany()
+            .HasForeignKey(d => d.LeadId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DeletedLead>()
+            .HasOne(d => d.DeletedBy)
+            .WithMany()
+            .HasForeignKey(d => d.DeletedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // One recycle-bin row per deleted lead; the list sorts by DeletedAt.
+        modelBuilder.Entity<DeletedLead>().HasIndex(d => d.LeadId).IsUnique();
+        modelBuilder.Entity<DeletedLead>().HasIndex(d => d.DeletedAt);
 
         // ---------- Feedback ----------
 
