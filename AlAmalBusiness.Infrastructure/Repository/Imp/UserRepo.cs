@@ -45,14 +45,35 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             return await _userManager.AddToRolesAsync(user, roles);
         }
 
-        public async Task<IEnumerable<User>> GetAllUserAsync()
+        // Roles come back as a correlated collection in the same statement
+        // (one LEFT JOIN), instead of FindByIdAsync + GetRolesAsync per user.
+        private IQueryable<UserSummaryRow> Summaries() =>
+            _context.Users.AsNoTracking().Select(u => new UserSummaryRow
+            {
+                Id = u.Id,
+                UserName = u.UserName,
+                FullName = u.FullName,
+                Email = u.Email,
+                DepartmentId = u.DepartmentId,
+                IsActive = u.IsActive,
+                Roles = (from ur in _context.UserRoles
+                         join r in _context.Roles on ur.RoleId equals r.Id
+                         where ur.UserId == u.Id
+                         select r.Name!).ToList()
+            });
+
+        public Task<List<UserSummaryRow>> GetUserSummariesAsync() => Summaries().ToListAsync();
+
+        public Task<UserSummaryRow?> GetUserSummaryAsync(string id) =>
+            Summaries().FirstOrDefaultAsync(u => u.Id == id);
+
+        public async Task<List<(string Id, string? UserName)>> GetActiveUserNamesAsync()
         {
-            return await _userManager.Users.ToListAsync();
-        }
-        public async Task<IEnumerable<string>> GetRolesAsync(string id)
-        {
-            var user = await _userManager.FindByIdAsync(id);
-            return await _userManager.GetRolesAsync(user!);
+            var rows = await _context.Users.AsNoTracking()
+                .Where(u => u.IsActive)
+                .Select(u => new { u.Id, u.UserName })
+                .ToListAsync();
+            return rows.Select(r => (r.Id, r.UserName)).ToList();
         }
         public async Task<IdentityResult> UpdateRolesAsync(string id, List<string> userRoles)
         {
@@ -115,6 +136,10 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
             if (password == null) return IdentityResult.Failed(new IdentityError { Description = "Password is Empty!" });
+            // An admin reset is also how a locked-out user gets back in; saved
+            // by AddPasswordAsync below together with the new hash.
+            user.LockoutEnd = null;
+            user.AccessFailedCount = 0;
             var hasPassword = await _userManager.HasPasswordAsync(user);
             if (hasPassword)
             {
@@ -141,13 +166,9 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
             user.IsActive = true;
+            user.LockoutEnd = null;
+            user.AccessFailedCount = 0;
             return await _userManager.UpdateAsync(user);
-        }
-
-        public async Task<User?> GetUserByIdAsync(string id)
-        {
-            return await _userManager.FindByIdAsync(id);
-
         }
     }
     }

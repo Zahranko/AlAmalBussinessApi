@@ -45,9 +45,13 @@ public class LeadController : ControllerBase
         return detail is null ? NotFound() : Ok(detail);
     }
 
+    // The calendar feed. from/to (yyyy-MM-dd, inclusive) limit it to leads
+    // whose latest call falls in that range — pass the visible month(s);
+    // without them it returns every lead that has ever had a call.
     [HttpGet]
-    public async Task<ActionResult<List<LeadListItemResponse>>> GetAll(bool excludeCompleted = false) =>
-        Ok(await _leadService.GetAllLeadsAsync(excludeCompleted));
+    public async Task<ActionResult<List<LeadListItemResponse>>> GetAll(
+        bool excludeCompleted = false, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null) =>
+        Ok(await _leadService.GetAllLeadsAsync(excludeCompleted, from, to));
 
     [HttpGet("mine")]
     public async Task<ActionResult<List<LeadListItemResponse>>> GetMine(bool excludeCompleted = false) =>

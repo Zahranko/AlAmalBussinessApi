@@ -102,11 +102,36 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             var counts = await _repo.GetRatingCountsAsync(id, from, to);
             var submissionCount = await _repo.CountSubmissionsAsync(id, from, to);
 
+            return BuildStats(
+                questionnaire.Id, questionnaire.Title, questionnaire.Slug, questionnaire.Department?.Name,
+                questionnaire.IsActive, from, to, submissionCount,
+                questionnaire.Questions.Select(q => new QuestionnaireQuestionRow
+                {
+                    Id = q.Id,
+                    QuestionnaireId = q.QuestionnaireId,
+                    Text = q.Text,
+                    DisplayOrder = q.DisplayOrder,
+                    IsArchived = q.IsArchived
+                }),
+                counts);
+        }
+
+        // The results numbers from parts already in hand. GetStatsAsync loads
+        // one questionnaire's parts; the monthly report loads every
+        // questionnaire's in a few queries and calls this per questionnaire,
+        // so both read the same arithmetic.
+        internal static QuestionnaireStatsResponse BuildStats(
+            int id, string title, string slug, string? departmentName, bool isActive,
+            DateOnly? from, DateOnly? to, int submissionCount,
+            IEnumerable<QuestionnaireQuestionRow> allQuestions, IEnumerable<QuestionRatingCountRow> ratingCounts)
+        {
+            var counts = ratingCounts.ToList();
             var byQuestion = counts.ToLookup(c => c.QuestionId);
 
-            var questions = questionnaire.Questions
+            var questions = allQuestions
                 // Live questions in page order, then the archived ones that
                 // still have something to show for the period.
+                .OrderBy(q => q.DisplayOrder)
                 .Where(q => !q.IsArchived || byQuestion[q.Id].Any())
                 .OrderBy(q => q.IsArchived)
                 .ThenBy(q => q.DisplayOrder)
@@ -130,11 +155,11 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
             return new QuestionnaireStatsResponse
             {
-                Id = questionnaire.Id,
-                Title = questionnaire.Title,
-                Slug = questionnaire.Slug,
-                DepartmentName = questionnaire.Department?.Name,
-                IsActive = questionnaire.IsActive,
+                Id = id,
+                Title = title,
+                Slug = slug,
+                DepartmentName = departmentName,
+                IsActive = isActive,
                 From = from,
                 To = to,
                 SubmissionCount = submissionCount,
@@ -194,13 +219,27 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             var stats = await GetStatsAsync(id, actor, from, to);
             if (stats == null) return null;
 
-            var (submissions, answers) = await _repo.GetExportRowsAsync(id, stats.From, stats.To, ExportCap);
-            var bySubmission = answers.ToLookup(a => a.SubmissionId);
+            var months = await _repo.GetMonthlyAsync(new[] { id }, HistoryStart, TrendEndExclusive(stats));
+            return await BuildExportDataAsync(_repo, stats, months);
+        }
 
-            // The trend always ends at the period's last month (today for "all
-            // time") and looks back over the whole history before it.
-            var endDate = stats.To ?? DateOnly.FromDateTime(AppClock.Today);
-            var months = await _repo.GetMonthlyAsync(new[] { id }, HistoryStart, endDate.AddDays(1).ToDateTime(TimeOnly.MinValue));
+        // The trend always ends at the period's last month (today for "all
+        // time") and looks back over the whole history before it.
+        private static DateOnly TrendEndDate(QuestionnaireStatsResponse stats) =>
+            stats.To ?? DateOnly.FromDateTime(AppClock.Today);
+
+        internal static DateTime TrendEndExclusive(QuestionnaireStatsResponse stats) =>
+            TrendEndDate(stats).AddDays(1).ToDateTime(TimeOnly.MinValue);
+
+        // The workbook's data for stats already built and that questionnaire's
+        // month rows up to TrendEndExclusive(stats): only the per-response rows
+        // are read here. Shared with the monthly report's attachments.
+        internal static async Task<QuestionnaireExportData> BuildExportDataAsync(
+            IQuestionnaireRepo repo, QuestionnaireStatsResponse stats, IEnumerable<QuestionnaireMonthRow> months)
+        {
+            var (submissions, answers) = await repo.GetExportRowsAsync(stats.Id, stats.From, stats.To, ExportCap);
+            var bySubmission = answers.ToLookup(a => a.SubmissionId);
+            var endDate = TrendEndDate(stats);
 
             return new QuestionnaireExportData
             {

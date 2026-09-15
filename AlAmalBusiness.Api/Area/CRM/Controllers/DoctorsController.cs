@@ -32,6 +32,7 @@ namespace AlAmalBusiness.Api.Area.CRM.Controllers
             Ok(await _doctorService.GetAllDoctorsAsync());
 
         [HttpGet("ActiveDoctors")]
+        [Authorize(Roles = CrmRoles.Access)]
         public async Task<IActionResult> GetActiveDoctors() =>
             Ok(await _doctorService.GetActiveDoctorsAsync());
 

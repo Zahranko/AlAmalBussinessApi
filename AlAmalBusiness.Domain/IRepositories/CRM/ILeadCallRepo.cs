@@ -12,7 +12,7 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
         Task<LeadCall?> GetByIdAsync(int id);
 
         // No-tracking, ordered by Date — for detail response.
-        Task<List<LeadCall>> GetByLeadAsync(int leadId);
+        Task<List<LeadCallRow>> GetByLeadAsync(int leadId);
 
         Task<int> CountByLeadAsync(int leadId);
 

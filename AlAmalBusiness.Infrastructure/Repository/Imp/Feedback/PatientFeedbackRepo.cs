@@ -82,16 +82,27 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Feedback
             {
                 var term = query.Search.Trim();
 
-                // Phone is matched leading-zero-tolerantly, the way lead search
-                // is: numbers are stored with the national zero stripped, but
-                // a searcher types the number the way a patient says it.
-                var phone = term.TrimStart('0');
+                // Same split as lead search: a digits-and-punctuation term is
+                // tried against the reference and phone only, anything else
+                // against the reference and names only. Still a scan, with
+                // fewer LIKEs per row.
+                if (term.All(c => char.IsDigit(c) || c is '+' or '-' or ' ' or '(' or ')'))
+                {
+                    // Phone is matched leading-zero-tolerantly, the way lead search
+                    // is: numbers are stored with the national zero stripped, but
+                    // a searcher types the number the way a patient says it.
+                    var phone = term.TrimStart('0');
+                    if (phone.Length == 0) phone = term;
 
-                q = q.Where(f =>
-                    f.ReferenceNumber.Contains(term) ||
-                    f.FirstName!.Contains(term) ||
-                    f.LastName!.Contains(term) ||
-                    f.PhoneNumber!.Contains(phone));
+                    q = q.Where(f => f.ReferenceNumber.Contains(term) || f.PhoneNumber!.Contains(phone));
+                }
+                else
+                {
+                    q = q.Where(f =>
+                        f.ReferenceNumber.Contains(term) ||
+                        f.FirstName!.Contains(term) ||
+                        f.LastName!.Contains(term));
+                }
             }
 
             var totalCount = await q.CountAsync();

@@ -63,4 +63,23 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         public QuestionRating Rating { get; set; }
         public int Count { get; set; }
     }
+
+    // Rating counts for several questionnaires at once, split by whether the
+    // submission fell inside a period or before it — the monthly report's
+    // "this month" and "every month before" from one grouped query.
+    public class QuestionnairePeriodRatingRow : QuestionRatingCountRow
+    {
+        public int QuestionnaireId { get; set; }
+        public bool InPeriod { get; set; }
+    }
+
+    // A question without its answers, archived ones included.
+    public class QuestionnaireQuestionRow
+    {
+        public int Id { get; set; }
+        public int QuestionnaireId { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public int DisplayOrder { get; set; }
+        public bool IsArchived { get; set; }
+    }
 }

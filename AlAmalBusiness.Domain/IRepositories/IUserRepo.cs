@@ -10,8 +10,11 @@ namespace AlAmalBusiness.Domain.IRepositories
     {
         Task<IdentityResult> CreateUserAsync(User user, string password);
         Task<IdentityResult> AssignRolesAsync(User user, List<string> roles);
-        Task<IEnumerable<User>> GetAllUserAsync();
-        Task<IEnumerable<string>> GetRolesAsync(string id);
+        // One query each, roles included — see UserSummaryRow.
+        Task<List<UserSummaryRow>> GetUserSummariesAsync();
+        Task<UserSummaryRow?> GetUserSummaryAsync(string id);
+        // Id and username of every active user, for pickers.
+        Task<List<(string Id, string? UserName)>> GetActiveUserNamesAsync();
         Task<IdentityResult> UpdateRolesAsync(string id, List<string> userRoles);
         Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId, string? email);
         // Distinct email addresses of active users in the given role and
@@ -20,6 +23,5 @@ namespace AlAmalBusiness.Domain.IRepositories
         Task<IdentityResult> ResetPasswordAsync(string id, string password);
         Task<IdentityResult> DisableUserAsync(string id);
         Task<IdentityResult> EnableUserAsync(string id);
-        Task<User?> GetUserByIdAsync(string id);
     }
 }

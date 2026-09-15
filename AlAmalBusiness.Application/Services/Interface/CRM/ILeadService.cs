@@ -21,7 +21,7 @@ namespace AlAmalBusiness.Application.Services.Interface.CRM
         Task<DeletedLeadDetailResponse?> GetDeletedLeadDetailAsync(int id);
         Task<LeadActionResponse> RestoreLeadAsync(int id, string adminUserId);
 
-        Task<List<LeadListItemResponse>> GetAllLeadsAsync(bool excludeCompleted = false);
+        Task<List<LeadListItemResponse>> GetAllLeadsAsync(bool excludeCompleted = false, DateTime? from = null, DateTime? to = null);
         Task<List<LeadListItemResponse>> GetMineAsync(string userId, bool excludeCompleted = false);
         Task<List<LeadListItemResponse>> GetCreatedByMeAsync(string userId, bool excludeCompleted = false);
         Task<PagedResultDTO<LeadListItemResponse>> GetPagedAsync(LeadListQuery query);

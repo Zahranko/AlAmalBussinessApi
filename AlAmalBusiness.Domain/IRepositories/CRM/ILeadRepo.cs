@@ -8,17 +8,21 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
 {
     public interface ILeadRepo
     {
-        Task<Lead> CreateLeadAsync(Lead lead);
-
-        // Tracked (with includes) — for mutation flows (claim/follow-up/admin-update).
-        Task<Lead?> GetLeadByIdAsync(int id);
-        // No-tracking (with includes) — for read-only detail responses.
-        Task<Lead?> GetLeadDetailAsync(int id);
-
+        // Queued, not saved — the caller saves it together with its Created entry.
+        void AddLead(Lead lead);
+        // Tracked, for mutation flows. No user rows: only the admin edit asks
+        // for the lookup navigations (Doctor/Procedure/Referal), which it
+        // needs to describe what changed.
+        Task<Lead?> GetLeadByIdAsync(int id, bool includeLookups = false);
+        // No-tracking projection for read-only detail responses.
+        Task<LeadDetailRow?> GetLeadDetailAsync(int id);
+        // One lead as a list row — the LeadCreated push.
+        Task<LeadListRow?> GetListRowAsync(int id);
         // Admin recycle bin. Soft-deleted leads are invisible to every other
         // method here (global query filter); these are the only ways to reach
-        // them. GetDeletedLeadAsync is tracked when tracked = true (restore).
-        Task<Lead?> GetDeletedLeadAsync(int id, bool tracked);
+        // them. GetDeletedLeadAsync is tracked (restore).
+        Task<Lead?> GetDeletedLeadAsync(int id);
+        Task<LeadDetailRow?> GetDeletedLeadDetailAsync(int id);
         Task<DeletedLead?> GetDeletedRecordAsync(int leadId);
         void AddDeletedRecord(DeletedLead record);
         void RemoveDeletedRecord(DeletedLead record);
@@ -27,8 +31,9 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
         // List queries project straight into LeadListRow (no entity
         // materialization, no Includes) — see LeadListRow.
         // GetAllLeadsAsync is the calendar feed: only leads with at least one
-        // logged call, each row carrying its latest call's date/note.
-        Task<List<LeadListRow>> GetAllLeadsAsync(bool excludeCompleted = false);
+        // logged call, each row carrying its latest call's date/note. from/to
+        // (inclusive days) narrow it to leads whose latest call falls inside.
+        Task<List<LeadListRow>> GetAllLeadsAsync(bool excludeCompleted = false, DateTime? from = null, DateTime? to = null);
         Task<List<LeadListRow>> GetMineAsync(string userId, bool excludeCompleted = false);
         Task<List<LeadListRow>> GetCreatedByMeAsync(string userId, bool excludeCompleted = false);
 
@@ -46,7 +51,7 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
         // GetPaged filter cache (see LeadController.GetQueueCounts).
         Task<(int All, int Today, int Mine, int Unassigned, int Closed)> GetQueueCountsAsync(string userId);
 
-        Task<List<Lead>> GetByDoctorAsync(int doctorId, DateTime? from = null, DateTime? to = null);
+        Task<List<DoctorLeadRow>> GetByDoctorAsync(int doctorId, DateTime? from = null, DateTime? to = null);
 
         Task<List<(int ProcedureId, int Total, int Pending, int Waiting, int Success, int Closed)>> GetLeadCountsByProcedureAsync(DateTime? from = null, DateTime? to = null);
 

@@ -32,6 +32,7 @@ namespace AlAmalBusiness.Api.Area.CRM.Controllers
             Ok(await _referalSourceService.GetAllReferalSourcesAsync());
 
         [HttpGet("ActiveReferalSources")]
+        [Authorize(Roles = CrmRoles.Access)]
         public async Task<IActionResult> GetActiveReferalSources() =>
             Ok(await _referalSourceService.GetActiveReferalSourcesAsync());
 

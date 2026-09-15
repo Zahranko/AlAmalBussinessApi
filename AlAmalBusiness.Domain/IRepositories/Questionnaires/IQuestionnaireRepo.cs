@@ -49,6 +49,13 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         // [from, toExclusive). Two grouped queries, no answer rows. Months with
         // nothing in them are simply absent.
         Task<List<QuestionnaireMonthRow>> GetMonthlyAsync(IReadOnlyCollection<int> questionnaireIds, DateTime from, DateTime toExclusive);
+        // Every question (archived included) of these questionnaires, in page order.
+        Task<List<QuestionnaireQuestionRow>> GetQuestionsAsync(IReadOnlyCollection<int> questionnaireIds);
+        // Per-question, per-rating counts for these questionnaires over every
+        // submission before periodEndExclusive, flagged InPeriod when on or
+        // after periodStart. One grouped query, no answer rows.
+        Task<List<QuestionnairePeriodRatingRow>> GetRatingCountsSplitAsync(
+            IReadOnlyCollection<int> questionnaireIds, DateTime periodStart, DateTime periodEndExclusive);
 
         // Claims a month for the monthly report. False when it was already
         // claimed (the unique (Year, Month) index refused the insert).

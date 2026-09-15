@@ -62,13 +62,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             if (!_email.IsEnabled)
                 return Skip(year, month, "Email is not configured.");
 
-            var reports = await BuildReportsAsync(year, month, null);
+            var (reports, sources) = await BuildReportsAsync(year, month, null);
 
             var run = await _repo.TryClaimReportRunAsync(year, month);
             if (run == null)
                 return Skip(year, month, "Another process already sent this month's report.");
 
-            var result = await EnqueueAsync(reports, year, month);
+            var result = await EnqueueAsync(reports, sources, year, month);
 
             run.CompletedAt = AppClock.Now;
             run.EmailsQueued = result.EmailsQueued;
@@ -79,8 +79,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
         public async Task<MonthlyReportSendResult> SendNowAsync(int year, int month)
         {
-            var reports = await BuildReportsAsync(year, month, null);
-            var result = await EnqueueAsync(reports, year, month);
+            var (reports, sources) = await BuildReportsAsync(year, month, null);
+            var result = await EnqueueAsync(reports, sources, year, month);
             if (!_email.IsEnabled)
             {
                 result.Skipped = true;
@@ -91,7 +91,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
         public async Task<string> RenderPreviewAsync(int year, int month, int? departmentId)
         {
-            var reports = await BuildReportsAsync(year, month, departmentId);
+            var (reports, _) = await BuildReportsAsync(year, month, departmentId);
             if (reports.Count == 0)
                 return "<p dir=\"rtl\" style=\"font-family:Tahoma,Arial,sans-serif\">لا توجد استبيانات لهذا الشهر.</p>";
 
@@ -119,10 +119,17 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
         // ---------- building ----------
 
-        private async Task<List<DepartmentMonthlyReport>> BuildReportsAsync(int year, int month, int? departmentId)
+        // What one questionnaire's attachment is built from, kept from building
+        // the email so the attachment doesn't recompute it.
+        private sealed record AttachmentSource(QuestionnaireStatsResponse Stats, List<QuestionnaireMonthRow> Months);
+
+        private async Task<(List<DepartmentMonthlyReport> Reports, Dictionary<int, AttachmentSource> Sources)> BuildReportsAsync(
+            int year, int month, int? departmentId)
         {
             var (from, to) = MonthBounds(year, month);
+            var monthStart = from.ToDateTime(TimeOnly.MinValue);
             var monthEndExclusive = to.AddDays(1).ToDateTime(TimeOnly.MinValue);
+            var sources = new Dictionary<int, AttachmentSource>();
 
             var summaries = await _repo.GetSummariesAsync(departmentId, from, to);
 
@@ -132,10 +139,20 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             var included = summaries
                 .Where(s => (s.IsActive || s.SubmissionCount > 0) && s.CreatedDate < monthEndExclusive)
                 .ToList();
-            if (included.Count == 0) return new List<DepartmentMonthlyReport>();
+            if (included.Count == 0) return (new List<DepartmentMonthlyReport>(), sources);
 
-            var months = await _repo.GetMonthlyAsync(included.Select(s => s.Id).ToList(), QuestionnaireService.HistoryStart, monthEndExclusive);
+            // Loaded once for every included questionnaire, then assembled in
+            // memory: the month rows, the questions, and every rating up to the
+            // month's end split into this month and before. This used to be
+            // two stats calls (six queries) per questionnaire for the email,
+            // then seven more per attachment.
+            var ids = included.Select(s => s.Id).ToList();
+            var months = await _repo.GetMonthlyAsync(ids, QuestionnaireService.HistoryStart, monthEndExclusive);
             var monthsByQuestionnaire = months.ToLookup(m => m.QuestionnaireId);
+            var questionsByQuestionnaire = (await _repo.GetQuestionsAsync(ids)).ToLookup(q => q.QuestionnaireId);
+            var ratings = await _repo.GetRatingCountsSplitAsync(ids, monthStart, monthEndExclusive);
+            var thisMonthRatings = ratings.Where(r => r.InPeriod).ToLookup(r => r.QuestionnaireId);
+            var beforeRatings = ratings.Where(r => !r.InPeriod).ToLookup(r => r.QuestionnaireId);
 
             var reports = new List<DepartmentMonthlyReport>();
             foreach (var department in included.GroupBy(s => new { s.DepartmentId, s.DepartmentName }).OrderBy(g => g.Key.DepartmentName))
@@ -152,9 +169,17 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
                 foreach (var q in department.OrderByDescending(s => s.IsActive).ThenBy(s => s.Title))
                 {
-                    var thisMonth = await _questionnaires.GetStatsAsync(q.Id, ReportActor, from, to);
-                    var before = await _questionnaires.GetStatsAsync(q.Id, ReportActor, null, from.AddDays(-1));
-                    var beforeById = before?.Questions.ToDictionary(x => x.Id) ?? new Dictionary<int, QuestionStatsResponse>();
+                    var questions = questionsByQuestionnaire[q.Id].ToList();
+                    var thisMonth = QuestionnaireService.BuildStats(
+                        q.Id, q.Title, q.Slug, q.DepartmentName, q.IsActive, from, to, q.SubmissionCount,
+                        questions, thisMonthRatings[q.Id]);
+                    // Everything before the month — only its per-question
+                    // averages are read, so the submission count is irrelevant.
+                    var before = QuestionnaireService.BuildStats(
+                        q.Id, q.Title, q.Slug, q.DepartmentName, q.IsActive, null, from.AddDays(-1), 0,
+                        questions, beforeRatings[q.Id]);
+                    var beforeById = before.Questions.ToDictionary(x => x.Id);
+                    sources[q.Id] = new AttachmentSource(thisMonth, monthsByQuestionnaire[q.Id].ToList());
 
                     report.Questionnaires.Add(new QuestionnaireMonthlyReport
                     {
@@ -163,7 +188,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                         Slug = q.Slug,
                         IsActive = q.IsActive,
                         Trend = QuestionnaireTrendBuilder.Build(monthsByQuestionnaire[q.Id], year, month, QuestionnaireService.TrendMonths),
-                        Questions = (thisMonth?.Questions ?? new List<QuestionStatsResponse>())
+                        Questions = thisMonth.Questions
                             .Where(x => !x.IsArchived)
                             .Select(x =>
                             {
@@ -185,10 +210,11 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 reports.Add(report);
             }
 
-            return reports;
+            return (reports, sources);
         }
 
-        private async Task<MonthlyReportSendResult> EnqueueAsync(List<DepartmentMonthlyReport> reports, int year, int month)
+        private async Task<MonthlyReportSendResult> EnqueueAsync(
+            List<DepartmentMonthlyReport> reports, Dictionary<int, AttachmentSource> sources, int year, int month)
         {
             var result = new MonthlyReportSendResult { Year = year, Month = month };
 
@@ -215,8 +241,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                     var attachments = new List<EmailAttachment>();
                     foreach (var q in report.Questionnaires)
                     {
-                        var file = await BuildAttachmentAsync(q.Id, year, month);
-                        if (file is { } f) attachments.Add(new EmailAttachment(f.FileName, f.Content, XlsxContentType));
+                        if (!sources.TryGetValue(q.Id, out var source)) continue;
+                        var data = await QuestionnaireService.BuildExportDataAsync(_repo, source.Stats, source.Months);
+                        attachments.Add(new EmailAttachment(FileName(q.Slug, year, month), _excel.Build(data), XlsxContentType));
                     }
 
                     var subject = QuestionnaireMonthlyEmailTemplate.Subject(report);

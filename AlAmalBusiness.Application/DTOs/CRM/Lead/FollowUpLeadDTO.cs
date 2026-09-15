@@ -23,13 +23,21 @@ namespace AlAmalBusiness.Application.DTOs.CRM.Lead
         public int? DoctorId { get; set; }
         public int? ClosedReasonId { get; set; }
 
+        // An image data URL (checked in LeadService). Capped because it lands
+        // in a LOB column and comes back on every detail response: ~3M
+        // characters is a ~2 MB image, far above a scanned signature.
+        [StringLength(3_000_000, ErrorMessage = "The signature image is too large (about 2 MB at most).")]
         public string? SignatureData { get; set; }
 
         // Optional contact-info corrections — only applied when Status == Pending.
         // Null means "don't touch" (omitted entirely by a caller unaware of this).
+        [StringLength(200)]
         public string? Name { get; set; }
+        [StringLength(10)]
         public string? CountryKey { get; set; }
+        [StringLength(32)]
         public string? PhoneNum { get; set; }
+        [StringLength(100)]
         public string? NickName { get; set; }
 
         // Optional payment-way correction, applied when Status == Waiting or Pending.

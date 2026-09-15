@@ -21,23 +21,59 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
 
         public void Add(LeadHistory history) => _context.LeadHistories.Add(history);
 
-        public Task<List<LeadHistory>> GetByLeadAsync(int leadId) =>
+        // Projected: names through the navigations, no AspNetUsers rows.
+        public Task<List<LeadHistoryRow>> GetByLeadAsync(int leadId) =>
             _context.LeadHistories
                 .AsNoTracking()
-                .Include(h => h.Actor)
-                .Include(h => h.Doctor)
-                .Include(h => h.ClosedReason)
                 .Where(h => h.LeadId == leadId)
                 .OrderBy(h => h.CreatedAt)
+                .Select(h => new LeadHistoryRow
+                {
+                    Id = h.Id,
+                    Type = h.Type,
+                    ResultingStatus = h.ResultingStatus,
+                    ActorName = h.Actor!.UserName,
+                    ActionDate = h.ActionDate,
+                    DoctorName = h.Doctor!.Name,
+                    ClosedReasonName = h.ClosedReason!.Name,
+                    Note = h.Note,
+                    CreatedAt = h.CreatedAt
+                })
                 .ToListAsync();
 
-        public Task<List<LeadHistory>> GetFollowUpsByLeadIdsAsync(IEnumerable<int> leadIds) =>
-            _context.LeadHistories
-                .AsNoTracking()
-                .Include(h => h.Actor)
-                .Where(h => leadIds.Contains(h.LeadId) && h.Type == LeadActions.FollowUp)
+        // Same doctor and CreatedDate bounds as LeadRepo.GetByDoctorAsync,
+        // applied through the join rather than an IN list of lead ids (which
+        // hit SQL Server's 2100-parameter ceiling on a big doctor). Rooted at
+        // LeadHistories, so deleted leads are excluded explicitly.
+        public Task<List<LeadFollowUpRow>> GetFollowUpsForDoctorAsync(int doctorId, DateTime? from, DateTime? to)
+        {
+            var q = _context.LeadHistories.AsNoTracking()
+                .Where(h => h.Type == LeadActions.FollowUp && h.Lead!.DoctorId == doctorId && !h.Lead.IsDeleted);
+
+            if (from.HasValue)
+            {
+                var start = from.Value.Date;
+                q = q.Where(h => h.Lead!.CreatedDate >= start);
+            }
+            if (to.HasValue)
+            {
+                var endExclusive = to.Value.Date.AddDays(1);
+                q = q.Where(h => h.Lead!.CreatedDate < endExclusive);
+            }
+
+            return q
                 .OrderBy(h => h.CreatedAt)
+                .Select(h => new LeadFollowUpRow
+                {
+                    LeadId = h.LeadId,
+                    ActionDate = h.ActionDate,
+                    CreatedAt = h.CreatedAt,
+                    ActorName = h.Actor!.UserName,
+                    ResultingStatus = h.ResultingStatus,
+                    Note = h.Note
+                })
                 .ToListAsync();
+        }
 
         private static IQueryable<LeadHistory> SucceededInRange(IQueryable<LeadHistory> q, DateTime from, DateTime toExclusive) =>
             // Queried from LeadHistories directly, so the Lead query filter

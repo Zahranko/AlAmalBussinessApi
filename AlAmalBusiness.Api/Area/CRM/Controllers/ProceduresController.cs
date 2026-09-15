@@ -32,6 +32,7 @@ namespace AlAmalBusiness.Api.Area.CRM.Controllers
             Ok(await _procedureService.GetAllProceduresAsync());
 
         [HttpGet("ActiveProcedures")]
+        [Authorize(Roles = CrmRoles.Access)]
         public async Task<IActionResult> GetActiveProcedures() =>
             Ok(await _procedureService.GetActiveProceduresAsync());
 

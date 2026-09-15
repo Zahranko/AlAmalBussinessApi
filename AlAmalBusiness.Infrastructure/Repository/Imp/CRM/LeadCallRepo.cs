@@ -22,12 +22,20 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
         public Task<LeadCall?> GetByIdAsync(int id) =>
             _context.LeadCalls.FirstOrDefaultAsync(c => c.Id == id);
 
-        public Task<List<LeadCall>> GetByLeadAsync(int leadId) =>
+        public Task<List<LeadCallRow>> GetByLeadAsync(int leadId) =>
             _context.LeadCalls
                 .AsNoTracking()
-                .Include(c => c.Actor)
                 .Where(c => c.LeadId == leadId)
                 .OrderBy(c => c.Date)
+                .Select(c => new LeadCallRow
+                {
+                    Id = c.Id,
+                    Date = c.Date,
+                    Note = c.Note,
+                    IsDone = c.IsDone,
+                    ActorName = c.Actor!.UserName,
+                    CreatedAt = c.CreatedAt
+                })
                 .ToListAsync();
 
         public Task<int> CountByLeadAsync(int leadId) =>

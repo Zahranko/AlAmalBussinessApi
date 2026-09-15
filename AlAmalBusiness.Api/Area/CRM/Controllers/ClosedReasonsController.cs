@@ -32,6 +32,7 @@ namespace AlAmalBusiness.Api.Area.CRM.Controllers
             Ok(await _closedReasonService.GetAllClosedReasonsAsync());
 
         [HttpGet("ActiveClosedReasons")]
+        [Authorize(Roles = CrmRoles.Access)]
         public async Task<IActionResult> GetActiveClosedReasons() =>
             Ok(await _closedReasonService.GetActiveClosedReasonsAsync());
 

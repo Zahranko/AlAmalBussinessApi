@@ -27,6 +27,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -104,9 +105,25 @@ builder.Services.AddDistributedMemoryCache();
 // reason; invalidated on every lead write, 60s TTL as a backstop.
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddIdentity<User, IdentityRole>()
+builder.Services.AddIdentity<User, IdentityRole>(options =>
+    {
+        // Account lockout: the per-IP login limiter alone can't stop a slow,
+        // distributed guess at one account. AuthRepo counts failures and
+        // honours LockoutEnd itself (see LogInAsync), so this also covers
+        // accounts imported with LockoutEnabled = false.
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.AllowedForNewUsers = true;
+    })
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
+
+// Nothing here takes an upload; the largest legitimate body is a follow-up
+// carrying a clinic signature image (capped in FollowUpLeadDTO). The 30 MB
+// server default let one request park a 30 MB blob in a LOB column.
+const long MaxRequestBodyBytes = 4 * 1024 * 1024;
+builder.Services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = MaxRequestBodyBytes);
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = MaxRequestBodyBytes);
 
 // Registered after AddIdentity so JWT stays the default scheme:
 // AddIdentity sets the defaults to the Identity cookie schemes, and the last
@@ -360,6 +377,19 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
+// X-Forwarded-For decides the client IP every rate limiter and the IP
+// whitelist key on. The console's server (Hostinger, no fixed address we
+// know) proxies staff traffic here and forwards the real client IP, so the
+// proxy can't be trusted by address. It is trusted by a shared secret
+// instead: the gate middleware below strips X-Forwarded-* from any request
+// that doesn't carry ForwardedHeaders:ProxySecret, and only then does
+// UseForwardedHeaders run with no address restriction. Without the gate any
+// client could claim the whitelisted office IP and skip every limiter.
+const string ProxySecretHeader = "X-Proxy-Secret";
+var proxySecret = builder.Configuration["ForwardedHeaders:ProxySecret"];
+var proxySecretBytes = string.IsNullOrWhiteSpace(proxySecret) || proxySecret.Length < 32
+    ? null
+    : Encoding.UTF8.GetBytes(proxySecret);
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -388,6 +418,26 @@ using (var scope = app.Services.CreateScope())
     var initializer = scope.ServiceProvider.GetRequiredService<DbInitializer>();
     await initializer.SeedRolesAsync();
 }
+if (proxySecretBytes == null)
+{
+    app.Logger.LogWarning(
+        "ForwardedHeaders:ProxySecret is not set (or shorter than 32 characters); X-Forwarded-For is ignored on every request.");
+}
+app.Use(async (context, next) =>
+{
+    var headers = context.Request.Headers;
+    var trusted = proxySecretBytes != null
+        && headers.TryGetValue(ProxySecretHeader, out var presented)
+        && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(presented.ToString()), proxySecretBytes);
+    headers.Remove(ProxySecretHeader);
+    if (!trusted)
+    {
+        headers.Remove("X-Forwarded-For");
+        headers.Remove("X-Forwarded-Proto");
+        headers.Remove("X-Forwarded-Host");
+    }
+    await next();
+});
 app.UseForwardedHeaders();
 
 // Registered unconditionally (not just in Development) — otherwise an
@@ -419,6 +469,16 @@ app.MapHub<LeadHub>("/hubs/leads");
 app.Map("/error", (HttpContext context) =>
 {
     var exceptionFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+    // A body over MaxRequestBodyBytes (or otherwise unreadable) is the
+    // client's fault; Kestrel and IIS both report it with the status to use.
+    if (exceptionFeature?.Error is BadHttpRequestException badRequest)
+    {
+        return Results.Problem(
+            title: badRequest.StatusCode == StatusCodes.Status413PayloadTooLarge
+                ? "The request is too large."
+                : "The request could not be read.",
+            statusCode: badRequest.StatusCode);
+    }
     return Results.Problem(
         title: "An unexpected error occurred.",
         detail: app.Environment.IsDevelopment() ? exceptionFeature?.Error?.ToString() : null,

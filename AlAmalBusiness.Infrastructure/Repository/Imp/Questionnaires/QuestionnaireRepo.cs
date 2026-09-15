@@ -265,6 +265,47 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                 .ToList();
         }
 
+        public async Task<List<QuestionnaireQuestionRow>> GetQuestionsAsync(IReadOnlyCollection<int> questionnaireIds)
+        {
+            if (questionnaireIds.Count == 0) return new List<QuestionnaireQuestionRow>();
+            var ids = questionnaireIds.ToList();
+
+            return await _context.QuestionnaireQuestions.AsNoTracking()
+                .Where(q => ids.Contains(q.QuestionnaireId))
+                .OrderBy(q => q.DisplayOrder)
+                .Select(q => new QuestionnaireQuestionRow
+                {
+                    Id = q.Id,
+                    QuestionnaireId = q.QuestionnaireId,
+                    Text = q.Text,
+                    DisplayOrder = q.DisplayOrder,
+                    IsArchived = q.IsArchived
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<QuestionnairePeriodRatingRow>> GetRatingCountsSplitAsync(
+            IReadOnlyCollection<int> questionnaireIds, DateTime periodStart, DateTime periodEndExclusive)
+        {
+            if (questionnaireIds.Count == 0) return new List<QuestionnairePeriodRatingRow>();
+            var ids = questionnaireIds.ToList();
+
+            return await (
+                from a in _context.QuestionnaireAnswers.AsNoTracking()
+                join s in _context.QuestionnaireSubmissions.AsNoTracking() on a.SubmissionId equals s.Id
+                where ids.Contains(s.QuestionnaireId) && s.CreatedDate < periodEndExclusive
+                group a by new { s.QuestionnaireId, a.QuestionId, a.Rating, InPeriod = s.CreatedDate >= periodStart } into g
+                select new QuestionnairePeriodRatingRow
+                {
+                    QuestionnaireId = g.Key.QuestionnaireId,
+                    QuestionId = g.Key.QuestionId,
+                    Rating = g.Key.Rating,
+                    InPeriod = g.Key.InPeriod,
+                    Count = g.Count()
+                })
+                .ToListAsync();
+        }
+
         public Task<bool> HasReportRunAsync(int year, int month) =>
             _context.QuestionnaireReportRuns.AnyAsync(r => r.Year == year && r.Month == month);
 

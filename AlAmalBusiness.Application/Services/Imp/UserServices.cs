@@ -15,10 +15,12 @@ namespace AlAmalBusiness.Application.Services.Imp
     {
         private readonly IUserRepo _userRepo;
         private readonly IDepartmentRepo _depRepo;
-        public UserServices(IUserRepo userRepo,IDepartmentRepo departmentRepo)
+        private readonly IRefreshTokenRepo _refreshTokens;
+        public UserServices(IUserRepo userRepo, IDepartmentRepo departmentRepo, IRefreshTokenRepo refreshTokens)
         {
             _userRepo = userRepo;
             _depRepo = departmentRepo;
+            _refreshTokens = refreshTokens;
         }
 
         public async Task<CreateUserResult> CreateUserAsync(CreateUserDTO user)
@@ -60,42 +62,24 @@ namespace AlAmalBusiness.Application.Services.Imp
             return new CreateUserResult { IsSuccess = false, Message = $"Failed to create employee: {errors}" };
         }
 
-        public async Task<List<GetUserResponse>> GetAllUserAsync()
-        {
-            var getUsers = await _userRepo.GetAllUserAsync();
-            if (getUsers == null || !getUsers.Any())
-            {
-                return new List<GetUserResponse>();
-            }
+        public async Task<List<GetUserResponse>> GetAllUserAsync() =>
+            (await _userRepo.GetUserSummariesAsync()).Select(ToResponse).ToList();
 
-            List<GetUserResponse> users = new List<GetUserResponse>();
-
-            foreach (var user in getUsers)
-            {
-                users.Add(await ToResponseAsync(user));
-            }
-            return users;
-        }
-
-        // Shared by every path that hands a User entity back to a caller
-        // (list, get-by-id, and the response of a successful update) so
+        // Shared by every path that hands a user back to a caller (list,
+        // get-by-id, and the response of a successful update) so
         // DepartmentId/IsActive/Roles are never forgotten on one of them —
         // GetUserResponse.DepartmentId used to be left at its default (0) on
         // every response because nothing here ever set it.
-        private async Task<GetUserResponse> ToResponseAsync(User user)
+        private static GetUserResponse ToResponse(UserSummaryRow user) => new()
         {
-            var roles = await _userRepo.GetRolesAsync(user.Id);
-            return new GetUserResponse
-            {
-                UserId = user.Id,
-                UserName = user.UserName,
-                FullName = user.FullName,
-                Email = user.Email,
-                DepartmentId = user.DepartmentId,
-                IsActive = user.IsActive,
-                Roles = roles.ToList()
-            };
-        }
+            UserId = user.Id,
+            UserName = user.UserName,
+            FullName = user.FullName,
+            Email = user.Email,
+            DepartmentId = user.DepartmentId,
+            IsActive = user.IsActive,
+            Roles = user.Roles
+        };
 
         // Blank means "no email" (null), anything else must parse as a plain
         // address — no display name, since this goes straight into SMTP RCPT.
@@ -118,6 +102,9 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             if (resetPassword.Succeeded)
             {
+                // A reset is usually "someone else may know the old password":
+                // end every session that password opened, not just future ones.
+                await _refreshTokens.RevokeAllForUserAsync(id);
                 return new UpdateUserResponse { IsSuccess = true, Message = "Password reset successfully." };
             }
             else
@@ -159,11 +146,11 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             if (updateUser.Succeeded)
             {
-                var updatedUser = await _userRepo.GetUserByIdAsync(id);
+                var updatedUser = await _userRepo.GetUserSummaryAsync(id);
                 return new UpdateUserResponse
                 {
                     IsSuccess = true,
-                    User = await ToResponseAsync(updatedUser!)
+                    User = ToResponse(updatedUser!)
                 };
             }
             else
@@ -179,6 +166,9 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             if (disableUser.Succeeded)
             {
+                // Refresh already refuses an inactive account; revoking here
+                // just stops the sessions now instead of at their next refresh.
+                await _refreshTokens.RevokeAllForUserAsync(id);
                 return new UpdateUserResponse { IsSuccess = true, Message = "Employee disabled successfully." };
             }
             else
@@ -205,12 +195,8 @@ namespace AlAmalBusiness.Application.Services.Imp
 
         public async Task<GetUserResponse> GetUserById(string id)
         {
-            var user = await _userRepo.GetUserByIdAsync(id);
-            if (user == null)
-            {
-                return null!;
-            }
-            return await ToResponseAsync(user);
+            var user = await _userRepo.GetUserSummaryAsync(id);
+            return user == null ? null! : ToResponse(user);
         }
 
       

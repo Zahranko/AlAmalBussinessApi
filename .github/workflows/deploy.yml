@@ -47,6 +47,7 @@ jobs:
           $config = Get-Content $path -Raw | ConvertFrom-Json
           $config.ConnectionStrings.DefaultConnection = "${{ secrets.PROD_DB_CONNECTION_STRING }}"
           $config.JwtSettings.Key = "${{ secrets.PROD_JWT_KEY }}"
+          $config.ForwardedHeaders.ProxySecret = "${{ secrets.PROD_PROXY_SECRET }}"
           $config.Email.Username = "${{ secrets.PROD_SMTP_USERNAME }}"
           $config.Email.Password = "${{ secrets.PROD_SMTP_PASSWORD }}"
           $config.Email.FromAddress = "${{ secrets.PROD_SMTP_USERNAME }}"

@@ -114,11 +114,12 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 CreatedById = currentUserId
             };
 
-            await _leadRepo.CreateLeadAsync(newLead);
-
+            // One save for the lead and its Created entry: the entry points at
+            // the new entity, so EF inserts the lead first and fills LeadId.
+            _leadRepo.AddLead(newLead);
             _historyRepo.Add(new LeadHistory
             {
-                LeadId = newLead.Id,
+                Lead = newLead,
                 ActorId = currentUserId,
                 Type = LeadActions.Created,
                 ResultingStatus = LeadStatus.New,
@@ -127,8 +128,8 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             await _leadRepo.SaveChangesAsync();
             InvalidateStats();
 
-            var detail = await _leadRepo.GetLeadDetailAsync(newLead.Id);
-            var item = ToListItem(detail!);
+            var row = await _leadRepo.GetListRowAsync(newLead.Id);
+            var item = ToListItem(row!);
 
             await TryNotifyAsync(() => _notifier.LeadCreatedAsync(item));
 
@@ -199,7 +200,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
 
         public async Task<DeletedLeadDetailResponse?> GetDeletedLeadDetailAsync(int id)
         {
-            var lead = await _leadRepo.GetDeletedLeadAsync(id, tracked: false);
+            var lead = await _leadRepo.GetDeletedLeadDetailAsync(id);
             if (lead == null)
                 return null;
 
@@ -218,7 +219,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
         // DeletedLeads row itself is removed once the lead is back.
         public async Task<LeadActionResponse> RestoreLeadAsync(int id, string adminUserId)
         {
-            var lead = await _leadRepo.GetDeletedLeadAsync(id, tracked: true)
+            var lead = await _leadRepo.GetDeletedLeadAsync(id)
                 ?? throw new InvalidOperationException("This lead is not in the deleted leads list.");
 
             var record = await _leadRepo.GetDeletedRecordAsync(id);
@@ -254,8 +255,8 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
         // The calendar feed (GET /api/Lead): only leads with at least one
         // logged call, each carrying its latest call's date/note — the repo
         // projects that in the same query, so this is one round trip.
-        public async Task<List<LeadListItemResponse>> GetAllLeadsAsync(bool excludeCompleted = false) =>
-            (await _leadRepo.GetAllLeadsAsync(excludeCompleted)).Select(ToListItem).ToList();
+        public async Task<List<LeadListItemResponse>> GetAllLeadsAsync(bool excludeCompleted = false, DateTime? from = null, DateTime? to = null) =>
+            (await _leadRepo.GetAllLeadsAsync(excludeCompleted, from, to)).Select(ToListItem).ToList();
 
         public async Task<List<LeadListItemResponse>> GetMineAsync(string userId, bool excludeCompleted = false) =>
             (await _leadRepo.GetMineAsync(userId, excludeCompleted)).Select(ToListItem).ToList();
@@ -350,7 +351,13 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 {
                     lead.HasDoctor = true;
                     if (!string.IsNullOrWhiteSpace(request.SignatureData))
+                    {
+                        // The console sends a FileReader data URL of an image;
+                        // anything else is not something the detail page can show.
+                        if (!request.SignatureData.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException("The clinic signature must be an image.");
                         lead.ClinicSignature = request.SignatureData;
+                    }
 
                     if (request.DoctorId.HasValue)
                     {
@@ -501,7 +508,8 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
         // status — a data-correction tool, deliberately bypasses EnsureNotClosed.
         public async Task<LeadActionResponse> AdminUpdateLeadAsync(int id, string adminUserId, AdminUpdateLeadDTO request)
         {
-            var lead = await GetLeadOrThrow(id);
+            // The lookup navigations feed the "old value" side of the change note.
+            var lead = await GetLeadOrThrow(id, includeLookups: true);
 
             var referalSource = await _referalSourceRepo.GetByIdAsync(request.ReferalId);
             if (referalSource == null || !referalSource.IsActive)
@@ -574,9 +582,8 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
 
         public async Task<List<AssignableUserResponse>> GetActiveUsersAsync()
         {
-            var users = await _userRepo.GetAllUserAsync();
+            var users = await _userRepo.GetActiveUserNamesAsync();
             return users
-                .Where(u => u.IsActive)
                 .Select(u => new AssignableUserResponse { Id = u.Id, Username = u.UserName })
                 .ToList();
         }
@@ -833,7 +840,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 return null;
 
             var leads = await _leadRepo.GetByDoctorAsync(doctorId, from, to);
-            var followUpsByLead = (await _historyRepo.GetFollowUpsByLeadIdsAsync(leads.Select(l => l.Id)))
+            var followUpsByLead = (await _historyRepo.GetFollowUpsForDoctorAsync(doctorId, from, to))
                 .GroupBy(h => h.LeadId)
                 .ToDictionary(g => g.Key, g => g.Select(FormatFollowUpLine).ToList());
 
@@ -844,28 +851,28 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 {
                     PatientName = l.Name,
                     Status = l.Status.ToString(),
-                    Procedure = l.Procedure?.Name,
-                    ReferralSource = l.Referal?.Name,
-                    CreatedByName = l.CreatedBy?.UserName,
-                    ClaimedByName = l.ClaimedBy?.UserName,
+                    Procedure = l.ProcedureName,
+                    ReferralSource = l.ReferalName,
+                    CreatedByName = l.CreatedByName,
+                    ClaimedByName = l.ClaimedByName,
                     CreatedDate = l.CreatedDate,
                     FollowUpNotes = followUpsByLead.GetValueOrDefault(l.Id, new List<string>())
                 }).ToList()
             };
         }
 
-        private static string FormatFollowUpLine(LeadHistory history)
+        private static string FormatFollowUpLine(LeadFollowUpRow history)
         {
             var date = (history.ActionDate ?? history.CreatedAt).ToString("yyyy-MM-dd");
-            var actor = history.Actor?.UserName ?? "?";
+            var actor = history.ActorName ?? "?";
             var status = history.ResultingStatus?.ToString() ?? "?";
             var note = string.IsNullOrWhiteSpace(history.Note) ? "" : $": {history.Note}";
             return $"[{date}] {actor} -> {status}{note}";
         }
 
-        private async Task<Lead> GetLeadOrThrow(int id)
+        private async Task<Lead> GetLeadOrThrow(int id, bool includeLookups = false)
         {
-            var lead = await _leadRepo.GetLeadByIdAsync(id);
+            var lead = await _leadRepo.GetLeadByIdAsync(id, includeLookups);
             if (lead == null)
                 throw new InvalidOperationException("This lead no longer exists.");
             return lead;
@@ -916,27 +923,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             LastCallNote = row.LastCallNote
         };
 
-        // Entity-based variant — only for the freshly created lead pushed to
-        // the LeadCreated notifier (it already has the detail entity loaded).
-        private static LeadListItemResponse ToListItem(Lead lead) => new()
-        {
-            Id = lead.Id,
-            Name = lead.Name,
-            CountryKey = lead.CountryKey,
-            PhoneNum = lead.PhoneNum,
-            NickName = lead.NickName,
-            Status = lead.Status,
-            CreatedByName = lead.CreatedBy?.UserName,
-            ClaimedByName = lead.ClaimedBy?.UserName,
-            CreatedDate = lead.CreatedDate,
-            ReferalName = lead.Referal?.Name,
-            ProcedureName = lead.Procedure?.Name,
-            DoctorName = lead.Doctor?.Name,
-            PaymentWay = lead.PaymentWay,
-            ClosedReason = lead.ClosedReason?.Name
-        };
-
-        private async Task<LeadDetailResponse> ToDetailAsync(Lead lead)
+        private async Task<LeadDetailResponse> ToDetailAsync(LeadDetailRow lead)
         {
             var history = await _historyRepo.GetByLeadAsync(lead.Id);
             var calls = await _callRepo.GetByLeadAsync(lead.Id);
@@ -953,26 +940,26 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 PaymentWay = lead.PaymentWay,
                 HasDoctor = lead.HasDoctor,
                 DoctorId = lead.DoctorId,
-                DoctorName = lead.Doctor?.Name,
+                DoctorName = lead.DoctorName,
                 AppointmentDate = lead.AppointmentDate,
                 ClinicSignature = lead.ClinicSignature,
                 ReferalId = lead.ReferalId,
-                ReferalName = lead.Referal?.Name,
+                ReferalName = lead.ReferalName,
                 ProcedureId = lead.ProcedureId,
-                ProcedureName = lead.Procedure?.Name,
-                CreatedByName = lead.CreatedBy?.UserName,
-                ClaimedByName = lead.ClaimedBy?.UserName,
+                ProcedureName = lead.ProcedureName,
+                CreatedByName = lead.CreatedByName,
+                ClaimedByName = lead.ClaimedByName,
                 CreatedDate = lead.CreatedDate,
-                ClosedReason = lead.ClosedReason?.Name,
+                ClosedReason = lead.ClosedReasonName,
                 History = history.Select(h => new LeadHistoryResponse
                 {
                     Id = h.Id,
                     Type = h.Type.ToString(),
                     ResultingStatus = h.ResultingStatus?.ToString(),
-                    ActorName = h.Actor?.UserName,
+                    ActorName = h.ActorName,
                     ActionDate = h.ActionDate,
-                    DoctorName = h.Doctor?.Name,
-                    ClosedReasonName = h.ClosedReason?.Name,
+                    DoctorName = h.DoctorName,
+                    ClosedReasonName = h.ClosedReasonName,
                     Note = h.Note,
                     CreatedAt = h.CreatedAt
                 }).ToList(),
@@ -982,7 +969,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                     Date = c.Date,
                     Note = c.Note,
                     IsDone = c.IsDone,
-                    ActorName = c.Actor?.UserName,
+                    ActorName = c.ActorName,
                     CreatedAt = c.CreatedAt
                 }).ToList()
             };

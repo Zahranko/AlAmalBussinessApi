@@ -19,15 +19,6 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
             _context = context;
         }
 
-        private IQueryable<Lead> WithLeadIncludes() =>
-            _context.Leads
-                .Include(l => l.Doctor)
-                .Include(l => l.Procedure)
-                .Include(l => l.Referal)
-                .Include(l => l.CreatedBy)
-                .Include(l => l.ClaimedBy)
-                .Include(l => l.ClosedReason);
-
         private static IQueryable<Lead> ExcludeCompleted(IQueryable<Lead> q) =>
             q.Where(l => l.Status != LeadStatus.Success && l.Status != LeadStatus.Closed);
 
@@ -42,25 +33,55 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
             return q;
         }
 
-        public async Task<Lead> CreateLeadAsync(Lead lead)
+        public void AddLead(Lead lead) => _context.Leads.Add(lead);
+
+        public Task<Lead?> GetLeadByIdAsync(int id, bool includeLookups = false)
         {
-            await _context.Leads.AddAsync(lead);
-            await _context.SaveChangesAsync();
-            return lead;
+            IQueryable<Lead> q = _context.Leads;
+            if (includeLookups)
+                q = q.Include(l => l.Doctor).Include(l => l.Procedure).Include(l => l.Referal);
+            return q.FirstOrDefaultAsync(l => l.Id == id);
         }
 
-        public Task<Lead?> GetLeadByIdAsync(int id) =>
-            WithLeadIncludes().FirstOrDefaultAsync(l => l.Id == id);
-
-        public Task<Lead?> GetLeadDetailAsync(int id) =>
-            WithLeadIncludes().AsNoTracking().FirstOrDefaultAsync(l => l.Id == id);
-
-        public Task<Lead?> GetDeletedLeadAsync(int id, bool tracked)
+        private static readonly System.Linq.Expressions.Expression<Func<Lead, LeadDetailRow>> ToDetailRow = l => new LeadDetailRow
         {
-            var q = WithLeadIncludes().IgnoreQueryFilters().Where(l => l.Id == id && l.IsDeleted);
-            if (!tracked) q = q.AsNoTracking();
-            return q.FirstOrDefaultAsync();
-        }
+            Id = l.Id,
+            Name = l.Name,
+            CountryKey = l.CountryKey,
+            PhoneNum = l.PhoneNum,
+            NickName = l.NickName,
+            Description = l.Description,
+            Status = l.Status,
+            PaymentWay = l.PaymentWay,
+            HasDoctor = l.HasDoctor,
+            DoctorId = l.DoctorId,
+            DoctorName = l.Doctor!.Name,
+            AppointmentDate = l.AppointmentDate,
+            ClinicSignature = l.ClinicSignature,
+            ReferalId = l.ReferalId,
+            ReferalName = l.Referal!.Name,
+            ProcedureId = l.ProcedureId,
+            ProcedureName = l.Procedure!.Name,
+            CreatedByName = l.CreatedBy!.UserName,
+            ClaimedByName = l.ClaimedBy!.UserName,
+            CreatedDate = l.CreatedDate,
+            ClosedReasonName = l.ClosedReason!.Name
+        };
+
+        public Task<LeadDetailRow?> GetLeadDetailAsync(int id) =>
+            _context.Leads.AsNoTracking().Where(l => l.Id == id).Select(ToDetailRow).FirstOrDefaultAsync();
+
+        public Task<LeadListRow?> GetListRowAsync(int id) =>
+            ListBase().Where(l => l.Id == id).Select(ToRow).FirstOrDefaultAsync();
+
+        public Task<Lead?> GetDeletedLeadAsync(int id) =>
+            _context.Leads.IgnoreQueryFilters().FirstOrDefaultAsync(l => l.Id == id && l.IsDeleted);
+
+        public Task<LeadDetailRow?> GetDeletedLeadDetailAsync(int id) =>
+            _context.Leads.AsNoTracking().IgnoreQueryFilters()
+                .Where(l => l.Id == id && l.IsDeleted)
+                .Select(ToDetailRow)
+                .FirstOrDefaultAsync();
 
         public Task<DeletedLead?> GetDeletedRecordAsync(int leadId) =>
             _context.DeletedLeads
@@ -78,13 +99,21 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                // Same leading-zero-tolerant phone match as the live lead search.
+                // Same split as the live lead search (see IsPhoneTerm).
                 var term = search.Trim();
-                var termNoZero = term.TrimStart('0');
-                q = q.Where(d =>
-                    (d.Lead!.Name != null && d.Lead.Name.Contains(term)) ||
-                    (d.Lead.NickName != null && d.Lead.NickName.Contains(term)) ||
-                    (d.Lead.PhoneNum != null && (d.Lead.PhoneNum.Contains(term) || d.Lead.PhoneNum.Contains(termNoZero))));
+                if (IsPhoneTerm(term))
+                {
+                    var termNoZero = NoLeadingZero(term);
+                    q = termNoZero == term
+                        ? q.Where(d => d.Lead!.PhoneNum != null && d.Lead.PhoneNum.Contains(term))
+                        : q.Where(d => d.Lead!.PhoneNum != null && (d.Lead.PhoneNum.Contains(term) || d.Lead.PhoneNum.Contains(termNoZero)));
+                }
+                else
+                {
+                    q = q.Where(d =>
+                        (d.Lead!.Name != null && d.Lead.Name.Contains(term)) ||
+                        (d.Lead.NickName != null && d.Lead.NickName.Contains(term)));
+                }
             }
 
             var totalCount = await q.CountAsync();
@@ -143,38 +172,54 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
         // without one has nowhere to sit), with that latest call read in the
         // same query via a correlated top-1 subquery instead of a second
         // round trip that fetched every call row.
-        public Task<List<LeadListRow>> GetAllLeadsAsync(bool excludeCompleted = false)
+        // The latest call is read as correlated TOP 1 lookups, each a seek on
+        // the (LeadId, CreatedAt) index. What made this feed expensive was its
+        // size: it returned every lead that ever had a call. from/to bound it
+        // to the calendar's visible range; with neither it still returns all.
+        public Task<List<LeadListRow>> GetAllLeadsAsync(bool excludeCompleted = false, DateTime? from = null, DateTime? to = null)
         {
-            var q = ListBase().Where(l => _context.LeadCalls.Any(c => c.LeadId == l.Id));
-            if (excludeCompleted) q = ExcludeCompleted(q);
-            return q
-                .OrderByDescending(l => l.CreatedDate)
-                .Select(l => new LeadListRow
-                {
-                    Id = l.Id,
-                    Name = l.Name,
-                    CountryKey = l.CountryKey,
-                    PhoneNum = l.PhoneNum,
-                    NickName = l.NickName,
-                    Status = l.Status,
-                    PaymentWay = l.PaymentWay,
-                    CreatedDate = l.CreatedDate,
-                    CreatedByName = l.CreatedBy!.UserName,
-                    ClaimedByName = l.ClaimedBy!.UserName,
-                    ReferalName = l.Referal!.Name,
-                    ProcedureName = l.Procedure!.Name,
-                    DoctorName = l.Doctor!.Name,
-                    ClosedReasonName = l.ClosedReason!.Name,
-                    LastCallDate = _context.LeadCalls
+            var leads = ListBase();
+            if (excludeCompleted) leads = ExcludeCompleted(leads);
+
+            var q = from l in leads
+                    let last = _context.LeadCalls
                         .Where(c => c.LeadId == l.Id)
                         .OrderByDescending(c => c.CreatedAt)
-                        .Select(c => (DateTime?)c.Date)
-                        .FirstOrDefault(),
-                    LastCallNote = _context.LeadCalls
-                        .Where(c => c.LeadId == l.Id)
-                        .OrderByDescending(c => c.CreatedAt)
-                        .Select(c => c.Note)
                         .FirstOrDefault()
+                    where last != null
+                    select new { Lead = l, Last = last };
+
+            if (from.HasValue)
+            {
+                var start = from.Value.Date;
+                q = q.Where(x => x.Last!.Date >= start);
+            }
+            if (to.HasValue)
+            {
+                var endExclusive = to.Value.Date.AddDays(1);
+                q = q.Where(x => x.Last!.Date < endExclusive);
+            }
+
+            return q
+                .OrderByDescending(x => x.Lead.CreatedDate)
+                .Select(x => new LeadListRow
+                {
+                    Id = x.Lead.Id,
+                    Name = x.Lead.Name,
+                    CountryKey = x.Lead.CountryKey,
+                    PhoneNum = x.Lead.PhoneNum,
+                    NickName = x.Lead.NickName,
+                    Status = x.Lead.Status,
+                    PaymentWay = x.Lead.PaymentWay,
+                    CreatedDate = x.Lead.CreatedDate,
+                    CreatedByName = x.Lead.CreatedBy!.UserName,
+                    ClaimedByName = x.Lead.ClaimedBy!.UserName,
+                    ReferalName = x.Lead.Referal!.Name,
+                    ProcedureName = x.Lead.Procedure!.Name,
+                    DoctorName = x.Lead.Doctor!.Name,
+                    ClosedReasonName = x.Lead.ClosedReason!.Name,
+                    LastCallDate = x.Last!.Date,
+                    LastCallNote = x.Last.Note
                 })
                 .ToListAsync();
         }
@@ -204,13 +249,21 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
                 var term = query.Search.Trim();
-                // Phone search ignores a leading zero either way — searching "78..."
-                // must still find a stored "078..." and vice versa.
-                var termNoZero = term.TrimStart('0');
-                q = q.Where(l =>
-                    (l.Name != null && l.Name.Contains(term)) ||
-                    (l.NickName != null && l.NickName.Contains(term)) ||
-                    (l.PhoneNum != null && (l.PhoneNum.Contains(term) || l.PhoneNum.Contains(termNoZero))));
+                if (IsPhoneTerm(term))
+                {
+                    // Phone search ignores a leading zero either way — searching "78..."
+                    // must still find a stored "078..." and vice versa.
+                    var termNoZero = NoLeadingZero(term);
+                    q = termNoZero == term
+                        ? q.Where(l => l.PhoneNum != null && l.PhoneNum.Contains(term))
+                        : q.Where(l => l.PhoneNum != null && (l.PhoneNum.Contains(term) || l.PhoneNum.Contains(termNoZero)));
+                }
+                else
+                {
+                    q = q.Where(l =>
+                        (l.Name != null && l.Name.Contains(term)) ||
+                        (l.NickName != null && l.NickName.Contains(term)));
+                }
             }
 
             if (query.ClaimedByUserId != null)
@@ -317,11 +370,24 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
             return groups.Select(g => (g.UserId, g.Username, g.Total, g.Success, g.Closed)).ToList();
         }
 
-        public Task<List<Lead>> GetByDoctorAsync(int doctorId, DateTime? from = null, DateTime? to = null)
-        {
-            var q = ApplyDateRange(WithLeadIncludes().AsNoTracking().Where(l => l.DoctorId == doctorId), from, to);
-            return q.OrderByDescending(l => l.CreatedDate).ToListAsync();
-        }
+        // Projected: this used to materialize every lead of the doctor with six
+        // Includes (both AspNetUsers rows, plus the Description and
+        // ClinicSignature LOBs) for a sheet that shows eight columns.
+        public Task<List<DoctorLeadRow>> GetByDoctorAsync(int doctorId, DateTime? from = null, DateTime? to = null) =>
+            ApplyDateRange(ListBase().Where(l => l.DoctorId == doctorId), from, to)
+                .OrderByDescending(l => l.CreatedDate)
+                .Select(l => new DoctorLeadRow
+                {
+                    Id = l.Id,
+                    Name = l.Name,
+                    Status = l.Status,
+                    ProcedureName = l.Procedure!.Name,
+                    ReferalName = l.Referal!.Name,
+                    CreatedByName = l.CreatedBy!.UserName,
+                    ClaimedByName = l.ClaimedBy!.UserName,
+                    CreatedDate = l.CreatedDate
+                })
+                .ToListAsync();
 
         public async Task<List<(int ProcedureId, int Total, int Pending, int Waiting, int Success, int Closed)>> GetLeadCountsByProcedureAsync(DateTime? from = null, DateTime? to = null)
         {
@@ -410,5 +476,20 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
         }
 
         public Task SaveChangesAsync() => _context.SaveChangesAsync();
+
+        // A search term made only of digits and phone punctuation is matched
+        // against the phone column alone, and anything else against the name
+        // columns alone, so each search runs half the LIKE work it did when
+        // every term was tried against all three. Still a scan: a
+        // leading-wildcard LIKE can't seek an index.
+        private static bool IsPhoneTerm(string term) =>
+            term.All(c => char.IsDigit(c) || c is '+' or '-' or ' ' or '(' or ')');
+
+        // "0" alone must not become "" — Contains("") matches every row.
+        private static string NoLeadingZero(string term)
+        {
+            var trimmed = term.TrimStart('0');
+            return trimmed.Length == 0 ? term : trimmed;
+        }
     }
 }

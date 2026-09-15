@@ -24,18 +24,41 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
 
       
 
+        private const string IncorrectMessage = "User or Password is Incorrect";
+        private const string LockedMessage = "Too many failed sign-in attempts. Please try again in 15 minutes.";
+
         public async Task<(User? User, string? Error)> LogInAsync(string userName, string password)
         {
             var user = await _userManager.FindByNameAsync(userName);
+            if (user == null)
+                return (null, IncorrectMessage);
 
-            if (user == null || !await _userManager.CheckPasswordAsync(user, password))
-                return (null, "User or Password is Incorrect");
+            // Checked before the password, so a locked account can't keep
+            // being guessed at. Read from LockoutEnd directly rather than
+            // IsLockedOutAsync, which answers "no" for any account whose
+            // LockoutEnabled flag is off (accounts imported from CRMS).
+            if (IsLockedOut(user))
+                return (null, LockedMessage);
+
+            if (!await _userManager.CheckPasswordAsync(user, password))
+            {
+                // Counts the failure and, at MaxFailedAccessAttempts, sets
+                // LockoutEnd and resets the count (Program.cs Lockout options).
+                await _userManager.AccessFailedAsync(user);
+                return (null, IsLockedOut(user) ? LockedMessage : IncorrectMessage);
+            }
+
+            if (user.AccessFailedCount > 0)
+                await _userManager.ResetAccessFailedCountAsync(user);
 
             if (!user.IsActive)
                 return (null, "Your account is inactive. Please contact support.");
 
             return (user, null);
         }
+
+        private static bool IsLockedOut(User user) =>
+            user.LockoutEnd is { } end && end > DateTimeOffset.UtcNow;
 
         public async Task<User?> FindActiveByIdAsync(string userId)
         {

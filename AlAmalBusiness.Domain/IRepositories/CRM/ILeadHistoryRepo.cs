@@ -8,8 +8,10 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
     public interface ILeadHistoryRepo
     {
         void Add(LeadHistory history);
-        Task<List<LeadHistory>> GetByLeadAsync(int leadId);
-        Task<List<LeadHistory>> GetFollowUpsByLeadIdsAsync(IEnumerable<int> leadIds);
+        Task<List<LeadHistoryRow>> GetByLeadAsync(int leadId);
+        // Every follow-up on the leads GetByDoctorAsync returns for the same
+        // doctor and dates — filtered by join, not by a list of lead ids.
+        Task<List<LeadFollowUpRow>> GetFollowUpsForDoctorAsync(int doctorId, DateTime? from, DateTime? to);
 
         // Dashboard KPI support — a lead reaching Success within [from, toExclusive),
         // counted per follow-up event (a reopened-then-re-succeeded lead counts twice).
