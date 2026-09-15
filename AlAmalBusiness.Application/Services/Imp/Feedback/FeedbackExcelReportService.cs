@@ -98,6 +98,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             WriteHours(sheet.Cell(row, 2), stats.OldestOpenHours);
 
             sheet.Range(totalsFrom, 1, row, 1).Style.Font.Bold = true;
+            Center(sheet.Range(5, 2, row, 3));
             sheet.Column(1).Width = 34;
             sheet.Column(2).Width = 14;
             sheet.Column(3).Width = 10;
@@ -189,16 +190,26 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
                 cell.Value = headers[i];
                 cell.Style.Font.Bold = true;
                 cell.Style.Fill.BackgroundColor = HeaderFill;
-                if (i > 0) cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                Center(cell);
             }
         }
 
-        // The name column stays left-aligned; every number after it centres,
-        // the same as the hospital report.
-        private static void CenterRow(IXLWorksheet sheet, int row, int columns)
+        // Every value centres, the name column included, the same as the
+        // hospital report. Only a sheet's title and scope lines stay left,
+        // where they read as a heading rather than as data.
+        private static void CenterRow(IXLWorksheet sheet, int row, int columns) =>
+            Center(sheet.Range(row, 1, row, columns));
+
+        private static void Center(IXLRange range)
         {
-            for (var i = 2; i <= columns; i++)
-                sheet.Cell(row, i).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            range.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        }
+
+        private static void Center(IXLCell cell)
+        {
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
         }
 
         private static void WriteNoData(IXLWorksheet sheet, ref int row)

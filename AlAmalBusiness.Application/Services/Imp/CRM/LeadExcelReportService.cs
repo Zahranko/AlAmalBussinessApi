@@ -39,6 +39,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             sheet.Cell(8, 2).Value = stats.ClosedCount;
             sheet.Cell(8, 3).Value = $"{stats.ClosedPercent}%";
             sheet.Range(4, 1, 8, 1).Style.Font.Bold = true;
+            Center(sheet.Range(4, 2, 8, 3));
 
             var doctorRow = WriteDoctorTable(sheet, startRow: 10, title: "By Doctor", stats.Doctors);
 
@@ -68,8 +69,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 cell.Value = headers[i];
                 cell.Style.Font.Bold = true;
                 cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#EEF2FF");
-                if (i < 7)
-                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                Center(cell);
             }
 
             var row = headerRow;
@@ -83,11 +83,6 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 sheet.Cell(row, 5).Value = d.SuccessCount;
                 sheet.Cell(row, 6).Value = d.ClosedCount;
                 sheet.Cell(row, 7).Value = $"{d.SuccessRate}%";
-                for (var i = 1; i <= 7; i++)
-                {
-                    sheet.Cell(row, i).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    sheet.Cell(row, i).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                }
 
                 var activeProcedures = d.Procedures
                     .Where(p => p.Count > 0)
@@ -97,7 +92,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 var procCell = sheet.Cell(row, 8);
                 procCell.Value = activeProcedures.Count > 0 ? string.Join("\n", activeProcedures) : "-";
                 procCell.Style.Alignment.WrapText = true;
-                procCell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                Center(sheet.Range(row, 1, row, headers.Length));
             }
 
             if (row > headerRow)
@@ -127,6 +122,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 cell.Value = headers[i];
                 cell.Style.Font.Bold = true;
                 cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#EEF2FF");
+                Center(cell);
             }
 
             var row = headerRow;
@@ -140,11 +136,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 sheet.Cell(row, 5).Value = r.Success;
                 sheet.Cell(row, 6).Value = r.Closed;
                 sheet.Cell(row, 7).Value = $"{r.SuccessRate}%";
-                for (var i = 1; i <= 7; i++)
-                {
-                    sheet.Cell(row, i).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    sheet.Cell(row, i).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                }
+                Center(sheet.Range(row, 1, row, headers.Length));
             }
 
             if (row == headerRow)
@@ -155,6 +147,21 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             }
 
             return row;
+        }
+
+        // Every value in a workbook reads centred, headers included - only the
+        // title and period lines at the top of a sheet stay left, where they
+        // read as a heading rather than as data.
+        private static void Center(IXLRange range)
+        {
+            range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            range.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        }
+
+        private static void Center(IXLCell cell)
+        {
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
         }
 
         private static string FormatDate(DateTime? date) => date?.ToString("yyyy-MM-dd") ?? "All time";
@@ -176,6 +183,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 cell.Value = headers[i];
                 cell.Style.Font.Bold = true;
                 cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#EEF2FF");
+                Center(cell);
             }
 
             var row = headerRow;
@@ -192,6 +200,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 var notesCell = sheet.Cell(row, 8);
                 notesCell.Value = l.FollowUpNotes.Count > 0 ? string.Join("\n", l.FollowUpNotes) : "";
                 notesCell.Style.Alignment.WrapText = true;
+                Center(sheet.Range(row, 1, row, headers.Length));
             }
 
             if (row == headerRow)
