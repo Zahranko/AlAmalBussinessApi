@@ -1,5 +1,9 @@
 using AlAmalBusiness.Api.Area.CRM.Hubs;
 using AlAmalBusiness.Api.Email;
+using AlAmalBusiness.Application.Services.Imp.Appointments;
+using AlAmalBusiness.Application.Services.Interface.Appointments;
+using AlAmalBusiness.Domain.IRepositories.Appointments;
+using AlAmalBusiness.Infrastructure.Repository.Imp.Appointments;
 using AlAmalBusiness.Application.Services.Imp;
 using AlAmalBusiness.Application.Services.Imp.CRM;
 using AlAmalBusiness.Application.Services.Imp.Feedback;
@@ -65,6 +69,10 @@ builder.Services.AddScoped<IClosedReasonRepo, ClosedReasonRepo>();
 builder.Services.AddScoped<IPatientFeedbackRepo, PatientFeedbackRepo>();
 builder.Services.AddScoped<IFeedbackHistoryRepo, FeedbackHistoryRepo>();
 builder.Services.AddScoped<IQuestionnaireRepo, QuestionnaireRepo>();
+builder.Services.AddScoped<IAppointmentRequestRepo, AppointmentRequestRepo>();
+builder.Services.AddScoped<IAppointmentProcedureRepo, AppointmentProcedureRepo>();
+builder.Services.AddScoped<IAppointmentReferralSourceRepo, AppointmentReferralSourceRepo>();
+builder.Services.AddScoped<IAppointmentEmailRepo, AppointmentEmailRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -82,6 +90,8 @@ builder.Services.AddScoped<IFeedbackExcelReportService, FeedbackExcelReportServi
 builder.Services.AddScoped<IQuestionnaireService, QuestionnaireService>();
 builder.Services.AddScoped<IQuestionnaireExcelReportService, QuestionnaireExcelReportService>();
 builder.Services.AddScoped<IQuestionnaireMonthlyReportService, QuestionnaireMonthlyReportService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IAppointmentListService, AppointmentListService>();
 // Emails last month's questionnaire report to each department's QManagers,
 // once per month (QuestionnaireReport section) — see the scheduler.
 builder.Services.AddHostedService<AlAmalBusiness.Api.Area.Questionnaires.QuestionnaireMonthlyReportScheduler>();

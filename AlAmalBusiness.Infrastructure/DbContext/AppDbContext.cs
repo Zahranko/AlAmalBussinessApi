@@ -1,4 +1,5 @@
 using AlAmalBusiness.Domain.Models;
+using AlAmalBusiness.Domain.Models.Appointments;
 using AlAmalBusiness.Domain.Models.CRM;
 using AlAmalBusiness.Domain.Models.Feedback;
 using AlAmalBusiness.Domain.Models.Questionnaires;
@@ -30,6 +31,10 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<QuestionnaireSubmission> QuestionnaireSubmissions { get; set; }
       public DbSet<QuestionnaireAnswer> QuestionnaireAnswers { get; set; }
       public DbSet<QuestionnaireReportRun> QuestionnaireReportRuns { get; set; }
+      public DbSet<AppointmentRequest> AppointmentRequests { get; set; }
+      public DbSet<AppointmentProcedure> AppointmentProcedures { get; set; }
+      public DbSet<AppointmentReferralSource> AppointmentReferralSources { get; set; }
+      public DbSet<AppointmentNotificationEmail> AppointmentNotificationEmails { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -283,6 +288,40 @@ public class AppDbContext : IdentityDbContext<User>
             .WithMany(x => x.Answers)
             .HasForeignKey(a => a.QuestionId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // ---------- Appointments ----------
+
+        // Restrict: a list entry is retired with IsActive, never deleted out
+        // from under the requests that picked it.
+        modelBuilder.Entity<AppointmentRequest>()
+            .HasOne(a => a.Procedure)
+            .WithMany()
+            .HasForeignKey(a => a.ProcedureId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AppointmentRequest>()
+            .HasOne(a => a.ReferralSource)
+            .WithMany()
+            .HasForeignKey(a => a.ReferralSourceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AppointmentRequest>().HasIndex(a => a.CreatedDate);
+        modelBuilder.Entity<AppointmentRequest>().Property(a => a.FullName).HasMaxLength(120);
+        modelBuilder.Entity<AppointmentRequest>().Property(a => a.PhoneCountryCode).HasMaxLength(6);
+        modelBuilder.Entity<AppointmentRequest>().Property(a => a.PhoneNumber).HasMaxLength(32);
+        modelBuilder.Entity<AppointmentRequest>().Property(a => a.Details).HasMaxLength(2000);
+        modelBuilder.Entity<AppointmentRequest>().Property(a => a.SubmittedFromIp).HasMaxLength(64);
+        modelBuilder.Entity<AppointmentRequest>().Property(a => a.UserAgent).HasMaxLength(400);
+
+        // Unique names back the service's own duplicate check against a race.
+        modelBuilder.Entity<AppointmentProcedure>().Property(p => p.Name).HasMaxLength(200);
+        modelBuilder.Entity<AppointmentProcedure>().HasIndex(p => p.Name).IsUnique();
+        modelBuilder.Entity<AppointmentReferralSource>().Property(r => r.Name).HasMaxLength(200);
+        modelBuilder.Entity<AppointmentReferralSource>().HasIndex(r => r.Name).IsUnique();
+
+        modelBuilder.Entity<AppointmentNotificationEmail>().Property(e => e.Email).HasMaxLength(256);
+        modelBuilder.Entity<AppointmentNotificationEmail>().Property(e => e.Name).HasMaxLength(100);
+        modelBuilder.Entity<AppointmentNotificationEmail>().HasIndex(e => e.Email).IsUnique();
 
     }
     }
