@@ -17,8 +17,10 @@ namespace AlAmalBusiness.Application.DTOs.Appointments
         [StringLength(6)]
         public string? PhoneCountryCode { get; set; } = "+962";
 
-        [Range(1, int.MaxValue, ErrorMessage = "يرجى اختيار الإجراء")]
-        public int ProcedureId { get; set; }
+        // The shared Departments lookup, same as the feedback form's — it is
+        // what routes the request to a team and to their email.
+        [Range(1, int.MaxValue, ErrorMessage = "يرجى اختيار القسم")]
+        public int DepartmentId { get; set; }
 
         [Range(1, int.MaxValue, ErrorMessage = "يرجى اختيار كيف سمعت عنا")]
         public int ReferralSourceId { get; set; }

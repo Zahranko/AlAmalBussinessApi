@@ -1,4 +1,4 @@
-using AlAmalBusiness.Domain.Constants;
+﻿using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.Models;
 using Microsoft.AspNetCore.Identity;
 using System;
@@ -26,7 +26,10 @@ namespace AlAmalBusiness.Infrastructure.Seeding
                 AppRoles.FManager,
                 AppRoles.FEmployee,
                 AppRoles.FUser,
-                AppRoles.QManager
+                AppRoles.QManager,
+                AppRoles.AManager,
+                AppRoles.AEmployee,
+                AppRoles.AUser
             };
             // Runs on every cold start — one SELECT for the existing names
             // rather than one RoleExistsAsync round trip per role.

@@ -7,16 +7,30 @@ namespace AlAmalBusiness.Domain.IRepositories.Appointments
     public interface IAppointmentRequestRepo
     {
         Task<AppointmentRequest> CreateAsync(AppointmentRequest request);
+
+        // Tracked, for the workflow actions to mutate.
+        Task<AppointmentRequest?> GetByIdAsync(int id);
+
+        // Detail view — the request plus its department, source and assignee
+        // names.
+        Task<AppointmentRequest?> GetDetailAsync(int id);
+
+        Task<(List<AppointmentListRow> Items, int TotalCount)> PageRequestsAsync(AppointmentListQuery query);
+
+        // The dashboard's numbers, aggregated in SQL — never a page-through.
+        Task<AppointmentStatsRows> GetStatsAsync(AppointmentStatsQuery query);
+
+        Task SaveChangesAsync();
     }
 
-    public interface IAppointmentProcedureRepo
+    public interface IAppointmentHistoryRepo
     {
-        Task<List<AppointmentProcedure>> GetAllAsync();
-        Task<List<AppointmentProcedure>> GetActiveAsync();
-        Task<AppointmentProcedure?> GetByIdAsync(int id);
-        Task CreateAsync(AppointmentProcedure procedure);
-        Task SaveChangesAsync();
-        Task<bool> IsNameExist(string name, int excludeId);
+        // Queued only — the caller saves it together with whatever it changed
+        // on the request itself, so a timeline entry can never be written
+        // without the change it describes.
+        void Add(AppointmentHistory history);
+
+        Task<List<AppointmentHistory>> GetByAppointmentAsync(int appointmentId);
     }
 
     public interface IAppointmentReferralSourceRepo
@@ -27,16 +41,5 @@ namespace AlAmalBusiness.Domain.IRepositories.Appointments
         Task CreateAsync(AppointmentReferralSource source);
         Task SaveChangesAsync();
         Task<bool> IsNameExist(string name, int excludeId);
-    }
-
-    public interface IAppointmentEmailRepo
-    {
-        Task<List<AppointmentNotificationEmail>> GetAllAsync();
-        // Just the addresses of the active rows — all the notifier needs.
-        Task<List<string>> GetActiveAddressesAsync();
-        Task<AppointmentNotificationEmail?> GetByIdAsync(int id);
-        Task CreateAsync(AppointmentNotificationEmail email);
-        Task SaveChangesAsync();
-        Task<bool> IsEmailExist(string email, int excludeId);
     }
 }

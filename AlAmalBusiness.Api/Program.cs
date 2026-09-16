@@ -1,4 +1,4 @@
-using AlAmalBusiness.Api.Area.CRM.Hubs;
+﻿using AlAmalBusiness.Api.Area.CRM.Hubs;
 using AlAmalBusiness.Api.Email;
 using AlAmalBusiness.Application.Services.Imp.Appointments;
 using AlAmalBusiness.Application.Services.Interface.Appointments;
@@ -70,9 +70,8 @@ builder.Services.AddScoped<IPatientFeedbackRepo, PatientFeedbackRepo>();
 builder.Services.AddScoped<IFeedbackHistoryRepo, FeedbackHistoryRepo>();
 builder.Services.AddScoped<IQuestionnaireRepo, QuestionnaireRepo>();
 builder.Services.AddScoped<IAppointmentRequestRepo, AppointmentRequestRepo>();
-builder.Services.AddScoped<IAppointmentProcedureRepo, AppointmentProcedureRepo>();
+builder.Services.AddScoped<IAppointmentHistoryRepo, AppointmentHistoryRepo>();
 builder.Services.AddScoped<IAppointmentReferralSourceRepo, AppointmentReferralSourceRepo>();
-builder.Services.AddScoped<IAppointmentEmailRepo, AppointmentEmailRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();

@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs.Appointments;
+﻿using AlAmalBusiness.Application.DTOs.Appointments;
 using AlAmalBusiness.Application.DTOs.Feedback;
 using AlAmalBusiness.Application.Services.Interface.Appointments;
 using Microsoft.AspNetCore.Authorization;
@@ -25,7 +25,7 @@ namespace AlAmalBusiness.Api.Area.Appointments.Controllers
             _appointmentService = appointmentService;
         }
 
-        // Active procedures and referral sources, id + name only.
+        // Active departments and referral sources, id + name only.
         [HttpGet("options")]
         public async Task<IActionResult> GetOptions() =>
             Ok(await _appointmentService.GetFormOptionsAsync());

@@ -1,4 +1,4 @@
-using AlAmalBusiness.Domain.Models;
+﻿using AlAmalBusiness.Domain.Models;
 using AlAmalBusiness.Domain.Models.Appointments;
 using AlAmalBusiness.Domain.Models.CRM;
 using AlAmalBusiness.Domain.Models.Feedback;
@@ -32,9 +32,8 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<QuestionnaireAnswer> QuestionnaireAnswers { get; set; }
       public DbSet<QuestionnaireReportRun> QuestionnaireReportRuns { get; set; }
       public DbSet<AppointmentRequest> AppointmentRequests { get; set; }
-      public DbSet<AppointmentProcedure> AppointmentProcedures { get; set; }
+      public DbSet<AppointmentHistory> AppointmentHistories { get; set; }
       public DbSet<AppointmentReferralSource> AppointmentReferralSources { get; set; }
-      public DbSet<AppointmentNotificationEmail> AppointmentNotificationEmails { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -291,12 +290,12 @@ public class AppDbContext : IdentityDbContext<User>
 
         // ---------- Appointments ----------
 
-        // Restrict: a list entry is retired with IsActive, never deleted out
-        // from under the requests that picked it.
+        // Restrict, like PatientFeedback: a department is retired with
+        // IsActive, never deleted out from under the requests sent to it.
         modelBuilder.Entity<AppointmentRequest>()
-            .HasOne(a => a.Procedure)
+            .HasOne(a => a.Department)
             .WithMany()
-            .HasForeignKey(a => a.ProcedureId)
+            .HasForeignKey(a => a.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<AppointmentRequest>()
@@ -305,7 +304,25 @@ public class AppDbContext : IdentityDbContext<User>
             .HasForeignKey(a => a.ReferralSourceId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<AppointmentRequest>()
+            .HasOne(a => a.AssignedTo)
+            .WithMany()
+            .HasForeignKey(a => a.AssignedToId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The inbox always filters on the caller's department and sorts by
+        // CreatedDate DESC with OFFSET/FETCH; without these both the COUNT
+        // and the page are a full scan + sort on every request. Same shape as
+        // the Feedbacks indexes, for the same reason.
+        modelBuilder.Entity<AppointmentRequest>().HasIndex(a => new { a.DepartmentId, a.CreatedDate });
+        modelBuilder.Entity<AppointmentRequest>().HasIndex(a => new { a.Status, a.CreatedDate });
         modelBuilder.Entity<AppointmentRequest>().HasIndex(a => a.CreatedDate);
+
+        // Bounded lengths so these stop being nvarchar(max) LOB columns (read
+        // off-row, un-indexable) — the search predicate runs over two of
+        // them. Details is deliberately left unbounded at the column level
+        // beyond its 2000-char cap: it is free text the patient wrote, and no
+        // list query selects it.
         modelBuilder.Entity<AppointmentRequest>().Property(a => a.FullName).HasMaxLength(120);
         modelBuilder.Entity<AppointmentRequest>().Property(a => a.PhoneCountryCode).HasMaxLength(6);
         modelBuilder.Entity<AppointmentRequest>().Property(a => a.PhoneNumber).HasMaxLength(32);
@@ -313,15 +330,27 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<AppointmentRequest>().Property(a => a.SubmittedFromIp).HasMaxLength(64);
         modelBuilder.Entity<AppointmentRequest>().Property(a => a.UserAgent).HasMaxLength(400);
 
-        // Unique names back the service's own duplicate check against a race.
-        modelBuilder.Entity<AppointmentProcedure>().Property(p => p.Name).HasMaxLength(200);
-        modelBuilder.Entity<AppointmentProcedure>().HasIndex(p => p.Name).IsUnique();
+        modelBuilder.Entity<AppointmentHistory>()
+            .HasOne(h => h.Appointment)
+            .WithMany()
+            .HasForeignKey(h => h.AppointmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AppointmentHistory>()
+            .HasOne(h => h.Actor)
+            .WithMany()
+            .HasForeignKey(h => h.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The timeline is always read as one request's entries in order.
+        modelBuilder.Entity<AppointmentHistory>().HasIndex(h => new { h.AppointmentId, h.CreatedAt });
+
+        modelBuilder.Entity<AppointmentHistory>().Property(h => h.FromDepartmentName).HasMaxLength(200);
+        modelBuilder.Entity<AppointmentHistory>().Property(h => h.ToDepartmentName).HasMaxLength(200);
+
+        // A unique name backs the service's own duplicate check against a race.
         modelBuilder.Entity<AppointmentReferralSource>().Property(r => r.Name).HasMaxLength(200);
         modelBuilder.Entity<AppointmentReferralSource>().HasIndex(r => r.Name).IsUnique();
-
-        modelBuilder.Entity<AppointmentNotificationEmail>().Property(e => e.Email).HasMaxLength(256);
-        modelBuilder.Entity<AppointmentNotificationEmail>().Property(e => e.Name).HasMaxLength(100);
-        modelBuilder.Entity<AppointmentNotificationEmail>().HasIndex(e => e.Email).IsUnique();
 
     }
     }

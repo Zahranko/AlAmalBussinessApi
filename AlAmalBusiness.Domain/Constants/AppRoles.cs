@@ -16,5 +16,11 @@ namespace AlAmalBusiness.Domain.Constants
         // Patient questionnaires: builds and reads the questionnaires of
         // their own department. Admin is the only cross-department reader.
         public const string QManager = "QManager";
+        // Appointment requests: the same per-department tier as F*, for the
+        // public appointment page's inbox. An AManager is who the new-request
+        // email goes to (AppointmentService), one department each.
+        public const string AManager = "AManager";
+        public const string AEmployee = "AEmployee";
+        public const string AUser = "AUser";
     }
 }
