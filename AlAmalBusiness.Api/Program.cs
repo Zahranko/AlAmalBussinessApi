@@ -4,6 +4,10 @@ using AlAmalBusiness.Application.Services.Imp.Appointments;
 using AlAmalBusiness.Application.Services.Interface.Appointments;
 using AlAmalBusiness.Domain.IRepositories.Appointments;
 using AlAmalBusiness.Infrastructure.Repository.Imp.Appointments;
+using AlAmalBusiness.Application.Services.Imp.Tickets;
+using AlAmalBusiness.Application.Services.Interface.Tickets;
+using AlAmalBusiness.Domain.IRepositories.Tickets;
+using AlAmalBusiness.Infrastructure.Repository.Imp.Tickets;
 using AlAmalBusiness.Application.Services.Imp;
 using AlAmalBusiness.Application.Services.Imp.CRM;
 using AlAmalBusiness.Application.Services.Imp.Feedback;
@@ -72,6 +76,11 @@ builder.Services.AddScoped<IQuestionnaireRepo, QuestionnaireRepo>();
 builder.Services.AddScoped<IAppointmentRequestRepo, AppointmentRequestRepo>();
 builder.Services.AddScoped<IAppointmentHistoryRepo, AppointmentHistoryRepo>();
 builder.Services.AddScoped<IAppointmentReferralSourceRepo, AppointmentReferralSourceRepo>();
+builder.Services.AddScoped<ITicketRepo, TicketRepo>();
+builder.Services.AddScoped<ITicketHistoryRepo, TicketHistoryRepo>();
+builder.Services.AddScoped<ITicketCategoryRepo, TicketCategoryRepo>();
+builder.Services.AddScoped<ITicketProcedureRepo, TicketProcedureRepo>();
+builder.Services.AddScoped<ITicketReasonRepo, TicketReasonRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -91,6 +100,8 @@ builder.Services.AddScoped<IQuestionnaireExcelReportService, QuestionnaireExcelR
 builder.Services.AddScoped<IQuestionnaireMonthlyReportService, QuestionnaireMonthlyReportService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentListService, AppointmentListService>();
+builder.Services.AddScoped<ITicketService, TicketService>();
+builder.Services.AddScoped<ITicketListService, TicketListService>();
 // Emails last month's questionnaire report to each department's QManagers,
 // once per month (QuestionnaireReport section) — see the scheduler.
 builder.Services.AddHostedService<AlAmalBusiness.Api.Area.Questionnaires.QuestionnaireMonthlyReportScheduler>();

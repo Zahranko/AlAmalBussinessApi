@@ -20,6 +20,11 @@ namespace AlAmalBusiness.Domain.IRepositories
         // Distinct email addresses of active users in the given role and
         // department that have one set — e.g. who to notify about new feedback.
         Task<List<string>> GetActiveEmailsInRoleAsync(string role, int departmentId);
+        // The same, across every department and any of several roles, leaving
+        // one user out — who to tell about a new ticket, minus whoever raised it.
+        Task<List<string>> GetActiveEmailsInRolesAsync(IReadOnlyCollection<string> roles, string? excludeUserId);
+        // One active user's email, or null when they have none (or are disabled).
+        Task<string?> GetActiveEmailAsync(string userId);
         Task<IdentityResult> ResetPasswordAsync(string id, string password);
         Task<IdentityResult> DisableUserAsync(string id);
         Task<IdentityResult> EnableUserAsync(string id);

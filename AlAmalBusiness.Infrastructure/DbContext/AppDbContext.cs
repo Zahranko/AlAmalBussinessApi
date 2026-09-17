@@ -3,6 +3,7 @@ using AlAmalBusiness.Domain.Models.Appointments;
 using AlAmalBusiness.Domain.Models.CRM;
 using AlAmalBusiness.Domain.Models.Feedback;
 using AlAmalBusiness.Domain.Models.Questionnaires;
+using AlAmalBusiness.Domain.Models.Tickets;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,6 +35,11 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<AppointmentRequest> AppointmentRequests { get; set; }
       public DbSet<AppointmentHistory> AppointmentHistories { get; set; }
       public DbSet<AppointmentReferralSource> AppointmentReferralSources { get; set; }
+      public DbSet<Ticket> Tickets { get; set; }
+      public DbSet<TicketHistory> TicketHistories { get; set; }
+      public DbSet<TicketCategory> TicketCategories { get; set; }
+      public DbSet<TicketProcedure> TicketProcedures { get; set; }
+      public DbSet<TicketReason> TicketReasons { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -351,6 +357,96 @@ public class AppDbContext : IdentityDbContext<User>
         // A unique name backs the service's own duplicate check against a race.
         modelBuilder.Entity<AppointmentReferralSource>().Property(r => r.Name).HasMaxLength(200);
         modelBuilder.Entity<AppointmentReferralSource>().HasIndex(r => r.Name).IsUnique();
+
+        // ---------- Tickets ----------
+
+        // Restrict on every lookup, user and department: each is retired with
+        // IsActive (or disabled, for a user), never deleted out from under the
+        // tickets that point at it.
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.Category)
+            .WithMany()
+            .HasForeignKey(t => t.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.Procedure)
+            .WithMany()
+            .HasForeignKey(t => t.ProcedureId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.Reason)
+            .WithMany()
+            .HasForeignKey(t => t.ReasonId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.CreatedBy)
+            .WithMany()
+            .HasForeignKey(t => t.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.AssignedTo)
+            .WithMany()
+            .HasForeignKey(t => t.AssignedToId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.Department)
+            .WithMany()
+            .HasForeignKey(t => t.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // One per list: the queue filters on Status and sorts by CreatedDate,
+        // created-by-me filters on the creator, and the queue is split on
+        // PaymentMethod (the insurance desk's side vs. everyone else's).
+        // Without them each COUNT and page is a full scan + sort, same
+        // reasoning as the appointment indexes.
+        modelBuilder.Entity<Ticket>().HasIndex(t => new { t.Status, t.CreatedDate });
+        modelBuilder.Entity<Ticket>().HasIndex(t => new { t.CreatedById, t.CreatedDate });
+        modelBuilder.Entity<Ticket>().HasIndex(t => new { t.AssignedToId, t.CreatedDate });
+        modelBuilder.Entity<Ticket>().HasIndex(t => new { t.PaymentMethod, t.Status, t.CreatedDate });
+
+        // Bounded so the searched Title isn't an nvarchar(max) LOB; the caps
+        // match what CreateTicketDTO accepts.
+        modelBuilder.Entity<Ticket>().Property(t => t.Title).HasMaxLength(200);
+        modelBuilder.Entity<Ticket>().Property(t => t.Description).HasMaxLength(4000);
+        modelBuilder.Entity<Ticket>().Property(t => t.PatientId).HasMaxLength(64);
+        modelBuilder.Entity<Ticket>().Property(t => t.SourceUrl).HasMaxLength(1000);
+        modelBuilder.Entity<Ticket>().Property(t => t.Resolution).HasMaxLength(2000);
+
+        modelBuilder.Entity<TicketHistory>()
+            .HasOne(h => h.Ticket)
+            .WithMany()
+            .HasForeignKey(h => h.TicketId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TicketHistory>()
+            .HasOne(h => h.Actor)
+            .WithMany()
+            .HasForeignKey(h => h.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The timeline is always read as one ticket's entries in order.
+        modelBuilder.Entity<TicketHistory>().HasIndex(h => new { h.TicketId, h.CreatedAt });
+        modelBuilder.Entity<TicketHistory>().Property(h => h.Note).HasMaxLength(2000);
+
+        // Unique names back the services' own duplicate checks against a race.
+        modelBuilder.Entity<TicketCategory>().Property(c => c.Name).HasMaxLength(200);
+        modelBuilder.Entity<TicketCategory>().HasIndex(c => c.Name).IsUnique();
+        modelBuilder.Entity<TicketProcedure>().Property(p => p.Name).HasMaxLength(200);
+        modelBuilder.Entity<TicketProcedure>().HasIndex(p => p.Name).IsUnique();
+
+        modelBuilder.Entity<TicketReason>()
+            .HasOne(r => r.Procedure)
+            .WithMany()
+            .HasForeignKey(r => r.ProcedureId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TicketReason>().Property(r => r.Name).HasMaxLength(200);
+        // Per procedure — see TicketReason.
+        modelBuilder.Entity<TicketReason>().HasIndex(r => new { r.ProcedureId, r.Name }).IsUnique();
 
     }
     }

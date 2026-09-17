@@ -22,5 +22,16 @@ namespace AlAmalBusiness.Domain.Constants
         public const string AManager = "AManager";
         public const string AEmployee = "AEmployee";
         public const string AUser = "AUser";
+        // Staff support tickets, ported from the CRMS Tickets app. Not
+        // department-scoped: anyone may raise a ticket, and one support team
+        // works every department's. TUser raises tickets and follows their
+        // own, TEmployee works the queue (close, comment), TManager also
+        // reopens a closed ticket. TInsurance is the insurance desk: a ticket
+        // whose payment method is Insurance belongs to it alone and never
+        // reaches the support queue.
+        public const string TManager = "TManager";
+        public const string TEmployee = "TEmployee";
+        public const string TUser = "TUser";
+        public const string TInsurance = "TInsurance";
     }
 }

@@ -111,6 +111,28 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
                 .ToListAsync();
         }
 
+        public async Task<List<string>> GetActiveEmailsInRolesAsync(IReadOnlyCollection<string> roles, string? excludeUserId)
+        {
+            // Same single join as above, without the department.
+            return await (
+                from u in _context.Users
+                join ur in _context.UserRoles on u.Id equals ur.UserId
+                join r in _context.Roles on ur.RoleId equals r.Id
+                where roles.Contains(r.Name!)
+                    && u.IsActive
+                    && u.Id != excludeUserId
+                    && u.Email != null && u.Email != ""
+                select u.Email!)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        public Task<string?> GetActiveEmailAsync(string userId) =>
+            _context.Users
+                .Where(u => u.Id == userId && u.IsActive && u.Email != null && u.Email != "")
+                .Select(u => u.Email)
+                .FirstOrDefaultAsync();
+
         public async Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId, string? email)
         {
             var user = await _userManager.FindByIdAsync(id);
