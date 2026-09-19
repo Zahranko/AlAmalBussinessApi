@@ -30,7 +30,7 @@ namespace AlAmalBusiness.Infrastructure.Seeding
         // alone for the same reason — it is theirs to change from Settings.
         private static readonly (string Name, bool AllowsInsurance)[] Procedures =
         {
-            ("إلغاء", false),
+            ("حذف", false),
             ("خصم", false),
             ("فتح فاتورة", true),
         };
