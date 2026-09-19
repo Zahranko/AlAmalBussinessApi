@@ -60,35 +60,45 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
         // ---------- procedures ----------
 
-        public async Task<List<TicketListItemDTO>> GetProceduresAsync() =>
-            (await _procedures.GetAllAsync()).Select(p => ToDto(p.Id, p.Name, p.IsActive)).ToList();
+        private static TicketProcedureItemDTO ToProcedureDto(TicketProcedure p) => new()
+        {
+            Id = p.Id,
+            Name = p.Name,
+            IsActive = p.IsActive,
+            AllowsInsurance = p.AllowsInsurance
+        };
 
-        public async Task<TicketListResponse<TicketListItemDTO>> CreateProcedureAsync(TicketListItemDTO dto)
+        public async Task<List<TicketProcedureItemDTO>> GetProceduresAsync() =>
+            (await _procedures.GetAllAsync()).Select(ToProcedureDto).ToList();
+
+        public async Task<TicketListResponse<TicketProcedureItemDTO>> CreateProcedureAsync(TicketProcedureItemDTO dto)
         {
             var name = Clean(dto.Name);
-            if (name == null) return Failed<TicketListItemDTO>("Procedure name is empty.");
+            if (name == null) return Failed<TicketProcedureItemDTO>("Procedure name is empty.");
             if (await _procedures.IsNameExist(name, 0))
-                return Failed<TicketListItemDTO>($"Procedure with name '{name}' already exists.");
+                return Failed<TicketProcedureItemDTO>($"Procedure with name '{name}' already exists.");
 
-            var entity = new TicketProcedure { Name = name, IsActive = dto.IsActive };
+            var entity = new TicketProcedure { Name = name, IsActive = dto.IsActive, AllowsInsurance = dto.AllowsInsurance ?? false };
             await _procedures.CreateAsync(entity);
-            return Ok(ToDto(entity.Id, entity.Name, entity.IsActive));
+            return Ok(ToProcedureDto(entity));
         }
 
-        public async Task<TicketListResponse<TicketListItemDTO>> UpdateProcedureAsync(int id, TicketListItemDTO dto)
+        public async Task<TicketListResponse<TicketProcedureItemDTO>> UpdateProcedureAsync(int id, TicketProcedureItemDTO dto)
         {
             var entity = await _procedures.GetByIdAsync(id);
-            if (entity == null) return Missing<TicketListItemDTO>($"Procedure with ID {id} not found.");
+            if (entity == null) return Missing<TicketProcedureItemDTO>($"Procedure with ID {id} not found.");
 
             var name = Clean(dto.Name);
-            if (name == null) return Failed<TicketListItemDTO>("Procedure name is empty.");
+            if (name == null) return Failed<TicketProcedureItemDTO>("Procedure name is empty.");
             if (await _procedures.IsNameExist(name, id))
-                return Failed<TicketListItemDTO>($"Procedure with name '{name}' already exists.");
+                return Failed<TicketProcedureItemDTO>($"Procedure with name '{name}' already exists.");
 
             entity.Name = name;
             entity.IsActive = dto.IsActive;
+            // Left alone when the caller didn't send it — see the DTO.
+            if (dto.AllowsInsurance.HasValue) entity.AllowsInsurance = dto.AllowsInsurance.Value;
             await _procedures.SaveChangesAsync();
-            return Ok(ToDto(entity.Id, entity.Name, entity.IsActive));
+            return Ok(ToProcedureDto(entity));
         }
 
         // ---------- reasons ----------

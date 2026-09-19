@@ -50,10 +50,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         private const int MaxPageSize = 100;
         private const int DefaultPageSize = 12;
 
-        // Who hears about a new ticket: the people who work its side. Admins
-        // are left out, as they are from the feedback and appointment notices
-        // — they would get every email the hospital sends.
-        private static readonly string[] QueueRoles = { AppRoles.TManager, AppRoles.TEmployee };
+        // Who hears about a new ticket: whoever has to solve it, which since
+        // 2026-09-19 is the support agent rather than the department roles
+        // that raise them — a manager reads their department's queue, they
+        // don't need an email for each one. Admins are left out, as they are
+        // from the feedback and appointment notices — they would get every
+        // email the hospital sends.
+        private static readonly string[] QueueRoles = { AppRoles.TSupport };
         private static readonly string[] InsuranceRoles = { AppRoles.TInsurance };
 
         public TicketService(
@@ -91,7 +94,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             return new TicketFormOptionsResponse
             {
                 Categories = categories.Select(c => new TicketOptionResponse { Id = c.Id, Name = c.Name }).ToList(),
-                Procedures = procedures.Select(p => new TicketOptionResponse { Id = p.Id, Name = p.Name }).ToList(),
+                Procedures = procedures
+                    .Select(p => new TicketProcedureOptionResponse { Id = p.Id, Name = p.Name, AllowsInsurance = p.AllowsInsurance })
+                    .ToList(),
                 Reasons = reasons
                     .Select(r => new TicketReasonOptionResponse { Id = r.Id, Name = r.Name, ProcedureId = r.ProcedureId })
                     .ToList()
@@ -113,12 +118,22 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
                     return Failed("التصنيف المختار غير متاح.");
             }
 
+            // The insurance flag is the procedure's to give: only one with
+            // AllowsInsurance ("Open invoice") may carry it. Refused rather
+            // than silently dropped — a ticket the raiser believed was going
+            // to the insurance desk must not quietly land in the support
+            // queue instead.
+            var allowsInsurance = false;
             if (request.ProcedureId.HasValue)
             {
                 var procedure = await _procedureRepo.GetByIdAsync(request.ProcedureId.Value);
                 if (procedure == null || !procedure.IsActive)
                     return Failed("الإجراء المختار غير متاح.");
+                allowsInsurance = procedure.AllowsInsurance;
             }
+
+            if (request.IsInsurance && !allowsInsurance)
+                return Failed("تأمين التذكرة متاح فقط لإجراء فتح الفاتورة.");
 
             if (request.ReasonId.HasValue)
             {
@@ -148,7 +163,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
                 CategoryId = request.CategoryId,
                 ProcedureId = request.ProcedureId,
                 ReasonId = request.ReasonId,
-                PaymentMethod = request.PaymentMethod,
+                IsInsurance = request.IsInsurance,
                 CreatedById = actor.UserId,
                 DepartmentId = actor.DepartmentId,
                 Status = TicketStatus.Open,
@@ -166,7 +181,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             await _ticketRepo.SaveChangesAsync();
 
             var detail = await LoadDetailAsync(ticket.Id);
-            await NotifyNewTicketAsync(detail!, IsInsurance(ticket), actor.UserId);
+            await NotifyNewTicketAsync(detail!, ticket.IsInsurance, actor.UserId);
 
             return Ok(detail);
         }
@@ -178,10 +193,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             query.Scope = scope;
             query.AssignedToId = scope == TicketQueueScope.Mine ? actor.UserId : null;
             query.CreatedById = null;
-            // Each side only for whoever works it — someone on both (or an
-            // Admin) sees one queue holding both.
-            query.IncludeGeneral = actor.CanWork;
-            query.IncludeInsurance = actor.CanInsurance;
+            // Resolved from the caller's roles and OR-ed in the repository, so
+            // holding two of them widens the queue instead of narrowing it.
+            query.SeesEverything = actor.IsAdmin;
+            query.SeesSupportQueue = actor.CanSupport;
+            query.SeesInsurance = actor.CanInsurance;
+            query.SeesDepartmentId = actor.CanReadDepartment ? actor.DepartmentId : null;
+            query.ViewerId = actor.UserId;
             return PageAsync(query);
         }
 
@@ -211,7 +229,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         public async Task<TicketDetailResponse?> GetDetailAsync(int id, TicketActor actor)
         {
             var row = await _ticketRepo.GetDetailAsync(id);
-            if (row == null || !CanSee(row.CreatedById, row.PaymentMethod, actor))
+            if (row == null || !CanSee(row.CreatedById, row.IsInsurance, row.DepartmentId, actor))
                 return null;
 
             return await ToDetailAsync(row);
@@ -222,7 +240,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         public async Task<TicketActionResponse> CommentAsync(int id, CommentTicketDTO request, TicketActor actor)
         {
             var ticket = await _ticketRepo.GetByIdAsync(id);
-            if (ticket == null || !CanSee(ticket.CreatedById, ticket.PaymentMethod, actor))
+            if (ticket == null || !CanSee(ticket.CreatedById, ticket.IsInsurance, ticket.DepartmentId, actor))
                 return NotFound();
 
             if (ticket.Status != TicketStatus.Open) return Failed(ClosedError);
@@ -248,11 +266,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         public async Task<TicketActionResponse> CloseAsync(int id, CloseTicketDTO request, TicketActor actor)
         {
             var ticket = await _ticketRepo.GetByIdAsync(id);
-            if (ticket == null || !CanSee(ticket.CreatedById, ticket.PaymentMethod, actor))
+            if (ticket == null || !CanSee(ticket.CreatedById, ticket.IsInsurance, ticket.DepartmentId, actor))
                 return NotFound();
 
-            // A creator may read their own ticket but only its side closes it.
-            if (!Works(ticket.PaymentMethod, actor))
+            // Reading is wider than solving: a creator follows their own
+            // ticket and a manager watches their department, but only the
+            // agent who owns that side closes it.
+            if (!Works(ticket.IsInsurance, actor))
                 return Failed("لا تملك صلاحية إغلاق هذه التذكرة.");
 
             if (ticket.Status != TicketStatus.Open) return Failed(ClosedError);
@@ -295,13 +315,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         public async Task<TicketActionResponse> ReopenAsync(int id, TicketActor actor)
         {
             var ticket = await _ticketRepo.GetByIdAsync(id);
-            if (ticket == null || !CanSee(ticket.CreatedById, ticket.PaymentMethod, actor))
+            if (ticket == null || !CanSee(ticket.CreatedById, ticket.IsInsurance, ticket.DepartmentId, actor))
                 return NotFound();
 
-            // A support-queue ticket needs a manager; an Insurance ticket is
-            // the insurance desk's to reopen, since nobody else can see it.
-            var mayReopen = IsInsurance(ticket.PaymentMethod) ? actor.CanInsurance : actor.CanReopen;
-            if (!mayReopen)
+            // Whoever solves a ticket reopens it: reopening is a correction
+            // to a close, so it belongs to the same desk rather than to a
+            // separate seniority tier as it did before.
+            if (!Works(ticket.IsInsurance, actor))
                 return Failed("لا تملك صلاحية إعادة فتح هذه التذكرة.");
 
             if (ticket.Status == TicketStatus.Open)
@@ -322,23 +342,133 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             return Ok(await LoadDetailAsync(id));
         }
 
+        // ---------- dashboard ----------
+
+        public async Task<TicketStatsResponse> GetStatsAsync(TicketStatsQuery query)
+        {
+            if (query.From.HasValue && query.To.HasValue && query.From > query.To)
+                (query.From, query.To) = (query.To, query.From);
+
+            var rows = await _ticketRepo.GetStatsAsync(query);
+
+            var response = new TicketStatsResponse
+            {
+                From = query.From,
+                To = query.To,
+                OpenCount = CountOf(rows.Statuses, TicketStatus.Open),
+                SuccessCount = CountOf(rows.Statuses, TicketStatus.Success),
+                FailedCount = CountOf(rows.Statuses, TicketStatus.Failed),
+                InsuranceCount = rows.InsuranceCount,
+                AvgResolutionHours = ToHours(rows.AvgResolutionMinutes),
+                OldestOpenHours = rows.OldestOpenAt.HasValue
+                    ? Math.Round((AppClock.Now - rows.OldestOpenAt.Value).TotalHours, 1)
+                    : null
+            };
+
+            response.Total = response.OpenCount + response.SuccessCount + response.FailedCount;
+            var closed = response.SuccessCount + response.FailedCount;
+            response.SuccessPercent = closed == 0 ? 0 : Math.Round(response.SuccessCount * 100.0 / closed, 1);
+
+            response.AvgResponseHours = rows.FirstResponses.Count == 0
+                ? null
+                : ToHours(rows.FirstResponses.Average(r => r.Minutes));
+
+            // One row per person, whether they answered tickets, closed them,
+            // or both — keyed on the user id so the two halves meet.
+            var agents = new Dictionary<string, TicketAgentStatResponse>();
+
+            TicketAgentStatResponse For(string? id, string? name)
+            {
+                var key = id ?? string.Empty;
+                if (!agents.TryGetValue(key, out var agent))
+                {
+                    agent = new TicketAgentStatResponse { UserId = id, UserName = name };
+                    agents[key] = agent;
+                }
+                agent.UserName ??= name;
+                return agent;
+            }
+
+            foreach (var closer in rows.Closers)
+            {
+                var agent = For(closer.ActorId, closer.ActorName);
+                agent.ClosedCount = closer.ClosedCount;
+                agent.SuccessCount = closer.SuccessCount;
+                agent.FailedCount = closer.FailedCount;
+                agent.AvgResolutionHours = ToHours(closer.AvgResolutionMinutes);
+            }
+
+            foreach (var group in rows.FirstResponses.GroupBy(r => r.ActorId ?? string.Empty))
+            {
+                var agent = For(group.Key, group.First().ActorName);
+                agent.RespondedCount = group.Count();
+                agent.AvgResponseHours = ToHours(group.Average(r => r.Minutes));
+            }
+
+            response.Agents = agents.Values
+                .OrderByDescending(a => a.ClosedCount)
+                .ThenByDescending(a => a.RespondedCount)
+                .ThenBy(a => a.UserName)
+                .ToList();
+
+            response.Departments = Breakdown(rows.Departments);
+            response.Procedures = Breakdown(rows.Procedures);
+            response.Categories = Breakdown(rows.Categories);
+
+            return response;
+        }
+
+        private static List<TicketBreakdownResponse> Breakdown(List<TicketNamedCountRow> rows) =>
+            rows.OrderByDescending(r => r.Total)
+                .ThenBy(r => r.Name)
+                .Select(r => new TicketBreakdownResponse
+                {
+                    Id = r.Id,
+                    Name = r.Name,
+                    Total = r.Total,
+                    OpenCount = r.OpenCount,
+                    ClosedCount = r.Total - r.OpenCount
+                })
+                .ToList();
+
+        private static int CountOf(List<TicketStatusCountRow> rows, TicketStatus status) =>
+            rows.FirstOrDefault(r => r.Status == status)?.Count ?? 0;
+
+        // Null stays null: nothing answered yet is not "answered in zero
+        // hours", and the dashboard shows the two differently.
+        private static double? ToHours(double? minutes) =>
+            minutes.HasValue ? Math.Round(minutes.Value / 60.0, 1) : null;
+
         // ---------- rules ----------
 
         private const string ClosedError = "هذه التذكرة مغلقة. أعد فتحها قبل أي إجراء آخر.";
 
-        private static bool IsInsurance(PaymentWays? paymentMethod) => paymentMethod == PaymentWays.Insurance;
-        private static bool IsInsurance(Ticket ticket) => IsInsurance(ticket.PaymentMethod);
+        // Who SOLVES a ticket: the insurance desk for a flagged one, the
+        // support agent for everything else. Raising and solving are separate
+        // jobs — neither a TEmployee nor a TManager closes anything, however
+        // much of their department they can read.
+        private static bool Works(bool isInsurance, TicketActor actor) =>
+            actor.IsAdmin || (isInsurance ? actor.CanInsurance : actor.CanSupport);
 
-        // Whether the actor works this ticket's side: the insurance desk for an
-        // Insurance ticket, the support queue for everything else.
-        private static bool Works(PaymentWays? paymentMethod, TicketActor actor) =>
-            IsInsurance(paymentMethod) ? actor.CanInsurance : actor.CanWork;
+        // Who may READ a ticket. Wider than Works, and deliberately so: a
+        // manager watches their department without being able to act on it.
+        //
+        // A flagged ticket is the insurance desk's alone — not the support
+        // agent's, and not the raising manager's either. Its creator still
+        // follows it, because nobody should lose sight of a ticket they
+        // raised themselves. Everyone else gets a 404 rather than a 403: not
+        // confirming that an id exists is the point.
+        private static bool CanSee(string? createdById, bool isInsurance, int? departmentId, TicketActor actor)
+        {
+            if (actor.IsAdmin) return true;
+            if (createdById == actor.UserId) return true;
+            if (isInsurance) return actor.CanInsurance;
+            if (actor.CanSupport) return true;
 
-        // Who may read a ticket: whoever works its side, and its creator.
-        // Everyone else — the support team on an Insurance ticket included —
-        // gets a 404.
-        private static bool CanSee(string? createdById, PaymentWays? paymentMethod, TicketActor actor) =>
-            Works(paymentMethod, actor) || createdById == actor.UserId;
+            return actor.CanReadDepartment
+                && actor.DepartmentId != null
+                && departmentId == actor.DepartmentId;
+        }
 
         // ---------- notifications (best-effort) ----------
 
@@ -396,12 +526,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             ticket.Title ?? string.Empty,
             ticket.CreatedByName,
             ticket.DepartmentName,
-            ticket.PaymentMethod switch
-            {
-                nameof(PaymentWays.Insurance) => "تأمين",
-                nameof(PaymentWays.Cash) => "نقدي",
-                _ => null
-            },
+            ticket.IsInsurance ? "تأمين" : null,
             ticket.CreatedDate.ToString("yyyy-MM-dd HH:mm"));
 
         // The console's ticket page; its login round-trips ?next= back here.
@@ -446,7 +571,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             target.ProcedureName = row.ProcedureName;
             target.ReasonId = row.ReasonId;
             target.ReasonName = row.ReasonName;
-            target.PaymentMethod = row.PaymentMethod?.ToString();
+            target.IsInsurance = row.IsInsurance;
             target.SourceUrl = row.SourceUrl;
             target.CreatedById = row.CreatedById;
             target.CreatedByName = row.CreatedByName;

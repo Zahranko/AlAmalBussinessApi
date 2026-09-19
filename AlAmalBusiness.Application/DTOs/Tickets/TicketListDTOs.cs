@@ -15,6 +15,20 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
         public bool IsActive { get; set; } = true;
     }
 
+    // A procedure also carries whether a ticket on it may be flagged
+    // insurance. Seeded true for "Open invoice" and false for the rest, and
+    // editable here so the routing stays the admin's to change rather than
+    // something baked into a name comparison.
+    public class TicketProcedureItemDTO : TicketListItemDTO
+    {
+        // Nullable on purpose, unlike the full-replace fields around it: a
+        // client that doesn't know about this flag (or a form that only meant
+        // to fix a typo in the name) must not silently switch the insurance
+        // desk's routing off. Omitted means "leave it as it is"; on create it
+        // reads as false.
+        public bool? AllowsInsurance { get; set; }
+    }
+
     // A reason also names the procedure it belongs to.
     public class TicketReasonItemDTO : TicketListItemDTO
     {

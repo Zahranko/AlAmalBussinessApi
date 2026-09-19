@@ -15,6 +15,9 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
 
         Task<(List<TicketListRow> Items, int TotalCount)> PageTicketsAsync(TicketListQuery query);
 
+        // The admin dashboard, aggregated in SQL — see TicketStatsRows.
+        Task<TicketStatsRows> GetStatsAsync(TicketStatsQuery query);
+
         Task SaveChangesAsync();
     }
 

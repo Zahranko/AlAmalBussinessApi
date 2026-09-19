@@ -423,13 +423,14 @@ public class AppDbContext : IdentityDbContext<User>
 
         // One per list: the queue filters on Status and sorts by CreatedDate,
         // created-by-me filters on the creator, and the queue is split on
-        // PaymentMethod (the insurance desk's side vs. everyone else's).
-        // Without them each COUNT and page is a full scan + sort, same
-        // reasoning as the appointment indexes.
+        // IsInsurance (the desk's side vs. everyone else's) and narrowed by
+        // DepartmentId for a manager's view. Without them each COUNT and page
+        // is a full scan + sort, same reasoning as the appointment indexes.
         modelBuilder.Entity<Ticket>().HasIndex(t => new { t.Status, t.CreatedDate });
         modelBuilder.Entity<Ticket>().HasIndex(t => new { t.CreatedById, t.CreatedDate });
         modelBuilder.Entity<Ticket>().HasIndex(t => new { t.AssignedToId, t.CreatedDate });
-        modelBuilder.Entity<Ticket>().HasIndex(t => new { t.PaymentMethod, t.Status, t.CreatedDate });
+        modelBuilder.Entity<Ticket>().HasIndex(t => new { t.IsInsurance, t.Status, t.CreatedDate });
+        modelBuilder.Entity<Ticket>().HasIndex(t => new { t.DepartmentId, t.CreatedDate });
 
         // Bounded so the searched Title isn't an nvarchar(max) LOB; the caps
         // match what CreateTicketDTO accepts.

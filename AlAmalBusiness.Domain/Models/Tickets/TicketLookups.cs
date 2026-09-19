@@ -28,6 +28,13 @@ namespace AlAmalBusiness.Domain.Models.Tickets
         public string Name { get; set; } = string.Empty;
 
         public bool IsActive { get; set; } = true;
+
+        // Whether a ticket on this procedure may carry Ticket.IsInsurance,
+        // which hands it to the insurance desk alone. True for "Open invoice"
+        // and nothing else (seeded in DbInitializer) — the rule lives here as
+        // data rather than as a name comparison in the service, so renaming
+        // the procedure in Settings can't quietly break the routing.
+        public bool AllowsInsurance { get; set; }
     }
 
     // "Why this ticket was raised." Every reason belongs to one procedure:

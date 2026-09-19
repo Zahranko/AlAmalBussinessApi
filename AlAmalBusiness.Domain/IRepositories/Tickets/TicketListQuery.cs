@@ -38,14 +38,26 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         public string? AssignedToId { get; set; }
 
         // Narrows to tickets this user raised (the created-by-me list). When
-        // set, the two flags below and the scope are ignored — a creator
+        // set, the visibility below and the scope are ignored — a creator
         // follows every ticket they raised, insurance ones included.
         public string? CreatedById { get; set; }
 
-        // Which tickets the queue may show: the support team's (any payment
-        // method but Insurance) and/or the insurance desk's (Insurance). An
-        // actor holding neither sees an empty queue.
-        public bool IncludeGeneral { get; set; }
-        public bool IncludeInsurance { get; set; }
+        // What the queue may show, resolved by the service from the caller's
+        // roles. These are OR-ed together, not AND-ed: someone who is both a
+        // manager and the insurance desk sees the union of the two. An actor
+        // with none of them sees only the tickets they raised.
+        //
+        // Unrestricted is Admin alone.
+        public bool SeesEverything { get; set; }
+        // Every ticket not flagged insurance, from any department (TSupport).
+        public bool SeesSupportQueue { get; set; }
+        // Every ticket flagged insurance, from any department (TInsurance).
+        public bool SeesInsurance { get; set; }
+        // Every not-flagged ticket raised inside this department (TManager).
+        // Null means no department view at all.
+        public int? SeesDepartmentId { get; set; }
+        // The caller, so their own tickets are always in their queue
+        // alongside whatever the flags above let them see.
+        public string? ViewerId { get; set; }
     }
 }

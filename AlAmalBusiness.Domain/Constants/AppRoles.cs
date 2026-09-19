@@ -22,16 +22,26 @@ namespace AlAmalBusiness.Domain.Constants
         public const string AManager = "AManager";
         public const string AEmployee = "AEmployee";
         public const string AUser = "AUser";
-        // Staff support tickets, ported from the CRMS Tickets app. Not
-        // department-scoped: anyone may raise a ticket, and one support team
-        // works every department's. TUser raises tickets and follows their
-        // own, TEmployee works the queue (close, comment), TManager also
-        // reopens a closed ticket. TInsurance is the insurance desk: a ticket
-        // whose payment method is Insurance belongs to it alone and never
-        // reaches the support queue.
+        // Staff support tickets. Reshaped 2026-09-19: raising and solving are
+        // now different jobs held by different people, and the two raising
+        // roles are department-scoped where they were not before.
+        //
+        // TEmployee raises tickets and follows only their own. TManager
+        // raises too, and reads every ticket raised inside their own
+        // department — a supervisor's view, not a worker's: neither role
+        // closes anything.
+        //
+        // TSupport is the support agent, and the only not-per-department
+        // ticket role: it receives and solves every ticket that isn't flagged
+        // insurance, whichever department raised it. TInsurance is the
+        // insurance desk and owns the flagged ones outright — nobody else
+        // sees them, the support agent included, exactly as the old
+        // payment-method split behaved.
+        //
+        // (TUser was removed the same day: TEmployee is now what it was.)
         public const string TManager = "TManager";
         public const string TEmployee = "TEmployee";
-        public const string TUser = "TUser";
+        public const string TSupport = "TSupport";
         public const string TInsurance = "TInsurance";
     }
 }

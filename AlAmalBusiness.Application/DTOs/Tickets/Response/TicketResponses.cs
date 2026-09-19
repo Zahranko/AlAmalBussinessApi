@@ -17,7 +17,8 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
         public string? ProcedureName { get; set; }
         public int? ReasonId { get; set; }
         public string? ReasonName { get; set; }
-        public string? PaymentMethod { get; set; }
+        // True when the ticket belongs to the insurance desk alone.
+        public bool IsInsurance { get; set; }
         // Only set for CertaCure tickets — the page it was raised from.
         public string? SourceUrl { get; set; }
         public string? CreatedById { get; set; }
@@ -64,8 +65,17 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
     public class TicketFormOptionsResponse
     {
         public List<TicketOptionResponse> Categories { get; set; } = new();
-        public List<TicketOptionResponse> Procedures { get; set; } = new();
+        public List<TicketProcedureOptionResponse> Procedures { get; set; } = new();
         public List<TicketReasonOptionResponse> Reasons { get; set; } = new();
+    }
+
+    // A procedure, plus whether picking it lets the raiser tick "insurance"
+    // — true for "Open invoice" alone. The form reads this rather than
+    // matching on the name, so the checkbox and the server's rule can't drift
+    // apart when a procedure is renamed.
+    public class TicketProcedureOptionResponse : TicketOptionResponse
+    {
+        public bool AllowsInsurance { get; set; }
     }
 
     public class TicketOptionResponse

@@ -40,10 +40,10 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
         public async Task<IActionResult> GetProcedures() => Ok(await _lists.GetProceduresAsync());
 
         [HttpPost("procedures")]
-        public Task<IActionResult> CreateProcedure(TicketListItemDTO dto) => Run(() => _lists.CreateProcedureAsync(dto));
+        public Task<IActionResult> CreateProcedure(TicketProcedureItemDTO dto) => Run(() => _lists.CreateProcedureAsync(dto));
 
         [HttpPut("procedures/{id:int}")]
-        public Task<IActionResult> UpdateProcedure(int id, TicketListItemDTO dto) => Run(() => _lists.UpdateProcedureAsync(id, dto));
+        public Task<IActionResult> UpdateProcedure(int id, TicketProcedureItemDTO dto) => Run(() => _lists.UpdateProcedureAsync(id, dto));
 
         [HttpGet("reasons")]
         public async Task<IActionResult> GetReasons() => Ok(await _lists.GetReasonsAsync());

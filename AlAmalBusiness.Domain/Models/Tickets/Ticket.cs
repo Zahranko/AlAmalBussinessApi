@@ -6,9 +6,9 @@ using System.ComponentModel.DataAnnotations;
 namespace AlAmalBusiness.Domain.Models.Tickets
 {
     // A support ticket a member of staff raised, and the workflow on it.
-    // Ported from the CRMS Tickets app with its business rules; what changed
-    // is where names and departments come from, and who an insurance ticket
-    // belongs to.
+    // Ported from the CRMS Tickets app; reshaped on 2026-09-19 so that
+    // raising and solving are different jobs — see AppRoles for who does
+    // which, and TicketService for the rules.
     //
     // CreatedById/AssignedToId are real AspNetUsers FKs read back through the
     // navigations — the original had no user table of its own and
@@ -41,20 +41,29 @@ namespace AlAmalBusiness.Domain.Models.Tickets
         public int? ReasonId { get; set; }
         public TicketReason? Reason { get; set; }
 
-        // Optional, and the one field that routes a ticket: Insurance means it
-        // belongs to the insurance desk (TInsurance) alone — kept out of the
-        // support queue, worked and closed by that desk. Cash, or nothing, is
-        // an ordinary queue ticket. Fixed at creation; there is no edit.
+        // The one field that routes a ticket: true means it belongs to the
+        // insurance desk (TInsurance) alone — kept out of the support agent's
+        // queue and out of the raising manager's department view, worked and
+        // closed by that desk. Its creator still follows it.
         //
-        // The original gated this behind a HasInvoice checkbox and a separate
-        // accept/decline review step; both were dropped on 2026-09-17.
-        public PaymentWays? PaymentMethod { get; set; }
+        // Only a procedure with AllowsInsurance may carry it, which in
+        // practice means "Open invoice"; TicketService refuses it anywhere
+        // else. Fixed at creation; there is no edit.
+        //
+        // This replaced a PaymentWays? PaymentMethod column on 2026-09-19.
+        // Cash vs Insurance was never really a payment fact here — it was
+        // being used as a routing flag, and only one of its two values meant
+        // anything, so the other half was noise on every form.
+        public bool IsInsurance { get; set; }
 
         [Required]
         public string? CreatedById { get; set; }
         public User? CreatedBy { get; set; }
 
-        // Null when the creator's account had no department.
+        // The creator's department at the moment they raised it, from their
+        // own token. Null when their account had none. Since 2026-09-19 this
+        // is load-bearing rather than descriptive: it is what a TManager's
+        // view of "my department's tickets" filters on.
         public int? DepartmentId { get; set; }
         public Departments? Department { get; set; }
 

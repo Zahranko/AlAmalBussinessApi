@@ -13,11 +13,10 @@ using System.Threading.Tasks;
 
 namespace AlAmalBusiness.Api.Area.Tickets.Controllers
 {
-    // Staff support tickets, ported from the CRMS Tickets app. Its permission
-    // keys became the T* roles (see AppRoles): ticket.create -> TUser,
-    // viewAll + workAssign + notifyOnCreate -> TEmployee, TManager adds the
-    // reopen the original kept for Admin, and ticket.insurance -> TInsurance,
-    // which owns every Insurance ticket outright. ticket.cash was dropped.
+    // Staff support tickets. Raising and solving are different jobs held by
+    // different roles (see AppRoles): TEmployee and TManager raise, TSupport
+    // and TInsurance solve, and a TManager additionally reads their own
+    // department's tickets without being able to act on them.
     //
     // Stacked [Authorize] attributes AND together: the class-level gate is
     // "can enter tickets at all", each action re-declares what it needs. Who
@@ -30,16 +29,19 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
     public class TicketController : ControllerBase
     {
         private const string TicketAccess =
-            nameof(AppRoles.TManager) + "," + nameof(AppRoles.TEmployee) + "," + nameof(AppRoles.TUser) + "," +
+            nameof(AppRoles.TManager) + "," + nameof(AppRoles.TEmployee) + "," + nameof(AppRoles.TSupport) + "," +
             nameof(AppRoles.TInsurance) + "," + nameof(AppRoles.Admin);
-        // Raising a ticket. The insurance desk alone doesn't raise them.
-        private const string CanCreate = nameof(AppRoles.TManager) + "," + nameof(AppRoles.TEmployee) + "," + nameof(AppRoles.TUser) + "," + nameof(AppRoles.Admin);
-        // Working either side of the queue: the support team's tickets or the
-        // insurance desk's. Which side a given ticket is on is the service's
-        // call (TicketService.Works).
-        private const string CanWork = nameof(AppRoles.TManager) + "," + nameof(AppRoles.TEmployee) + "," + nameof(AppRoles.TInsurance) + "," + nameof(AppRoles.Admin);
-        // A manager reopens a support-queue ticket, the insurance desk its own.
-        private const string CanReopen = nameof(AppRoles.TManager) + "," + nameof(AppRoles.TInsurance) + "," + nameof(AppRoles.Admin);
+        // Raising a ticket: the two department roles. The agents who solve
+        // them don't raise them.
+        private const string CanCreate = nameof(AppRoles.TManager) + "," + nameof(AppRoles.TEmployee) + "," + nameof(AppRoles.Admin);
+        // Solving — close and reopen — on whichever side the ticket sits.
+        // Which side a given ticket is on is the service's call
+        // (TicketService.Works), and reopening belongs to the same desk that
+        // closed it rather than to a separate seniority tier.
+        private const string CanWork = nameof(AppRoles.TSupport) + "," + nameof(AppRoles.TInsurance) + "," + nameof(AppRoles.Admin);
+        // The dashboard. Admin only — widen to TSupport here if the support
+        // agent should read their own numbers.
+        private const string CanReport = nameof(AppRoles.Admin);
 
         private readonly ITicketService _tickets;
 
@@ -62,9 +64,10 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
 
                 return new TicketActor(
                     User.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                    isAdmin || User.IsInRole(nameof(AppRoles.TManager)) || User.IsInRole(nameof(AppRoles.TEmployee)),
-                    isAdmin || User.IsInRole(nameof(AppRoles.TManager)),
+                    isAdmin,
+                    isAdmin || User.IsInRole(nameof(AppRoles.TSupport)),
                     isAdmin || User.IsInRole(nameof(AppRoles.TInsurance)),
+                    isAdmin || User.IsInRole(nameof(AppRoles.TManager)),
                     departmentId > 0 ? departmentId : null);
             }
         }
@@ -81,11 +84,12 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
             Run(() => _tickets.CreateAsync(request, Actor));
 
         // The queue. `scope` is the tab: open (default), mine, unassigned or
-        // closed; an explicit status narrows any of them. The support team
-        // gets every ticket but Insurance ones, the insurance desk gets only
-        // those, and anyone on both gets both.
+        // closed; an explicit status narrows any of them. What it holds is
+        // the caller's reach, OR-ed: the support agent every unflagged
+        // ticket, the insurance desk the flagged ones, a manager their own
+        // department, and everyone their own. No role gate beyond the class
+        // one — a TEmployee's queue is simply their own tickets.
         [HttpGet("paged")]
-        [Authorize(Roles = CanWork)]
         public async Task<ActionResult<PagedResultDTO<TicketListItemResponse>>> GetPaged(
             int page = 1,
             int pageSize = 12,
@@ -98,7 +102,7 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
             return Ok(await _tickets.GetQueueAsync(query, scope, Actor));
         }
 
-        // What the caller raised — the only list a TUser has.
+        // What the caller raised — a TEmployee's whole world.
         [HttpGet("created-by-me")]
         [Authorize(Roles = CanCreate)]
         public async Task<ActionResult<PagedResultDTO<TicketListItemResponse>>> GetCreatedByMe(
@@ -111,6 +115,15 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
             var query = new TicketListQuery { Page = page, PageSize = pageSize, Search = search, Status = status, CategoryId = categoryId };
             return Ok(await _tickets.GetCreatedByMeAsync(query, Actor));
         }
+
+        // The dashboard: status split, how long tickets wait for a first
+        // reply and for a close, and per-person figures. Admin-only. The
+        // period bounds when a ticket was RAISED, so one date meaning runs
+        // through every number on the screen.
+        [HttpGet("stats")]
+        [Authorize(Roles = CanReport)]
+        public async Task<ActionResult<TicketStatsResponse>> GetStats(DateOnly? from = null, DateOnly? to = null) =>
+            Ok(await _tickets.GetStatsAsync(new TicketStatsQuery { From = from, To = to }));
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
@@ -131,7 +144,7 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
             Run(() => _tickets.CloseAsync(id, request, Actor));
 
         [HttpPost("{id:int}/reopen")]
-        [Authorize(Roles = CanReopen)]
+        [Authorize(Roles = CanWork)]
         public Task<IActionResult> Reopen(int id) =>
             Run(() => _tickets.ReopenAsync(id, Actor));
 

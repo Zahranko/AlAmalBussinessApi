@@ -27,10 +27,11 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
         public int? ProcedureId { get; set; }
         public int? ReasonId { get; set; }
 
-        // Insurance hands the ticket to the insurance desk alone; see
-        // Ticket.PaymentMethod.
-        [EnumDataType(typeof(PaymentWays))]
-        public PaymentWays? PaymentMethod { get; set; }
+        // Hands the ticket to the insurance desk alone. Only allowed on a
+        // procedure whose AllowsInsurance is set — "Open invoice" — and
+        // refused with a 409 anywhere else, so the form must only offer the
+        // checkbox once that procedure is chosen.
+        public bool IsInsurance { get; set; }
     }
 
     // A plain timeline comment.
@@ -61,15 +62,19 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
     // than read from IHttpContextAccessor inside the service.
     public record TicketActor(
         string UserId,
-        // Works the support queue — every ticket that isn't Insurance: sees,
-        // comments, closes. Admin, TManager, TEmployee.
-        bool CanWork,
-        // May reopen a closed support-queue ticket. Admin, TManager.
-        bool CanReopen,
-        // The insurance desk — the same three rights over Insurance tickets,
-        // reopening included, since nobody else can see them. Admin, TInsurance.
+        // Sees everything and may work either side. Admin alone.
+        bool IsAdmin,
+        // The support agent: receives and solves every ticket that isn't
+        // flagged insurance, from every department. Admin, TSupport.
+        bool CanSupport,
+        // The insurance desk: the same rights, over the flagged ones only.
+        // Nobody else sees those. Admin, TInsurance.
         bool CanInsurance,
-        // The actor's own department, stamped on a ticket they raise. Null
-        // when their account has none.
+        // Reads every ticket raised inside their own department, but solves
+        // none of them — a supervisor's view. Admin, TManager.
+        bool CanReadDepartment,
+        // The actor's own department: stamped on a ticket they raise, and
+        // what CanReadDepartment reads. Null when their account has none,
+        // which leaves a manager seeing only what they raised themselves.
         int? DepartmentId);
 }

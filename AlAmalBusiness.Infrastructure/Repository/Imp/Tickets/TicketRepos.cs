@@ -45,7 +45,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             ProcedureName = t.Procedure!.Name,
             ReasonId = t.ReasonId,
             ReasonName = t.Reason!.Name,
-            PaymentMethod = t.PaymentMethod,
+            IsInsurance = t.IsInsurance,
             SourceUrl = t.SourceUrl,
             CreatedById = t.CreatedById,
             CreatedByName = t.CreatedBy!.UserName,
@@ -73,7 +73,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                     ProcedureName = t.Procedure!.Name,
                     ReasonId = t.ReasonId,
                     ReasonName = t.Reason!.Name,
-                    PaymentMethod = t.PaymentMethod,
+                    IsInsurance = t.IsInsurance,
                     SourceUrl = t.SourceUrl,
                     CreatedById = t.CreatedById,
                     CreatedByName = t.CreatedBy!.UserName,
@@ -106,12 +106,26 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                 // the queue is split on it: the support team's side is every
                 // other ticket (Cash or no payment method), the desk's side is
                 // Insurance. Someone who works both sides gets no filter.
-                if (query.IncludeGeneral && !query.IncludeInsurance)
-                    q = q.Where(t => t.PaymentMethod == null || t.PaymentMethod != PaymentWays.Insurance);
-                else if (query.IncludeInsurance && !query.IncludeGeneral)
-                    q = q.Where(t => t.PaymentMethod == PaymentWays.Insurance);
-                else if (!query.IncludeGeneral && !query.IncludeInsurance)
-                    q = q.Where(t => false);
+                // The arms OR together, so holding two roles widens the queue
+                // rather than narrowing it. Admin short-circuits the lot.
+                if (!query.SeesEverything)
+                {
+                    var viewerId = query.ViewerId;
+                    var departmentId = query.SeesDepartmentId;
+                    var support = query.SeesSupportQueue;
+                    var insurance = query.SeesInsurance;
+
+                    q = q.Where(t =>
+                        // Always: what the caller raised themselves.
+                        t.CreatedById == viewerId
+                        // The support agent: everything not flagged insurance.
+                        || (support && !t.IsInsurance)
+                        // The insurance desk: only the flagged ones.
+                        || (insurance && t.IsInsurance)
+                        // A manager: their own department, flagged ones
+                        // excepted — those belong to the desk alone.
+                        || (departmentId != null && !t.IsInsurance && t.DepartmentId == departmentId));
+                }
             }
 
             if (query.CategoryId.HasValue)
@@ -168,6 +182,135 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                 .ToListAsync();
 
             return (items, totalCount);
+        }
+
+        // ---------- dashboard ----------
+
+        // Grouped queries over the period, none of which returns a ticket
+        // row, the same shape the feedback and appointment dashboards use.
+        // The one exception is the first-response pass at the end, which
+        // returns at most one small tuple per ticket because "who answered
+        // first" cannot be grouped without knowing which entry was first.
+        public async Task<TicketStatsRows> GetStatsAsync(TicketStatsQuery query)
+        {
+            var scoped = _context.Tickets.AsNoTracking();
+
+            // CreatedDate is local (AppClock), so the bounds are day
+            // boundaries: from 00:00 on From up to, but not including, 00:00
+            // the day after To.
+            if (query.From.HasValue)
+            {
+                var from = query.From.Value.ToDateTime(TimeOnly.MinValue);
+                scoped = scoped.Where(t => t.CreatedDate >= from);
+            }
+
+            if (query.To.HasValue)
+            {
+                var toExclusive = query.To.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+                scoped = scoped.Where(t => t.CreatedDate < toExclusive);
+            }
+
+            var rows = new TicketStatsRows();
+
+            rows.Statuses = await scoped
+                .GroupBy(t => t.Status)
+                .Select(g => new TicketStatusCountRow { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            rows.InsuranceCount = await scoped.CountAsync(t => t.IsInsurance);
+
+            rows.Departments = await scoped
+                .GroupBy(t => new { t.DepartmentId, Name = t.Department!.Name })
+                .Select(g => new TicketNamedCountRow
+                {
+                    Id = g.Key.DepartmentId,
+                    Name = g.Key.Name,
+                    Total = g.Count(),
+                    OpenCount = g.Count(t => t.Status == TicketStatus.Open)
+                })
+                .ToListAsync();
+
+            rows.Procedures = await scoped
+                .Where(t => t.ProcedureId != null)
+                .GroupBy(t => new { t.ProcedureId, Name = t.Procedure!.Name })
+                .Select(g => new TicketNamedCountRow
+                {
+                    Id = g.Key.ProcedureId,
+                    Name = g.Key.Name,
+                    Total = g.Count(),
+                    OpenCount = g.Count(t => t.Status == TicketStatus.Open)
+                })
+                .ToListAsync();
+
+            rows.Categories = await scoped
+                .Where(t => t.CategoryId != null)
+                .GroupBy(t => new { t.CategoryId, Name = t.Category!.Name })
+                .Select(g => new TicketNamedCountRow
+                {
+                    Id = g.Key.CategoryId,
+                    Name = g.Key.Name,
+                    Total = g.Count(),
+                    OpenCount = g.Count(t => t.Status == TicketStatus.Open)
+                })
+                .ToListAsync();
+
+            rows.AvgResolutionMinutes = await scoped
+                .Where(t => t.ClosedAt != null)
+                .Select(t => (double?)EF.Functions.DateDiffMinute(t.CreatedDate, t.ClosedAt!.Value))
+                .AverageAsync();
+
+            // Min() over a nullable projection answers null on an empty set,
+            // where MinAsync would throw. "Nothing is waiting" has to read as
+            // null, not as an age of zero.
+            rows.OldestOpenAt = await scoped
+                .Where(t => t.Status == TicketStatus.Open)
+                .Select(t => (DateTime?)t.CreatedDate)
+                .MinAsync();
+
+            rows.Closers = await scoped
+                .Where(t => t.AssignedToId != null && t.ClosedAt != null)
+                .GroupBy(t => new { t.AssignedToId, Name = t.AssignedTo!.UserName })
+                .Select(g => new TicketCloserRow
+                {
+                    ActorId = g.Key.AssignedToId,
+                    ActorName = g.Key.Name,
+                    ClosedCount = g.Count(),
+                    SuccessCount = g.Count(t => t.Status == TicketStatus.Success),
+                    FailedCount = g.Count(t => t.Status == TicketStatus.Failed),
+                    AvgResolutionMinutes = g.Average(t => (double?)EF.Functions.DateDiffMinute(t.CreatedDate, t.ClosedAt!.Value))
+                })
+                .ToListAsync();
+
+            // Who answered each ticket first, and how long they took. A
+            // correlated first-row-per-ticket (OUTER APPLY), so it is one
+            // query returning four small columns per ticket rather than a
+            // history table scan brought into memory. The creator's own
+            // entries don't count as a response to themselves.
+            var firstResponses = await scoped
+                .Select(t => new
+                {
+                    t.CreatedDate,
+                    First = _context.TicketHistories
+                        .Where(h => h.TicketId == t.Id
+                            && h.Type != TicketActions.Created
+                            && h.ActorId != t.CreatedById)
+                        .OrderBy(h => h.CreatedAt)
+                        .Select(h => new { h.ActorId, ActorName = h.Actor!.UserName, h.CreatedAt })
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            rows.FirstResponses = firstResponses
+                .Where(x => x.First != null)
+                .Select(x => new TicketFirstResponseRow
+                {
+                    ActorId = x.First!.ActorId,
+                    ActorName = x.First.ActorName,
+                    Minutes = (x.First.CreatedAt - x.CreatedDate).TotalMinutes
+                })
+                .ToList();
+
+            return rows;
         }
 
         public Task SaveChangesAsync() => _context.SaveChangesAsync();

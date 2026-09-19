@@ -21,7 +21,7 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         public string? ProcedureName { get; set; }
         public int? ReasonId { get; set; }
         public string? ReasonName { get; set; }
-        public PaymentWays? PaymentMethod { get; set; }
+        public bool IsInsurance { get; set; }
         public string? SourceUrl { get; set; }
         public string? CreatedById { get; set; }
         public string? CreatedByName { get; set; }

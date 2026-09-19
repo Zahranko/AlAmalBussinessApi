@@ -24,6 +24,10 @@ namespace AlAmalBusiness.Application.Services.Interface.Tickets
         // The tickets the actor raised, every status, Insurance ones included.
         Task<PagedResultDTO<TicketListItemResponse>> GetCreatedByMeAsync(TicketListQuery query, TicketActor actor);
 
+        // The admin dashboard. No actor: the endpoint is Admin-only, and an
+        // admin reads every department and both sides of the queue.
+        Task<TicketStatsResponse> GetStatsAsync(TicketStatsQuery query);
+
         // Null when the ticket doesn't exist or isn't the actor's to see —
         // answered the same way on purpose.
         Task<TicketDetailResponse?> GetDetailAsync(int id, TicketActor actor);
@@ -42,9 +46,9 @@ namespace AlAmalBusiness.Application.Services.Interface.Tickets
         Task<TicketListResponse<TicketListItemDTO>> CreateCategoryAsync(TicketListItemDTO dto);
         Task<TicketListResponse<TicketListItemDTO>> UpdateCategoryAsync(int id, TicketListItemDTO dto);
 
-        Task<List<TicketListItemDTO>> GetProceduresAsync();
-        Task<TicketListResponse<TicketListItemDTO>> CreateProcedureAsync(TicketListItemDTO dto);
-        Task<TicketListResponse<TicketListItemDTO>> UpdateProcedureAsync(int id, TicketListItemDTO dto);
+        Task<List<TicketProcedureItemDTO>> GetProceduresAsync();
+        Task<TicketListResponse<TicketProcedureItemDTO>> CreateProcedureAsync(TicketProcedureItemDTO dto);
+        Task<TicketListResponse<TicketProcedureItemDTO>> UpdateProcedureAsync(int id, TicketProcedureItemDTO dto);
 
         Task<List<TicketReasonItemDTO>> GetReasonsAsync();
         Task<TicketListResponse<TicketReasonItemDTO>> CreateReasonAsync(TicketReasonItemDTO dto);

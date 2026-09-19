@@ -437,6 +437,7 @@ using (var scope = app.Services.CreateScope())
 {
     var initializer = scope.ServiceProvider.GetRequiredService<DbInitializer>();
     await initializer.SeedRolesAsync();
+    await initializer.SeedTicketProceduresAsync();
 }
 if (proxySecretBytes == null)
 {
