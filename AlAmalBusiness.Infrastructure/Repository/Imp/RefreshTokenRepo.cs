@@ -32,7 +32,12 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
                 .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
         }
 
-        public Task<int> DeleteExpiredBeforeAsync(DateTime cutoffUtc) =>
-            _context.RefreshTokens.Where(t => t.ExpiresAt < cutoffUtc).ExecuteDeleteAsync();
+        // One DELETE, no rows loaded. A live session (never revoked, not yet
+        // expired) matches neither arm and is never touched.
+        public Task<int> DeleteSpentAsync(DateTime expiredBeforeUtc, DateTime revokedBeforeUtc) =>
+            _context.RefreshTokens
+                .Where(t => t.ExpiresAt < expiredBeforeUtc
+                    || (t.RevokedAt != null && t.RevokedAt < revokedBeforeUtc))
+                .ExecuteDeleteAsync();
     }
 }

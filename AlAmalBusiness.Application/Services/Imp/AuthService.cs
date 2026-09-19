@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AlAmalBusiness.Application.Services.Imp
@@ -31,6 +32,18 @@ namespace AlAmalBusiness.Application.Services.Imp
 
         private int AccessMinutes => _config.GetValue<int?>("JwtSettings:ExpiryMinutes") ?? 15;
         private int RefreshDays => _config.GetValue<int?>("JwtSettings:RefreshDays") ?? 7;
+        // How long a spent (rotated or signed-out) row is kept so that
+        // replaying it still trips the leak check. Two days covers the
+        // realistic window — a client holds the token it was last given, so
+        // anything older turning up is already past being actionable.
+        private int RevokedRetentionHours => _config.GetValue<int?>("JwtSettings:RevokedRetentionHours") ?? 48;
+        // The sweep is cheap but pointless to repeat; once an hour per
+        // process is plenty when rotation adds tens of rows a day.
+        private int SweepEveryMinutes => _config.GetValue<int?>("JwtSettings:SweepEveryMinutes") ?? 60;
+
+        // Last sweep, as UTC ticks, shared across this process. Zero means
+        // "not since startup", so the first sign-in after a recycle sweeps.
+        private static long _lastSweepTicks;
 
         public async Task<LoginResult> LoginAsync(LoginDTO loginDto)
         {
@@ -89,6 +102,37 @@ namespace AlAmalBusiness.Application.Services.Imp
             return issued;
         }
 
+        // Rotation is what fills this table — every refresh spends one row and
+        // writes another — so the sweep has to keep up with it, not with the
+        // far rarer sign-in. It used to run on a 1-in-50 roll and clear only
+        // rows a week PAST expiry, which on a system with a handful of daily
+        // logins meant it effectively never ran: 595 rows had accumulated for
+        // 15 usable sessions. Now it runs on a clock, and clears a row as soon
+        // as it is expired (RefreshAsync refuses those anyway) or has been
+        // spent longer than RevokedRetentionHours.
+        //
+        // Time-gated per process rather than per call, and the slot is claimed
+        // before the work so two simultaneous sign-ins don't both sweep.
+        // Never throws: cleanup must not be able to fail a sign-in.
+        private async Task SweepAsync(DateTime now)
+        {
+            var last = Interlocked.Read(ref _lastSweepTicks);
+            if (last != 0 && now.Ticks - last < TimeSpan.FromMinutes(SweepEveryMinutes).Ticks)
+                return;
+
+            if (Interlocked.CompareExchange(ref _lastSweepTicks, now.Ticks, last) != last)
+                return;
+
+            try
+            {
+                await _refreshTokenRepo.DeleteSpentAsync(now, now.AddHours(-RevokedRetentionHours));
+            }
+            catch
+            {
+                /* never fail a sign-in over cleanup */
+            }
+        }
+
         public async Task LogoutAsync(string? refreshToken)
         {
             if (string.IsNullOrWhiteSpace(refreshToken)) return;
@@ -129,14 +173,9 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             await _refreshTokenRepo.SaveChangesAsync();
 
-            // Opportunistic housekeeping: this host runs no scheduled jobs, so
-            // old rows are swept here. A week past expiry keeps enough history
-            // for replay detection to still mean something.
-            if (Random.Shared.Next(50) == 0)
-            {
-                try { await _refreshTokenRepo.DeleteExpiredBeforeAsync(now.AddDays(-RefreshDays)); }
-                catch { /* never fail a sign-in over cleanup */ }
-            }
+            // Opportunistic housekeeping: this host runs no scheduled jobs,
+            // so old rows are swept here.
+            await SweepAsync(now);
 
             return LoginResult.Success(
                 accessToken,
