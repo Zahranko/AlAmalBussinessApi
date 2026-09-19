@@ -55,6 +55,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
                 FullName = u.FullName,
                 Email = u.Email,
                 DepartmentId = u.DepartmentId,
+                ExtraDepartmentIds = u.ExtraDepartments.Select(x => x.DepartmentId).ToList(),
                 IsActive = u.IsActive,
                 Roles = (from ur in _context.UserRoles
                          join r in _context.Roles on ur.RoleId equals r.Id
@@ -98,13 +99,18 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             // One query straight to the Identity tables — UserManager's
             // GetUsersInRoleAsync would pull every user in the role (password
             // hashes included) just to read one column.
+            //
+            // Someone overseeing several departments is notified about all of
+            // them, so the grant table counts here exactly as the home column
+            // does: whoever can read the message is whoever hears about it.
             return await (
                 from u in _context.Users
                 join ur in _context.UserRoles on u.Id equals ur.UserId
                 join r in _context.Roles on ur.RoleId equals r.Id
                 where r.Name == role
                     && u.IsActive
-                    && u.DepartmentId == departmentId
+                    && (u.DepartmentId == departmentId
+                        || u.ExtraDepartments.Any(x => x.DepartmentId == departmentId))
                     && u.Email != null && u.Email != ""
                 select u.Email!)
                 .Distinct()
@@ -153,6 +159,30 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             return await _userManager.UpdateAsync(user);
 
         }
+        // A full replace, like the rest of an admin's user edit: whatever is
+        // sent becomes the complete set of extra departments, and an empty
+        // list leaves the user with their home department alone. Rows are
+        // compared rather than cleared and re-added so an unchanged save
+        // writes nothing.
+        public async Task SetExtraDepartmentsAsync(string userId, IReadOnlyCollection<int> departmentIds)
+        {
+            var current = await _context.UserDepartments
+                .Where(x => x.UserId == userId)
+                .ToListAsync();
+
+            var wanted = departmentIds.Distinct().ToHashSet();
+
+            var removed = current.Where(x => !wanted.Contains(x.DepartmentId)).ToList();
+            if (removed.Count > 0)
+                _context.UserDepartments.RemoveRange(removed);
+
+            var existing = current.Select(x => x.DepartmentId).ToHashSet();
+            foreach (var id in wanted.Where(d => !existing.Contains(d)))
+                _context.UserDepartments.Add(new UserDepartment { UserId = userId, DepartmentId = id });
+
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<IdentityResult> ResetPasswordAsync(string id, string password)
         {
             var user = await _userManager.FindByIdAsync(id);

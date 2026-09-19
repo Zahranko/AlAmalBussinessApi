@@ -16,6 +16,7 @@ public class AppDbContext : IdentityDbContext<User>
     {
     }
       public DbSet<Departments> Departments { get; set; }
+      public DbSet<UserDepartment> UserDepartments { get; set; }
       public DbSet<Lead> Leads { get; set; }
       public DbSet<Doctors> Doctors { get; set; }
       public DbSet<Procedures> Procedures { get; set; }
@@ -51,6 +52,27 @@ public class AppDbContext : IdentityDbContext<User>
             .WithMany(d => d.Users)
             .HasForeignKey(u => u.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // The extra departments a user may read (see UserDepartment). One row
+        // per grant, so the pair is the key. Deleting the account takes its
+        // grants with it; a department in use still can't be deleted, which is
+        // the same Restrict the home department above has.
+        modelBuilder.Entity<UserDepartment>(b =>
+        {
+            b.HasKey(x => new { x.UserId, x.DepartmentId });
+
+            b.HasOne(x => x.User)
+                .WithMany(u => u.ExtraDepartments)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // No navigation on the Departments side: nothing reads a
+            // department's granted users, and the lookup model stays as it is.
+            b.HasOne(x => x.Department)
+                .WithMany()
+                .HasForeignKey(x => x.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
         
         modelBuilder.Entity<Lead>()
             .HasOne(l => l.CreatedBy)

@@ -18,7 +18,7 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             _config = config;
                 }
-        public string GenerateToken(string sub, string userName, string? fullName, int departmentId, IEnumerable<string> roles)
+        public string GenerateToken(string sub, string userName, string? fullName, int departmentId, IEnumerable<int> readableDepartmentIds, IEnumerable<string> roles)
         {
             var jwtSettings = _config.GetSection("JwtSettings");
             var key = new SymmetricSecurityKey(
@@ -32,6 +32,15 @@ namespace AlAmalBusiness.Application.Services.Imp
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(AppClaims.DepartmentId, departmentId.ToString())
         };
+            // The reach, resolved once here rather than per request. The home
+            // department is unioned in, so this claim is always the complete
+            // answer and a reader never has to combine it with the one above.
+            var readable = AppClaims.ReadableDepartmentIds(
+                string.Join(',', readableDepartmentIds),
+                departmentId);
+            if (readable.Count > 0)
+                claims.Add(new Claim(AppClaims.DepartmentIds, string.Join(',', readable)));
+
             if (!string.IsNullOrWhiteSpace(fullName))
                 claims.Add(new Claim(JwtRegisteredClaimNames.Name, fullName));
             claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));

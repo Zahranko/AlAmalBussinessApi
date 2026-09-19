@@ -154,7 +154,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Appointments
         {
             query.Page = Math.Max(query.Page, 1);
             query.PageSize = Math.Clamp(query.PageSize <= 0 ? DefaultPageSize : query.PageSize, 1, MaxPageSize);
-            query.RestrictToDepartmentId = VisibleDepartment(actor);
+            query.RestrictToDepartmentIds = VisibleDepartments(actor);
 
             if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
                 (query.FromDate, query.ToDate) = (query.ToDate, query.FromDate);
@@ -304,7 +304,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Appointments
             // Same rule as the inbox, and set here rather than trusted from
             // the caller: a manager can pass departmentId all they like, the
             // restriction below still pins them to their own.
-            query.RestrictToDepartmentId = VisibleDepartment(actor);
+            query.RestrictToDepartmentIds = VisibleDepartments(actor);
 
             if (query.From.HasValue && query.To.HasValue && query.From > query.To)
                 (query.From, query.To) = (query.To, query.From);
@@ -384,15 +384,18 @@ namespace AlAmalBusiness.Application.Services.Imp.Appointments
         // ---------- visibility ----------
 
         // Who sees what: only an Admin is unrestricted. Everyone else —
-        // AManager included — is narrowed to the department their own account
-        // belongs to. An account with no department therefore sees an empty
-        // inbox by design; give them one, or Admin if they are meant to see
-        // the whole hospital. Null means "no restriction".
-        private static int? VisibleDepartment(AppointmentActor actor) =>
-            actor.CanViewAll ? null : actor.DepartmentId;
+        // AManager included — is narrowed to the departments on their token:
+        // the one they work in, plus any UserDepartments grants them. An
+        // account with no department therefore sees an empty inbox by design;
+        // give them one, or Admin if they are meant to see the whole hospital.
+        //
+        // Null means "no restriction"; an empty list means nothing at all,
+        // and the repo treats it that way.
+        private static List<int>? VisibleDepartments(AppointmentActor actor) =>
+            actor.CanViewAll ? null : actor.DepartmentIds.ToList();
 
         private static bool CanSee(int departmentId, AppointmentActor actor) =>
-            actor.CanViewAll || actor.DepartmentId == departmentId;
+            actor.CanViewAll || actor.DepartmentIds.Contains(departmentId);
 
         // The single re-read every mutation returns through, so the caller
         // always gets the request as it now stands, timeline included.

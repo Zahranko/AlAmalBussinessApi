@@ -141,7 +141,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
         {
             query.Page = Math.Max(query.Page, 1);
             query.PageSize = Math.Clamp(query.PageSize <= 0 ? DefaultPageSize : query.PageSize, 1, MaxPageSize);
-            query.RestrictToDepartmentId = VisibleDepartment(actor);
+            query.RestrictToDepartmentIds = VisibleDepartments(actor);
 
             var (items, totalCount) = await _feedbackRepo.PageFeedbacksAsync(query);
 
@@ -291,7 +291,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             // Same rule as the inbox, and set here rather than trusted from
             // the caller: a manager can pass departmentId all they like, the
             // restriction below still pins them to their own.
-            query.RestrictToDepartmentId = VisibleDepartment(actor);
+            query.RestrictToDepartmentIds = VisibleDepartments(actor);
 
             if (query.From.HasValue && query.To.HasValue && query.From > query.To)
                 (query.From, query.To) = (query.To, query.From);
@@ -365,18 +365,21 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
         // ---------- visibility ----------
 
         // Who sees what: only an Admin is unrestricted. Everyone else —
-        // FManager included — is narrowed to the department their own account
-        // belongs to: a manager runs one department's feedback, and their
-        // dashboard is that department's numbers. An account with no
-        // department therefore sees an empty inbox by design; give them one,
-        // or Admin if they are meant to see the whole hospital.
+        // FManager included — is narrowed to the departments on their token:
+        // the one they work in, plus any UserDepartments grants them. A
+        // manager normally runs one department's feedback and their dashboard
+        // is that department's numbers; someone overseeing several reads all
+        // of them, and their dashboard breaks the set out by department. An
+        // account with no department at all sees an empty inbox by design;
+        // give them one, or Admin if they are meant to see the whole hospital.
         //
-        // Null means "no restriction".
-        private static int? VisibleDepartment(FeedbackActor actor) =>
-            actor.CanViewAll ? null : actor.DepartmentId;
+        // Null means "no restriction". An empty list means the opposite —
+        // nothing — and the repo treats it that way.
+        private static List<int>? VisibleDepartments(FeedbackActor actor) =>
+            actor.CanViewAll ? null : actor.DepartmentIds.ToList();
 
         private static bool CanSee(int departmentId, FeedbackActor actor) =>
-            actor.CanViewAll || actor.DepartmentId == departmentId;
+            actor.CanViewAll || actor.DepartmentIds.Contains(departmentId);
 
         // 404 rather than 403 for a message outside the caller's department —
         // not revealing that a given id exists is the point of the scoping.

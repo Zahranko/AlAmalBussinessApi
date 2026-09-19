@@ -34,6 +34,11 @@ namespace AlAmalBusiness.Application.Services.Imp
             {
                 return new CreateUserResult { IsSuccess = false, Message = "Email address is not valid." };
             }
+            var (extraDepartments, extraError) = await NormalizeExtraDepartmentsAsync(user.ExtraDepartmentIds, user.DepartmentId);
+            if (extraError != null)
+            {
+                return new CreateUserResult { IsSuccess = false, Message = extraError };
+            }
             var newUser = new User
             {
                 UserName = user.UserName,
@@ -49,6 +54,7 @@ namespace AlAmalBusiness.Application.Services.Imp
                 var roleRes = await _userRepo.AssignRolesAsync(newUser, user.Roles);
                 if (roleRes.Succeeded)
                 {
+                    await _userRepo.SetExtraDepartmentsAsync(newUser.Id, extraDepartments);
                     return new CreateUserResult { IsSuccess = true, Message = "Employee created successfully." };
                 }
                 else
@@ -77,9 +83,35 @@ namespace AlAmalBusiness.Application.Services.Imp
             FullName = user.FullName,
             Email = user.Email,
             DepartmentId = user.DepartmentId,
+            ExtraDepartmentIds = user.ExtraDepartmentIds,
             IsActive = user.IsActive,
             Roles = user.Roles
         };
+
+        // The extra departments an admin may grant: each must exist, the home
+        // department is dropped (it is already covered and storing it twice
+        // would only make the two disagree later), and duplicates collapse.
+        // An id that doesn't exist is refused rather than ignored — a silently
+        // dropped grant looks exactly like a saved one on the next screen.
+        private async Task<(List<int> Ids, string? Error)> NormalizeExtraDepartmentsAsync(
+            List<int>? requested, int homeDepartmentId)
+        {
+            if (requested == null || requested.Count == 0)
+                return (new List<int>(), null);
+
+            var ids = requested
+                .Where(id => id > 0 && id != homeDepartmentId)
+                .Distinct()
+                .ToList();
+
+            foreach (var id in ids)
+            {
+                if (await _depRepo.GetDepartmentByIdAsync(id) == null)
+                    return (new List<int>(), $"Department {id} not found.");
+            }
+
+            return (ids, null);
+        }
 
         // Blank means "no email" (null), anything else must parse as a plain
         // address — no display name, since this goes straight into SMTP RCPT.
@@ -142,10 +174,22 @@ namespace AlAmalBusiness.Application.Services.Imp
                 return new UpdateUserResponse { IsSuccess = false, Message = "Email address is not valid." };
             }
 
+            var (extraDepartments, extraError) = await NormalizeExtraDepartmentsAsync(updateDTO.ExtraDepartmentIds, updateDTO.DepartmentId);
+            if (extraError != null)
+            {
+                return new UpdateUserResponse { IsSuccess = false, Message = extraError };
+            }
+
             var updateUser = await _userRepo.UpdateUserAsync(id, updateDTO.UserName!, updateDTO.FullName!, updateDTO.DepartmentId, email);
 
             if (updateUser.Succeeded)
             {
+                // Saved after the user itself so a rejected rename doesn't
+                // leave the grants changed behind it. Both land in the same
+                // request, and the reach on the caller's token only catches up
+                // at their next refresh — the same 15 minutes a role change takes.
+                await _userRepo.SetExtraDepartmentsAsync(id, extraDepartments);
+
                 var updatedUser = await _userRepo.GetUserSummaryAsync(id);
                 return new UpdateUserResponse
                 {

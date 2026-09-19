@@ -12,6 +12,8 @@ namespace AlAmalBusiness.Domain.IRepositories
         public string? FullName { get; set; }
         public string? Email { get; set; }
         public int DepartmentId { get; set; }
+        // The extra departments this user may read, beyond the one above.
+        public List<int> ExtraDepartmentIds { get; set; } = new();
         public bool IsActive { get; set; }
         public List<string> Roles { get; set; } = new();
     }

@@ -54,10 +54,14 @@ namespace AlAmalBusiness.Api.Area.Appointments.Controllers
 
                 return new AppointmentActor(
                     User.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                    // Admin alone is unrestricted — a manager's reach is their
-                    // own department (see AppointmentService.VisibleDepartment).
+                    // Admin alone is unrestricted — everyone else reads the
+                    // departments on their token and nothing more (see
+                    // AppointmentService.VisibleDepartments).
                     User.IsInRole(nameof(AppRoles.Admin)),
-                    departmentId);
+                    departmentId,
+                    AppClaims.ReadableDepartmentIds(
+                        User.FindFirstValue(AppClaims.DepartmentIds),
+                        departmentId));
             }
         }
 

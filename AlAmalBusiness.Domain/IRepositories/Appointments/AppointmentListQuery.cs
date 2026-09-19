@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AlAmalBusiness.Domain.Constants;
 using System;
 
@@ -25,9 +26,12 @@ namespace AlAmalBusiness.Domain.IRepositories.Appointments
         // Matches the patient's name or phone.
         public string? Search { get; set; }
 
-        // Set by the service, never by the caller: null means "no
-        // restriction" (an admin), any value narrows the list to that one
-        // department — the caller's own.
-        public int? RestrictToDepartmentId { get; set; }
+        // Set by the service from the caller's token, never by the caller:
+        // null means "no restriction", which is Admin only. Otherwise it is
+        // every department the caller may read — their own plus whatever
+        // UserDepartments grants them — and an EMPTY list means they may read
+        // nothing. Empty must never be treated as "no restriction"; the repo
+        // filters it to no rows on purpose, which is the safe direction.
+        public List<int>? RestrictToDepartmentIds { get; set; }
     }
 }

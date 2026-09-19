@@ -54,10 +54,14 @@ namespace AlAmalBusiness.Api.Area.Feedback.Controllers
 
                 return new FeedbackActor(
                     User.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                    // Admin alone is unrestricted — a manager's reach is their
-                    // own department (see FeedbackService.VisibleDepartment).
+                    // Admin alone is unrestricted — everyone else reads the
+                    // departments on their token and nothing more (see
+                    // FeedbackService.VisibleDepartments).
                     User.IsInRole(nameof(AppRoles.Admin)),
-                    departmentId);
+                    departmentId,
+                    AppClaims.ReadableDepartmentIds(
+                        User.FindFirstValue(AppClaims.DepartmentIds),
+                        departmentId));
             }
         }
 

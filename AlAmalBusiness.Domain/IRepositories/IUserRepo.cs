@@ -17,8 +17,14 @@ namespace AlAmalBusiness.Domain.IRepositories
         Task<List<(string Id, string? UserName)>> GetActiveUserNamesAsync();
         Task<IdentityResult> UpdateRolesAsync(string id, List<string> userRoles);
         Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId, string? email);
-        // Distinct email addresses of active users in the given role and
-        // department that have one set — e.g. who to notify about new feedback.
+        // Replaces a user's extra readable departments wholesale (see
+        // UserDepartment). An empty list clears them, leaving the user with
+        // their home department alone.
+        Task SetExtraDepartmentsAsync(string userId, IReadOnlyCollection<int> departmentIds);
+        // Distinct email addresses of active users in the given role who can
+        // read the given department — whether it is the one they work in or
+        // one they have been granted — and have an address set. This is who
+        // gets told about new feedback or a new appointment request.
         Task<List<string>> GetActiveEmailsInRoleAsync(string role, int departmentId);
         // The same, across every department and any of several roles, leaving
         // one user out — who to tell about a new ticket, minus whoever raised it.

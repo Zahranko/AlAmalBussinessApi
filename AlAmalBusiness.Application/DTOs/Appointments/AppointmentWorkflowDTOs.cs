@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AlAmalBusiness.Domain.Constants;
 using System.ComponentModel.DataAnnotations;
 
@@ -49,8 +50,10 @@ namespace AlAmalBusiness.Application.DTOs.Appointments
     public record AppointmentActor(
         string UserId,
         // True for Admin alone: sees every department's requests. Everyone
-        // else, AManager included, is narrowed to DepartmentId below.
+        // else, AManager included, is narrowed to DepartmentIds below.
         bool CanViewAll,
-        // The department the actor's own account belongs to.
-        int DepartmentId);
+        // The department the actor works in (AppClaims.DepartmentId).
+        int DepartmentId,
+        // Every department the actor may read — see FeedbackActor.
+        IReadOnlyList<int> DepartmentIds);
 }

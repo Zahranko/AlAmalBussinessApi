@@ -24,7 +24,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
         // The report reads every department, so it runs as an unrestricted
         // actor — who receives what is decided by recipient department below,
         // not by this.
-        private static readonly QuestionnaireActor ReportActor = new("system", CanViewAll: true, DepartmentId: 0);
+        private static readonly QuestionnaireActor ReportActor = new("system", CanViewAll: true, DepartmentId: 0, DepartmentIds: Array.Empty<int>());
 
         private readonly IQuestionnaireRepo _repo;
         private readonly IQuestionnaireService _questionnaires;
@@ -131,7 +131,10 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             var monthEndExclusive = to.AddDays(1).ToDateTime(TimeOnly.MinValue);
             var sources = new Dictionary<int, AttachmentSource>();
 
-            var summaries = await _repo.GetSummariesAsync(departmentId, from, to);
+            var summaries = await _repo.GetSummariesAsync(
+                departmentId.HasValue ? new List<int> { departmentId.Value } : null,
+                from,
+                to);
 
             // A questionnaire belongs in the report if it is live, or if it
             // still collected answers during the month before being switched off.

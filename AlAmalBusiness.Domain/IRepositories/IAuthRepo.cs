@@ -17,5 +17,10 @@ namespace AlAmalBusiness.Domain.IRepositories
         // must re-read roles so a change takes effect within 15 minutes.
         Task<User?> FindActiveByIdAsync(string userId);
         Task<IEnumerable<string>> GetRolesByIdAsync(string userId);
+
+        // The extra departments this user may read (UserDepartments), read on
+        // the same footing as roles above: both go on the token, so both are
+        // re-read on every refresh and a change lands within 15 minutes.
+        Task<List<int>> GetExtraDepartmentIdsAsync(string userId);
     }
 }

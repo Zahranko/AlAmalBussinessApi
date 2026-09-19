@@ -105,7 +105,11 @@ namespace AlAmalBusiness.Application.Services.Imp
         private async Task<LoginResult> IssueAsync(User user, System.Collections.Generic.List<string> roles, RefreshToken? spend = null)
         {
             var now = DateTime.UtcNow;
-            var accessToken = _tokenService.GenerateToken(user.Id, user.UserName ?? string.Empty, user.FullName, user.DepartmentId, roles);
+            // Read beside the roles this was called with: both are resolved
+            // here, at the one choke point login and refresh share, so the
+            // token carries the whole reach and no request has to look it up.
+            var extraDepartments = await _authRepo.GetExtraDepartmentIdsAsync(user.Id);
+            var accessToken = _tokenService.GenerateToken(user.Id, user.UserName ?? string.Empty, user.FullName, user.DepartmentId, extraDepartments, roles);
 
             var raw = NewRawToken();
             var record = new RefreshToken

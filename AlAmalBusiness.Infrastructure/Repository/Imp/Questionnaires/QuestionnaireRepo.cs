@@ -22,11 +22,17 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
         // Three grouped queries, merged in memory: the questionnaires in scope,
         // their submission counts, and their answer averages. None of them
         // returns an answer row.
-        public async Task<List<QuestionnaireSummaryRow>> GetSummariesAsync(int? restrictToDepartmentId, DateOnly? from, DateOnly? to)
+        public async Task<List<QuestionnaireSummaryRow>> GetSummariesAsync(List<int>? restrictToDepartmentIds, DateOnly? from, DateOnly? to)
         {
             var questionnaires = _context.Questionnaires.AsNoTracking();
-            if (restrictToDepartmentId.HasValue)
-                questionnaires = questionnaires.Where(q => q.DepartmentId == restrictToDepartmentId.Value);
+            // Null is unrestricted (Admin); an empty set is "may read
+            // nothing" and must filter to no rows, never to everything.
+            if (restrictToDepartmentIds is { } readable)
+            {
+                questionnaires = readable.Count == 0
+                    ? questionnaires.Where(q => false)
+                    : questionnaires.Where(q => readable.Contains(q.DepartmentId));
+            }
 
             var rows = await questionnaires
                 .OrderBy(q => q.Title)
@@ -47,8 +53,12 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                 return rows;
 
             var submissions = InPeriod(_context.QuestionnaireSubmissions.AsNoTracking(), from, to);
-            if (restrictToDepartmentId.HasValue)
-                submissions = submissions.Where(s => s.Questionnaire!.DepartmentId == restrictToDepartmentId.Value);
+            if (restrictToDepartmentIds is { } readableSubs)
+            {
+                submissions = readableSubs.Count == 0
+                    ? submissions.Where(s => false)
+                    : submissions.Where(s => readableSubs.Contains(s.Questionnaire!.DepartmentId));
+            }
 
             var counts = await submissions
                 .GroupBy(s => s.QuestionnaireId)

@@ -16,8 +16,13 @@ namespace AlAmalBusiness.Application.DTOs.Users
         [Required]
         [StringLength(20, MinimumLength = 3)]
         public string? FullName { get; set; }
+        // Where this employee works: one department, and what their writes
+        // are stamped with.
         [Required]
         public int DepartmentId { get; set; }
+        // Optional. Extra departments this employee may READ on top of the one
+        // above — for someone who oversees several. Empty is the normal case.
+        public List<int> ExtraDepartmentIds { get; set; } = new List<int>();
         // Optional. Where system notifications for this user go (e.g. an
         // FManager gets new-feedback emails for their department). Blank is
         // stored as no email; format is checked in UserServices.

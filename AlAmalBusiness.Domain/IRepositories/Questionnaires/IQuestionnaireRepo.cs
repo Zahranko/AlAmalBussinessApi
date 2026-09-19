@@ -8,11 +8,12 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
     public interface IQuestionnaireRepo
     {
         // The list screen: every questionnaire in scope with its response
-        // count and average, aggregated in SQL. RestrictToDepartmentId is the
-        // caller's scoping (set by the service, never by the request); the
-        // dates bound which submissions are counted, not which questionnaires
-        // are listed.
-        Task<List<QuestionnaireSummaryRow>> GetSummariesAsync(int? restrictToDepartmentId, DateOnly? from, DateOnly? to);
+        // count and average, aggregated in SQL. restrictToDepartmentIds is the
+        // caller's scoping (set by the service, never by the request): null is
+        // unrestricted (Admin), otherwise every department they may read, and
+        // an empty list is "nothing". The dates bound which submissions are
+        // counted, not which questionnaires are listed.
+        Task<List<QuestionnaireSummaryRow>> GetSummariesAsync(List<int>? restrictToDepartmentIds, DateOnly? from, DateOnly? to);
 
         // Tracked, with every question (archived included), for editing.
         Task<Questionnaire?> GetForEditAsync(int id);

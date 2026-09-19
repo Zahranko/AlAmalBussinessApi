@@ -15,6 +15,9 @@ namespace AlAmalBusiness.Application.DTOs.Users
         public string? FullName { get; set; }
         [Required]
         public int DepartmentId { get; set; }
+        // Full replace like every other field here: whatever is sent becomes
+        // the complete set, and an empty list clears the extra departments.
+        public List<int> ExtraDepartmentIds { get; set; } = new List<int>();
         // Full replace like every other field here: sending null or "" clears
         // the address. Format is checked in UserServices (so a blank form
         // field isn't a 400).

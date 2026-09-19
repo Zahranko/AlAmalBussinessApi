@@ -8,9 +8,12 @@ namespace AlAmalBusiness.Application.Services.Interface
     {
         // fullName rides along as the "name" claim so a client can show the
         // display name straight from the token, without a GET /api/Auth/me;
-        // departmentId as AppClaims.DepartmentId, which is what scopes the
-        // feedback inbox to the caller's own department.
-        string GenerateToken(string sub, string userName, string? fullName, int departmentId, IEnumerable<string> roles);
+        // departmentId as AppClaims.DepartmentId, the home department every
+        // write stamps; and readableDepartmentIds as AppClaims.DepartmentIds,
+        // the set that scopes the feedback, appointment and questionnaire
+        // screens. Passing the extra grants alone is enough — the home
+        // department is folded in here, so no caller has to remember to.
+        string GenerateToken(string sub, string userName, string? fullName, int departmentId, IEnumerable<int> readableDepartmentIds, IEnumerable<string> roles);
 
     }
 }

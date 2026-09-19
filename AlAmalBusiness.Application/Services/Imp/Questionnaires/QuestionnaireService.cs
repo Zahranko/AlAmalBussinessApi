@@ -46,7 +46,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             if (from.HasValue && to.HasValue && from > to)
                 (from, to) = (to, from);
 
-            var rows = await _repo.GetSummariesAsync(VisibleDepartment(actor), from, to);
+            var rows = await _repo.GetSummariesAsync(VisibleDepartments(actor), from, to);
 
             var totalAnswers = rows.Sum(r => r.TotalAnswers);
 
@@ -473,18 +473,31 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             return (new ValidFields(title, slug, Clean(request.Description), departmentId.Id, texts!), null);
         }
 
-        // A QManager's questionnaires always live in their own department —
-        // what they sent is ignored. An Admin picks one, and may only pick an
-        // active department, except to keep the one it already had.
+        // A QManager's questionnaires live in a department they can read: the
+        // one they work in by default, or any other they have been granted —
+        // seeing three departments' results but only ever being able to create
+        // in one would make the grant half a feature. Anything outside the
+        // grant is refused, so this can't be widened from the request body.
+        // An Admin picks any department, and may only pick an active one,
+        // except to keep the one it already had.
         private async Task<(int Id, string? Error)> ResolveDepartmentAsync(
             SaveQuestionnaireDTO request, QuestionnaireActor actor, Questionnaire? existing)
         {
             if (!actor.CanViewAll)
             {
-                if (actor.DepartmentId <= 0)
+                if (actor.DepartmentIds.Count == 0)
                     return (0, "حسابك غير مرتبط بقسم. تواصل مع مسؤول النظام.");
 
-                return (actor.DepartmentId, null);
+                // Nothing picked keeps the old behavior: their own department.
+                if (!request.DepartmentId.HasValue || request.DepartmentId <= 0)
+                    return actor.DepartmentId > 0
+                        ? (actor.DepartmentId, null)
+                        : (actor.DepartmentIds[0], null);
+
+                if (!actor.DepartmentIds.Contains(request.DepartmentId.Value))
+                    return (0, "القسم المختار غير متاح لحسابك");
+
+                return (request.DepartmentId.Value, null);
             }
 
             if (!request.DepartmentId.HasValue || request.DepartmentId <= 0)
@@ -515,14 +528,14 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
         // ---------- visibility ----------
 
-        // Same rule as the feedback inbox: only an Admin is unrestricted;
-        // a QManager sees their own department's questionnaires. Null = no
-        // restriction.
-        private static int? VisibleDepartment(QuestionnaireActor actor) =>
-            actor.CanViewAll ? null : actor.DepartmentId;
+        // Same rule as the feedback inbox: only an Admin is unrestricted; a
+        // QManager sees the departments on their token. Null = no
+        // restriction, empty = nothing.
+        private static List<int>? VisibleDepartments(QuestionnaireActor actor) =>
+            actor.CanViewAll ? null : actor.DepartmentIds.ToList();
 
         private static bool CanSee(int departmentId, QuestionnaireActor actor) =>
-            actor.CanViewAll || actor.DepartmentId == departmentId;
+            actor.CanViewAll || actor.DepartmentIds.Contains(departmentId);
 
         private async Task<QuestionnaireActionResponse> ReloadAsync(int id, QuestionnaireActor actor) =>
             new() { Success = true, Questionnaire = await GetDetailAsync(id, actor) };

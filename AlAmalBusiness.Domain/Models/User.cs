@@ -12,8 +12,11 @@ public class User:IdentityUser
     [StringLength(20, MinimumLength = 3)]
     public string? FullName { get; set; }
     public bool IsActive { get; set; } = true;
+    // Where this person works: what every write stamps, and the floor of
+    // what they can read. ExtraDepartments widens the reading only.
     public int DepartmentId { get; set; }
     public Departments Department { get; set; } = null!;
+    public ICollection<UserDepartment> ExtraDepartments { get; set; } = new List<UserDepartment>();
     public ICollection<Lead>? CreatedLeads { get; set; }
     public ICollection<Lead>? ClaimedLeads { get; set; }
 

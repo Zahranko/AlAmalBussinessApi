@@ -17,9 +17,13 @@ namespace AlAmalBusiness.Domain.IRepositories.Appointments
         // An admin narrowing to one department. Nobody else can send it.
         public int? DepartmentId { get; set; }
 
-        // Set by the service from the caller's roles, never by the caller.
-        // Null means "no restriction", which is Admin only.
-        public int? RestrictToDepartmentId { get; set; }
+        // Set by the service from the caller's token, never by the caller:
+        // null means "no restriction", which is Admin only. Otherwise it is
+        // every department the caller may read — their own plus whatever
+        // UserDepartments grants them — and an EMPTY list means they may read
+        // nothing. Empty must never be treated as "no restriction"; the repo
+        // filters it to no rows on purpose, which is the safe direction.
+        public List<int>? RestrictToDepartmentIds { get; set; }
     }
 
     public class AppointmentStatusCountRow

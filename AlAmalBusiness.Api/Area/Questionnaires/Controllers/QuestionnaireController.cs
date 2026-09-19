@@ -103,7 +103,10 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
                 return new QuestionnaireActor(
                     User.FindFirstValue(ClaimTypes.NameIdentifier)!,
                     User.IsInRole(nameof(AppRoles.Admin)),
-                    departmentId);
+                    departmentId,
+                    AppClaims.ReadableDepartmentIds(
+                        User.FindFirstValue(AppClaims.DepartmentIds),
+                        departmentId));
             }
         }
 

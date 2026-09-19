@@ -16,9 +16,11 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
     public class AuthRepo : IAuthRepo
     {
         private readonly UserManager<User> _userManager;
-        public AuthRepo(UserManager<User> userManager)
+        private readonly AppDbContext _context;
+        public AuthRepo(UserManager<User> userManager, AppDbContext context)
         {
             _userManager = userManager;
+            _context = context;
         
         }
 
@@ -71,6 +73,15 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             var user = await _userManager.FindByIdAsync(userId);
             return user == null ? Array.Empty<string>() : await _userManager.GetRolesAsync(user);
         }
+
+        // Ids only — the grants exist to be folded into a token claim, so
+        // there is no reason to materialize the department rows behind them.
+        public Task<List<int>> GetExtraDepartmentIdsAsync(string userId) =>
+            _context.UserDepartments
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .Select(x => x.DepartmentId)
+                .ToListAsync();
 
         public async Task<IEnumerable<string>> GetRolesAsync(string userName)
         {

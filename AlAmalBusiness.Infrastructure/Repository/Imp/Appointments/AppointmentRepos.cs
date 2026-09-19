@@ -67,8 +67,14 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Appointments
             // Applied before anything the caller asked for: this is the
             // department scoping the service resolved from the caller's
             // roles, not a filter they can widen.
-            if (query.RestrictToDepartmentId.HasValue)
-                q = q.Where(a => a.DepartmentId == query.RestrictToDepartmentId.Value);
+            // The scoping the service resolved from the caller's token. An
+            // empty set means they may read nothing, so it yields no rows.
+            if (query.RestrictToDepartmentIds is { } readable)
+            {
+                q = readable.Count == 0
+                    ? q.Where(a => false)
+                    : q.Where(a => readable.Contains(a.DepartmentId));
+            }
 
             if (query.Status.HasValue) q = q.Where(a => a.Status == query.Status.Value);
             if (query.DepartmentId.HasValue) q = q.Where(a => a.DepartmentId == query.DepartmentId.Value);
@@ -135,8 +141,12 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Appointments
         {
             var scoped = _context.AppointmentRequests.AsNoTracking();
 
-            if (query.RestrictToDepartmentId.HasValue)
-                scoped = scoped.Where(a => a.DepartmentId == query.RestrictToDepartmentId.Value);
+            if (query.RestrictToDepartmentIds is { } readable)
+            {
+                scoped = readable.Count == 0
+                    ? scoped.Where(a => false)
+                    : scoped.Where(a => readable.Contains(a.DepartmentId));
+            }
 
             if (query.DepartmentId.HasValue)
                 scoped = scoped.Where(a => a.DepartmentId == query.DepartmentId.Value);

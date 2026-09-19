@@ -67,10 +67,15 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Feedback
             var q = _context.Feedbacks.AsNoTracking();
 
             // Applied before anything the caller asked for: this is the
-            // department scoping the service resolved from the caller's roles,
-            // not a filter they can widen.
-            if (query.RestrictToDepartmentId.HasValue)
-                q = q.Where(f => f.DepartmentId == query.RestrictToDepartmentId.Value);
+            // department scoping the service resolved from the caller's token,
+            // not a filter they can widen. An empty set is "may read nothing",
+            // so it filters to no rows — never to everything.
+            if (query.RestrictToDepartmentIds is { } readable)
+            {
+                q = readable.Count == 0
+                    ? q.Where(f => false)
+                    : q.Where(f => readable.Contains(f.DepartmentId));
+            }
 
             if (query.Type.HasValue) q = q.Where(f => f.Type == query.Type.Value);
             if (query.Status.HasValue) q = q.Where(f => f.Status == query.Status.Value);
@@ -127,8 +132,12 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Feedback
         {
             var scoped = _context.Feedbacks.AsNoTracking();
 
-            if (query.RestrictToDepartmentId.HasValue)
-                scoped = scoped.Where(f => f.DepartmentId == query.RestrictToDepartmentId.Value);
+            if (query.RestrictToDepartmentIds is { } readable)
+            {
+                scoped = readable.Count == 0
+                    ? scoped.Where(f => false)
+                    : scoped.Where(f => readable.Contains(f.DepartmentId));
+            }
 
             if (query.DepartmentId.HasValue)
                 scoped = scoped.Where(f => f.DepartmentId == query.DepartmentId.Value);
