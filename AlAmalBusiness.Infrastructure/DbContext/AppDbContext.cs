@@ -40,7 +40,6 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<TicketHistory> TicketHistories { get; set; }
       public DbSet<TicketCategory> TicketCategories { get; set; }
       public DbSet<TicketProcedure> TicketProcedures { get; set; }
-      public DbSet<TicketReason> TicketReasons { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -398,12 +397,6 @@ public class AppDbContext : IdentityDbContext<User>
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Ticket>()
-            .HasOne(t => t.Reason)
-            .WithMany()
-            .HasForeignKey(t => t.ReasonId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<Ticket>()
             .HasOne(t => t.CreatedBy)
             .WithMany()
             .HasForeignKey(t => t.CreatedById)
@@ -439,6 +432,7 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<Ticket>().Property(t => t.PatientId).HasMaxLength(64);
         modelBuilder.Entity<Ticket>().Property(t => t.SourceUrl).HasMaxLength(1000);
         modelBuilder.Entity<Ticket>().Property(t => t.Resolution).HasMaxLength(2000);
+        modelBuilder.Entity<Ticket>().Property(t => t.Reason).HasMaxLength(2000);
 
         modelBuilder.Entity<TicketHistory>()
             .HasOne(h => h.Ticket)
@@ -461,15 +455,6 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<TicketCategory>().HasIndex(c => c.Name).IsUnique();
         modelBuilder.Entity<TicketProcedure>().Property(p => p.Name).HasMaxLength(200);
         modelBuilder.Entity<TicketProcedure>().HasIndex(p => p.Name).IsUnique();
-
-        modelBuilder.Entity<TicketReason>()
-            .HasOne(r => r.Procedure)
-            .WithMany()
-            .HasForeignKey(r => r.ProcedureId)
-            .OnDelete(DeleteBehavior.Restrict);
-        modelBuilder.Entity<TicketReason>().Property(r => r.Name).HasMaxLength(200);
-        // Per procedure — see TicketReason.
-        modelBuilder.Entity<TicketReason>().HasIndex(r => new { r.ProcedureId, r.Name }).IsUnique();
 
     }
     }

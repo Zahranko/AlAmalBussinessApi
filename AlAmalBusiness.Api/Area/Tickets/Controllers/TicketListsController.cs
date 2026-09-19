@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace AlAmalBusiness.Api.Area.Tickets.Controllers
 {
-    // Admin maintenance of the ticket categories, procedures and reasons —
+    // Admin maintenance of the ticket categories and procedures —
     // the same plain REST shape as AppointmentListsController. Answers the
     // saved row on success and { message } with 400 (rule broken) or 404
     // (no such row) otherwise. Staff read the active entries through
@@ -44,15 +44,6 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
 
         [HttpPut("procedures/{id:int}")]
         public Task<IActionResult> UpdateProcedure(int id, TicketProcedureItemDTO dto) => Run(() => _lists.UpdateProcedureAsync(id, dto));
-
-        [HttpGet("reasons")]
-        public async Task<IActionResult> GetReasons() => Ok(await _lists.GetReasonsAsync());
-
-        [HttpPost("reasons")]
-        public Task<IActionResult> CreateReason(TicketReasonItemDTO dto) => Run(() => _lists.CreateReasonAsync(dto));
-
-        [HttpPut("reasons/{id:int}")]
-        public Task<IActionResult> UpdateReason(int id, TicketReasonItemDTO dto) => Run(() => _lists.UpdateReasonAsync(id, dto));
 
         private async Task<IActionResult> Run<T>(Func<Task<TicketListResponse<T>>> action)
         {

@@ -32,14 +32,17 @@ namespace AlAmalBusiness.Domain.Models.Tickets
         public string? PatientId { get; set; }
         public string? SourceUrl { get; set; }
 
-        // All three optional and purely descriptive; a reason can only be
-        // picked alongside the procedure it belongs to (TicketService).
+        // Both optional and purely descriptive.
         public int? CategoryId { get; set; }
         public TicketCategory? Category { get; set; }
         public int? ProcedureId { get; set; }
         public TicketProcedure? Procedure { get; set; }
-        public int? ReasonId { get; set; }
-        public TicketReason? Reason { get; set; }
+
+        // Why the ticket was raised, in the raiser's own words. Free text
+        // since 2026-09-19: it replaced a per-procedure TicketReasons picker
+        // that an admin had to keep filled, and whose entries never said
+        // enough on their own.
+        public string? Reason { get; set; }
 
         // The one field that routes a ticket: true means it belongs to the
         // insurance desk (TInsurance) alone — kept out of the support agent's

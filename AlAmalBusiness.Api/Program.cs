@@ -80,7 +80,6 @@ builder.Services.AddScoped<ITicketRepo, TicketRepo>();
 builder.Services.AddScoped<ITicketHistoryRepo, TicketHistoryRepo>();
 builder.Services.AddScoped<ITicketCategoryRepo, TicketCategoryRepo>();
 builder.Services.AddScoped<ITicketProcedureRepo, TicketProcedureRepo>();
-builder.Services.AddScoped<ITicketReasonRepo, TicketReasonRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();

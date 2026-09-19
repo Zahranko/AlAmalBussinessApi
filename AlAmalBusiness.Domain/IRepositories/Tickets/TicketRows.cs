@@ -19,8 +19,6 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         public string? CategoryName { get; set; }
         public int? ProcedureId { get; set; }
         public string? ProcedureName { get; set; }
-        public int? ReasonId { get; set; }
-        public string? ReasonName { get; set; }
         public bool IsInsurance { get; set; }
         public string? SourceUrl { get; set; }
         public string? CreatedById { get; set; }
@@ -38,6 +36,8 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
     public class TicketDetailRow : TicketListRow
     {
         public string? Description { get; set; }
+        // Free text, possibly several lines — detail only, like Description.
+        public string? Reason { get; set; }
         public string? PatientId { get; set; }
         public string? Resolution { get; set; }
     }

@@ -43,8 +43,6 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             CategoryName = t.Category!.Name,
             ProcedureId = t.ProcedureId,
             ProcedureName = t.Procedure!.Name,
-            ReasonId = t.ReasonId,
-            ReasonName = t.Reason!.Name,
             IsInsurance = t.IsInsurance,
             SourceUrl = t.SourceUrl,
             CreatedById = t.CreatedById,
@@ -71,8 +69,6 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                     CategoryName = t.Category!.Name,
                     ProcedureId = t.ProcedureId,
                     ProcedureName = t.Procedure!.Name,
-                    ReasonId = t.ReasonId,
-                    ReasonName = t.Reason!.Name,
                     IsInsurance = t.IsInsurance,
                     SourceUrl = t.SourceUrl,
                     CreatedById = t.CreatedById,
@@ -84,6 +80,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                     ClosedAt = t.ClosedAt,
                     CreatedDate = t.CreatedDate,
                     Description = t.Description,
+                    Reason = t.Reason,
                     PatientId = t.PatientId,
                     Resolution = t.Resolution
                 })
@@ -404,40 +401,5 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
 
         public Task<bool> IsNameExist(string name, int excludeId) =>
             _context.TicketProcedures.AnyAsync(p => p.Name == name && p.Id != excludeId);
-    }
-
-    public class TicketReasonRepo : ITicketReasonRepo
-    {
-        private readonly AppDbContext _context;
-
-        public TicketReasonRepo(AppDbContext context)
-        {
-            _context = context;
-        }
-
-        public Task<List<TicketReason>> GetAllAsync() =>
-            _context.TicketReasons.AsNoTracking().Include(r => r.Procedure).OrderBy(r => r.Name).ToListAsync();
-
-        // Active reasons under an active procedure: a reason whose procedure
-        // was retired can't be reached from the form's cascade anyway.
-        public Task<List<TicketReason>> GetActiveAsync() =>
-            _context.TicketReasons.AsNoTracking()
-                .Where(r => r.IsActive && r.Procedure!.IsActive)
-                .OrderBy(r => r.Name)
-                .ToListAsync();
-
-        public Task<TicketReason?> GetByIdAsync(int id) =>
-            _context.TicketReasons.Include(r => r.Procedure).FirstOrDefaultAsync(r => r.Id == id);
-
-        public async Task CreateAsync(TicketReason reason)
-        {
-            _context.TicketReasons.Add(reason);
-            await _context.SaveChangesAsync();
-        }
-
-        public Task SaveChangesAsync() => _context.SaveChangesAsync();
-
-        public Task<bool> IsNameExist(string name, int procedureId, int excludeId) =>
-            _context.TicketReasons.AnyAsync(r => r.Name == name && r.ProcedureId == procedureId && r.Id != excludeId);
     }
 }

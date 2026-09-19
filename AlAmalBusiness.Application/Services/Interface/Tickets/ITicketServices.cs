@@ -49,9 +49,5 @@ namespace AlAmalBusiness.Application.Services.Interface.Tickets
         Task<List<TicketProcedureItemDTO>> GetProceduresAsync();
         Task<TicketListResponse<TicketProcedureItemDTO>> CreateProcedureAsync(TicketProcedureItemDTO dto);
         Task<TicketListResponse<TicketProcedureItemDTO>> UpdateProcedureAsync(int id, TicketProcedureItemDTO dto);
-
-        Task<List<TicketReasonItemDTO>> GetReasonsAsync();
-        Task<TicketListResponse<TicketReasonItemDTO>> CreateReasonAsync(TicketReasonItemDTO dto);
-        Task<TicketListResponse<TicketReasonItemDTO>> UpdateReasonAsync(int id, TicketReasonItemDTO dto);
     }
 }

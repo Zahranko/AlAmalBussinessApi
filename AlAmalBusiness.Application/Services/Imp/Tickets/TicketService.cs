@@ -41,7 +41,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         private readonly ITicketHistoryRepo _historyRepo;
         private readonly ITicketCategoryRepo _categoryRepo;
         private readonly ITicketProcedureRepo _procedureRepo;
-        private readonly ITicketReasonRepo _reasonRepo;
         private readonly IUserRepo _userRepo;
         private readonly IEmailQueue _emailQueue;
         private readonly ILogger<TicketService> _logger;
@@ -64,7 +63,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             ITicketHistoryRepo historyRepo,
             ITicketCategoryRepo categoryRepo,
             ITicketProcedureRepo procedureRepo,
-            ITicketReasonRepo reasonRepo,
             IUserRepo userRepo,
             IEmailQueue emailQueue,
             ILogger<TicketService> logger,
@@ -77,7 +75,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             _historyRepo = historyRepo;
             _categoryRepo = categoryRepo;
             _procedureRepo = procedureRepo;
-            _reasonRepo = reasonRepo;
             _userRepo = userRepo;
             _emailQueue = emailQueue;
             _logger = logger;
@@ -85,20 +82,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
         public async Task<TicketFormOptionsResponse> GetFormOptionsAsync()
         {
-            // Sequential on purpose: all three run on the one scoped DbContext,
+            // Sequential on purpose: both run on the one scoped DbContext,
             // which does not allow concurrent queries.
             var categories = await _categoryRepo.GetActiveAsync();
             var procedures = await _procedureRepo.GetActiveAsync();
-            var reasons = await _reasonRepo.GetActiveAsync();
 
             return new TicketFormOptionsResponse
             {
                 Categories = categories.Select(c => new TicketOptionResponse { Id = c.Id, Name = c.Name }).ToList(),
                 Procedures = procedures
                     .Select(p => new TicketProcedureOptionResponse { Id = p.Id, Name = p.Name, AllowsInsurance = p.AllowsInsurance })
-                    .ToList(),
-                Reasons = reasons
-                    .Select(r => new TicketReasonOptionResponse { Id = r.Id, Name = r.Name, ProcedureId = r.ProcedureId })
                     .ToList()
             };
         }
@@ -135,17 +128,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             if (request.IsInsurance && !allowsInsurance)
                 return Failed("تأمين التذكرة متاح فقط لإجراء فتح الفاتورة.");
 
-            if (request.ReasonId.HasValue)
-            {
-                var reason = await _reasonRepo.GetByIdAsync(request.ReasonId.Value);
-                if (reason == null || !reason.IsActive)
-                    return Failed("السبب المختار غير متاح.");
-                // A reason belongs to one procedure and can only be attached
-                // when that procedure is the one the ticket is about.
-                if (request.ProcedureId != reason.ProcedureId)
-                    return Failed("السبب المختار لا يتبع الإجراء المختار.");
-            }
-
             var sourceUrl = Clean(request.SourceUrl);
             // The console renders this as a link, so only a real web address
             // is kept — never a javascript: or data: URL.
@@ -162,7 +144,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
                 SourceUrl = sourceUrl,
                 CategoryId = request.CategoryId,
                 ProcedureId = request.ProcedureId,
-                ReasonId = request.ReasonId,
+                Reason = Clean(request.Reason),
                 IsInsurance = request.IsInsurance,
                 CreatedById = actor.UserId,
                 DepartmentId = actor.DepartmentId,
@@ -569,8 +551,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             target.CategoryName = row.CategoryName;
             target.ProcedureId = row.ProcedureId;
             target.ProcedureName = row.ProcedureName;
-            target.ReasonId = row.ReasonId;
-            target.ReasonName = row.ReasonName;
             target.IsInsurance = row.IsInsurance;
             target.SourceUrl = row.SourceUrl;
             target.CreatedById = row.CreatedById;
@@ -590,6 +570,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
             var detail = Fill(new TicketDetailResponse(), row);
             detail.Description = row.Description;
+            detail.Reason = row.Reason;
             detail.PatientId = row.PatientId;
             detail.Resolution = row.Resolution;
             detail.History = history.Select(h => new TicketHistoryResponse

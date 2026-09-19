@@ -15,8 +15,6 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
         public string? CategoryName { get; set; }
         public int? ProcedureId { get; set; }
         public string? ProcedureName { get; set; }
-        public int? ReasonId { get; set; }
-        public string? ReasonName { get; set; }
         // True when the ticket belongs to the insurance desk alone.
         public bool IsInsurance { get; set; }
         // Only set for CertaCure tickets — the page it was raised from.
@@ -35,6 +33,8 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
     public class TicketDetailResponse : TicketListItemResponse
     {
         public string? Description { get; set; }
+        // Why it was raised — free text, possibly several lines.
+        public string? Reason { get; set; }
         public string? PatientId { get; set; }
         public string? Resolution { get; set; }
         public List<TicketHistoryResponse> History { get; set; } = new();
@@ -60,13 +60,11 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
         public TicketDetailResponse? Ticket { get; set; }
     }
 
-    // Everything the New ticket form's pickers need, in one call. Reasons
-    // carry their procedure id so the form cascades without another request.
+    // Everything the New ticket form's pickers need, in one call.
     public class TicketFormOptionsResponse
     {
         public List<TicketOptionResponse> Categories { get; set; } = new();
         public List<TicketProcedureOptionResponse> Procedures { get; set; } = new();
-        public List<TicketReasonOptionResponse> Reasons { get; set; } = new();
     }
 
     // A procedure, plus whether picking it lets the raiser tick "insurance"
@@ -82,10 +80,5 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
     {
         public int Id { get; set; }
         public string? Name { get; set; }
-    }
-
-    public class TicketReasonOptionResponse : TicketOptionResponse
-    {
-        public int ProcedureId { get; set; }
     }
 }

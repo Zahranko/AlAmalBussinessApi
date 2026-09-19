@@ -29,16 +29,6 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
         public bool? AllowsInsurance { get; set; }
     }
 
-    // A reason also names the procedure it belongs to.
-    public class TicketReasonItemDTO : TicketListItemDTO
-    {
-        [Range(1, int.MaxValue, ErrorMessage = "Pick the procedure this reason belongs to.")]
-        public int ProcedureId { get; set; }
-
-        // Read-only on the way out.
-        public string? ProcedureName { get; set; }
-    }
-
     // {Success, Message, Item}, as every lookup-list service returns.
     public class TicketListResponse<T>
     {

@@ -52,16 +52,4 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         Task SaveChangesAsync();
         Task<bool> IsNameExist(string name, int excludeId);
     }
-
-    public interface ITicketReasonRepo
-    {
-        // Procedure included, for its name.
-        Task<List<TicketReason>> GetAllAsync();
-        Task<List<TicketReason>> GetActiveAsync();
-        Task<TicketReason?> GetByIdAsync(int id);
-        Task CreateAsync(TicketReason reason);
-        Task SaveChangesAsync();
-        // Unique per procedure, not globally — see TicketReason.
-        Task<bool> IsNameExist(string name, int procedureId, int excludeId);
-    }
 }

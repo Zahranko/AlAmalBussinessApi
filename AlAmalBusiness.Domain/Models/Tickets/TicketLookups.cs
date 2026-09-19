@@ -36,22 +36,4 @@ namespace AlAmalBusiness.Domain.Models.Tickets
         // the procedure in Settings can't quietly break the routing.
         public bool AllowsInsurance { get; set; }
     }
-
-    // "Why this ticket was raised." Every reason belongs to one procedure:
-    // the New ticket form's reason picker cascades off the chosen procedure,
-    // so a reason without one could never be picked. For the same reason a
-    // name is unique per procedure, not globally.
-    public class TicketReason
-    {
-        [Key]
-        public int Id { get; set; }
-
-        [Required]
-        public string Name { get; set; } = string.Empty;
-
-        public bool IsActive { get; set; } = true;
-
-        public int ProcedureId { get; set; }
-        public TicketProcedure? Procedure { get; set; }
-    }
 }

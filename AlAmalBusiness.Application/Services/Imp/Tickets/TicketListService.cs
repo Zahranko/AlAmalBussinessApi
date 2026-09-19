@@ -8,21 +8,20 @@ using System.Threading.Tasks;
 
 namespace AlAmalBusiness.Application.Services.Imp.Tickets
 {
-    // The three lists behind the New ticket form. Same rules as the CRM and
+    // The two lists behind the New ticket form. Same rules as the CRM and
     // appointment lookup lists: a unique name, IsActive in the same body, no
     // delete — retiring an entry keeps it on the tickets that already picked
-    // it. A reason's name is unique per procedure rather than globally.
+    // it. (The reason was a third list until 2026-09-19; it is free text on
+    // the ticket now.)
     public class TicketListService : ITicketListService
     {
         private readonly ITicketCategoryRepo _categories;
         private readonly ITicketProcedureRepo _procedures;
-        private readonly ITicketReasonRepo _reasons;
 
-        public TicketListService(ITicketCategoryRepo categories, ITicketProcedureRepo procedures, ITicketReasonRepo reasons)
+        public TicketListService(ITicketCategoryRepo categories, ITicketProcedureRepo procedures)
         {
             _categories = categories;
             _procedures = procedures;
-            _reasons = reasons;
         }
 
         // ---------- categories ----------
@@ -101,55 +100,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             return Ok(ToProcedureDto(entity));
         }
 
-        // ---------- reasons ----------
-
-        public async Task<List<TicketReasonItemDTO>> GetReasonsAsync() =>
-            (await _reasons.GetAllAsync()).Select(ToReasonDto).ToList();
-
-        public async Task<TicketListResponse<TicketReasonItemDTO>> CreateReasonAsync(TicketReasonItemDTO dto)
-        {
-            var name = Clean(dto.Name);
-            if (name == null) return Failed<TicketReasonItemDTO>("Reason name is empty.");
-
-            var procedure = await _procedures.GetByIdAsync(dto.ProcedureId);
-            if (procedure == null || !procedure.IsActive)
-                return Failed<TicketReasonItemDTO>("Pick an active procedure for this reason.");
-
-            if (await _reasons.IsNameExist(name, procedure.Id, 0))
-                return Failed<TicketReasonItemDTO>($"Reason '{name}' already exists for this procedure.");
-
-            var entity = new TicketReason { Name = name, IsActive = dto.IsActive, ProcedureId = procedure.Id };
-            await _reasons.CreateAsync(entity);
-            entity.Procedure = procedure;
-            return Ok(ToReasonDto(entity));
-        }
-
-        public async Task<TicketListResponse<TicketReasonItemDTO>> UpdateReasonAsync(int id, TicketReasonItemDTO dto)
-        {
-            var entity = await _reasons.GetByIdAsync(id);
-            if (entity == null) return Missing<TicketReasonItemDTO>($"Reason with ID {id} not found.");
-
-            var name = Clean(dto.Name);
-            if (name == null) return Failed<TicketReasonItemDTO>("Reason name is empty.");
-
-            var procedure = await _procedures.GetByIdAsync(dto.ProcedureId);
-            // Keeping a reason under the procedure it already belongs to is
-            // allowed even once that procedure is retired (renaming it, say);
-            // moving it under a retired one is not.
-            if (procedure == null || (!procedure.IsActive && procedure.Id != entity.ProcedureId))
-                return Failed<TicketReasonItemDTO>("Pick an active procedure for this reason.");
-
-            if (await _reasons.IsNameExist(name, procedure.Id, id))
-                return Failed<TicketReasonItemDTO>($"Reason '{name}' already exists for this procedure.");
-
-            entity.Name = name;
-            entity.IsActive = dto.IsActive;
-            entity.ProcedureId = procedure.Id;
-            entity.Procedure = procedure;
-            await _reasons.SaveChangesAsync();
-            return Ok(ToReasonDto(entity));
-        }
-
         // ---------- helpers ----------
 
         private static string? Clean(string? value) =>
@@ -157,15 +107,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
         private static TicketListItemDTO ToDto(int id, string name, bool isActive) =>
             new() { Id = id, Name = name, IsActive = isActive };
-
-        private static TicketReasonItemDTO ToReasonDto(TicketReason reason) => new()
-        {
-            Id = reason.Id,
-            Name = reason.Name,
-            IsActive = reason.IsActive,
-            ProcedureId = reason.ProcedureId,
-            ProcedureName = reason.Procedure?.Name
-        };
 
         private static TicketListResponse<T> Ok<T>(T item) => new() { Success = true, Item = item };
 

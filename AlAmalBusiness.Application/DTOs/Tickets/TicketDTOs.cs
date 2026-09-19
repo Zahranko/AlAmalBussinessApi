@@ -25,7 +25,11 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
 
         public int? CategoryId { get; set; }
         public int? ProcedureId { get; set; }
-        public int? ReasonId { get; set; }
+
+        // Why it was raised, in the raiser's words — free text, several
+        // lines allowed. Was a picked TicketReasons id until 2026-09-19.
+        [StringLength(2000, ErrorMessage = "السبب 2000 حرف كحد أقصى")]
+        public string? Reason { get; set; }
 
         // Hands the ticket to the insurance desk alone. Only allowed on a
         // procedure whose AllowsInsurance is set — "Open invoice" — and
