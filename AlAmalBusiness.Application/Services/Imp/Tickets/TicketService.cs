@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs;
+﻿using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Email;
 using AlAmalBusiness.Application.DTOs.Tickets;
 using AlAmalBusiness.Application.DTOs.Tickets.Response;
@@ -138,7 +138,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             var ticket = new Ticket
             {
                 Title = title,
-                Description = Clean(request.Description),
+                Name = Clean(request.Name),
                 Type = request.Type,
                 PatientId = Clean(request.PatientId),
                 SourceUrl = sourceUrl,
@@ -545,6 +545,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         {
             target.Id = row.Id;
             target.Title = row.Title;
+            target.Name = row.Name;
             target.Status = row.Status.ToString();
             target.Type = row.Type.ToString();
             target.CategoryId = row.CategoryId;
@@ -569,7 +570,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             var history = await _historyRepo.GetByTicketAsync(row.Id);
 
             var detail = Fill(new TicketDetailResponse(), row);
-            detail.Description = row.Description;
             detail.Reason = row.Reason;
             detail.PatientId = row.PatientId;
             detail.Resolution = row.Resolution;

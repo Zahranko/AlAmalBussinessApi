@@ -10,8 +10,10 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
         [StringLength(200, MinimumLength = 2, ErrorMessage = "العنوان بين حرفين و200 حرف")]
         public string? Title { get; set; }
 
-        [StringLength(4000)]
-        public string? Description { get; set; }
+        // Who the ticket is about. Optional — a ticket raised by hand often
+        // has no one particular in it.
+        [StringLength(200, ErrorMessage = "الاسم 200 حرف كحد أقصى")]
+        public string? Name { get; set; }
 
         [EnumDataType(typeof(TicketType))]
         public TicketType Type { get; set; } = TicketType.General;
@@ -28,7 +30,11 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
 
         // Why it was raised, in the raiser's words — free text, several
         // lines allowed. Was a picked TicketReasons id until 2026-09-19.
-        [StringLength(2000, ErrorMessage = "السبب 2000 حرف كحد أقصى")]
+        //
+        // 4000 since 2026-09-20: the CertaCure extension prepends the list of
+        // items to delete to whatever the raiser typed, so this one field now
+        // carries what it and the old description carried between them.
+        [StringLength(4000, ErrorMessage = "السبب 4000 حرف كحد أقصى")]
         public string? Reason { get; set; }
 
         // Hands the ticket to the insurance desk alone. Only allowed on a

@@ -428,11 +428,15 @@ public class AppDbContext : IdentityDbContext<User>
         // Bounded so the searched Title isn't an nvarchar(max) LOB; the caps
         // match what CreateTicketDTO accepts.
         modelBuilder.Entity<Ticket>().Property(t => t.Title).HasMaxLength(200);
-        modelBuilder.Entity<Ticket>().Property(t => t.Description).HasMaxLength(4000);
+        modelBuilder.Entity<Ticket>().Property(t => t.Name).HasMaxLength(200);
         modelBuilder.Entity<Ticket>().Property(t => t.PatientId).HasMaxLength(64);
         modelBuilder.Entity<Ticket>().Property(t => t.SourceUrl).HasMaxLength(1000);
         modelBuilder.Entity<Ticket>().Property(t => t.Resolution).HasMaxLength(2000);
-        modelBuilder.Entity<Ticket>().Property(t => t.Reason).HasMaxLength(2000);
+        // 4000 since 2026-09-20, up from 2000: the reason now carries what the
+        // description used to (the CertaCure extension's delete list) with the
+        // raiser's own words after it, so the two old limits have to fit in
+        // this one column.
+        modelBuilder.Entity<Ticket>().Property(t => t.Reason).HasMaxLength(4000);
 
         modelBuilder.Entity<TicketHistory>()
             .HasOne(h => h.Ticket)

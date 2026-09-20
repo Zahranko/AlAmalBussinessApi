@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace AlAmalBusiness.Application.DTOs.Tickets.Response
@@ -9,6 +9,8 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
     {
         public int Id { get; set; }
         public string? Title { get; set; }
+        // Who the ticket is about — a list column, like the title.
+        public string? Name { get; set; }
         public string? Status { get; set; }
         public string? Type { get; set; }
         public int? CategoryId { get; set; }
@@ -32,8 +34,8 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
     // The detail view: the row, the free text and the timeline.
     public class TicketDetailResponse : TicketListItemResponse
     {
-        public string? Description { get; set; }
-        // Why it was raised — free text, possibly several lines.
+        // Why it was raised — free text, possibly several lines. The ticket's
+        // only prose since Description was removed on 2026-09-20.
         public string? Reason { get; set; }
         public string? PatientId { get; set; }
         public string? Resolution { get; set; }

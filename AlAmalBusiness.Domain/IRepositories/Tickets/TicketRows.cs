@@ -13,6 +13,10 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
     {
         public int Id { get; set; }
         public string? Title { get; set; }
+        // Who the ticket is about. A list column, not detail-only: it is the
+        // same kind of identifying scrap as the title, and the queue is read
+        // by people looking for one person's ticket.
+        public string? Name { get; set; }
         public TicketStatus Status { get; set; }
         public TicketType Type { get; set; }
         public int? CategoryId { get; set; }
@@ -35,8 +39,10 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
     // projection — a single ticket needs no whole AspNetUsers rows either.
     public class TicketDetailRow : TicketListRow
     {
-        public string? Description { get; set; }
-        // Free text, possibly several lines — detail only, like Description.
+        // Free text, possibly several lines — detail only. Since 2026-09-20
+        // this is the ticket's only prose: Description was removed and what
+        // the extension used to put there (the delete list) now leads the
+        // reason.
         public string? Reason { get; set; }
         public string? PatientId { get; set; }
         public string? Resolution { get; set; }

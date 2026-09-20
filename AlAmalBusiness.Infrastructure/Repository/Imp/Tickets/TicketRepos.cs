@@ -1,4 +1,4 @@
-using AlAmalBusiness.DbContext.Infrastructure;
+﻿using AlAmalBusiness.DbContext.Infrastructure;
 using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories.Tickets;
 using AlAmalBusiness.Domain.Models.Tickets;
@@ -32,11 +32,12 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
 
         // Projections every read goes through — see TicketListRow. Names come
         // through the navigations inside the same SELECT (LEFT JOINs), no
-        // Include, no tracking, and the list leaves Description behind.
+        // Include, no tracking, and the list leaves the free text behind.
         private static readonly Expression<Func<Ticket, TicketListRow>> ToRow = t => new TicketListRow
         {
             Id = t.Id,
             Title = t.Title,
+            Name = t.Name,
             Status = t.Status,
             Type = t.Type,
             CategoryId = t.CategoryId,
@@ -63,6 +64,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                 {
                     Id = t.Id,
                     Title = t.Title,
+                    Name = t.Name,
                     Status = t.Status,
                     Type = t.Type,
                     CategoryId = t.CategoryId,
@@ -79,7 +81,6 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                     AssignedToName = t.AssignedTo!.UserName,
                     ClosedAt = t.ClosedAt,
                     CreatedDate = t.CreatedDate,
-                    Description = t.Description,
                     Reason = t.Reason,
                     PatientId = t.PatientId,
                     Resolution = t.Resolution
@@ -131,7 +132,11 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
                 var term = query.Search.Trim();
-                q = q.Where(t => t.Title.Contains(term));
+                // Title is the MRN and Name is who the ticket is about — the
+                // two things someone hunting for a particular ticket actually
+                // knows. The free text is deliberately not searched: it is
+                // unbounded prose and would make this a scan.
+                q = q.Where(t => t.Title.Contains(term) || (t.Name != null && t.Name.Contains(term)));
             }
 
             // An explicit status wins over the scope's own status rule, as in

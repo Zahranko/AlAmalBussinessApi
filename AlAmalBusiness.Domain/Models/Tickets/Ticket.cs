@@ -23,7 +23,18 @@ namespace AlAmalBusiness.Domain.Models.Tickets
 
         [Required]
         public string Title { get; set; } = string.Empty;
-        public string? Description { get; set; }
+
+        // Who the ticket is about, in free text — the patient on the invoice,
+        // the member of staff it concerns, whoever the desk will be asking
+        // after. Deliberately not an FK: it names people this system has no
+        // row for, and the CertaCure extension fills it from whatever the
+        // page in front of the raiser says.
+        //
+        // Added 2026-09-20 in the same change that removed Description. The
+        // description was a second free-text box next to Reason and the two
+        // were never really different questions — the extension filled it
+        // with the delete list, which belongs with the reason it justifies.
+        public string? Name { get; set; }
 
         public TicketStatus Status { get; set; } = TicketStatus.Open;
         public TicketType Type { get; set; } = TicketType.General;
