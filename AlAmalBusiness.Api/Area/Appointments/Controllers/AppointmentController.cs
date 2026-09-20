@@ -27,13 +27,16 @@ namespace AlAmalBusiness.Api.Area.Appointments.Controllers
     [Authorize(Roles = AppointmentController.AppointmentAccess)]
     public class AppointmentController : ControllerBase
     {
-        // The appointment page's own roles: a manager reads their department
-        // and its dashboard, an employee works the queue, an AUser reads
-        // without changing anything.
-        private const string AppointmentAccess = nameof(AppRoles.AManager) + "," + nameof(AppRoles.AEmployee) + "," + nameof(AppRoles.AUser) + "," + nameof(AppRoles.Admin);
-        private const string CanWork = nameof(AppRoles.AManager) + "," + nameof(AppRoles.AEmployee) + "," + nameof(AppRoles.Admin);
-        // The dashboard is a supervisor's screen: an employee works the
-        // queue, a manager reads how the queue is going.
+        // The appointment page's own role: an AManager reads and works the
+        // departments on their token and sees their dashboard, an Admin every
+        // department. AEmployee and AUser went with feedback's pair on
+        // 2026-09-20 — this area was copied from that one, tiers included, and
+        // neither role was ever held.
+        //
+        // Three names for the same pair, kept apart for the reason
+        // FeedbackController gives.
+        private const string AppointmentAccess = nameof(AppRoles.AManager) + "," + nameof(AppRoles.Admin);
+        private const string CanWork = nameof(AppRoles.AManager) + "," + nameof(AppRoles.Admin);
         private const string CanReport = nameof(AppRoles.AManager) + "," + nameof(AppRoles.Admin);
 
         private readonly IAppointmentService _appointments;

@@ -23,15 +23,18 @@ namespace AlAmalBusiness.Api.Area.Feedback.Controllers
     [Authorize(Roles = FeedbackController.FeedbackAccess)]
     public class FeedbackController : ControllerBase
     {
-        // The feedback site's own roles: a manager reads every department's
-        // messages, an employee only their own department's, and an FUser
-        // reads without changing anything. These are the F* roles the rest of
-        // the product uses — the FB* trio this controller first shipped with
-        // was a second spelling of the same three, and is gone from AppRoles.
-        private const string FeedbackAccess = nameof(AppRoles.FManager) + "," + nameof(AppRoles.FEmployee) + "," + nameof(AppRoles.FUser) + "," + nameof(AppRoles.Admin);
-        private const string CanWork = nameof(AppRoles.FManager) + "," + nameof(AppRoles.FEmployee) + "," + nameof(AppRoles.Admin);
-        // The dashboard is a supervisor's screen: an employee works the
-        // queue, a manager reads how the queue is going.
+        // The feedback site's own role: an FManager reads and works the
+        // departments on their token, an Admin every department. FEmployee and
+        // FUser were removed 2026-09-20 — the read-only and can't-report tiers
+        // came from the old app's capability flags and nobody was ever given
+        // either, so running a department's inbox is one job now.
+        //
+        // The three names stay separate although they hold the same pair
+        // today: they are three different questions (may you open the area,
+        // may you change a message, may you see the dashboard), and a role
+        // added back to one of them must not silently widen the other two.
+        private const string FeedbackAccess = nameof(AppRoles.FManager) + "," + nameof(AppRoles.Admin);
+        private const string CanWork = nameof(AppRoles.FManager) + "," + nameof(AppRoles.Admin);
         private const string CanReport = nameof(AppRoles.FManager) + "," + nameof(AppRoles.Admin);
 
         private readonly IFeedbackService _feedbackService;

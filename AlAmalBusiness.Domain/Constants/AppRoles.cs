@@ -10,18 +10,25 @@ namespace AlAmalBusiness.Domain.Constants
         public const string CManager = "CManager";
         public const string CEmployee = "CEmployee";
         public const string CUser = "CUser";
+        // Patient feedback: reads and works their own department's inbox.
+        // Admin is the only cross-department reader.
+        //
+        // (FEmployee and FUser were removed 2026-09-20. The three-tier shape
+        // came across from the old app's capability flags and was never used
+        // here — nobody held either role — so a department's feedback is one
+        // job now, and FManager is it.)
         public const string FManager = "FManager";
-        public const string FEmployee = "FEmployee";
-        public const string FUser = "FUser";
         // Patient questionnaires: builds and reads the questionnaires of
         // their own department. Admin is the only cross-department reader.
         public const string QManager = "QManager";
-        // Appointment requests: the same per-department tier as F*, for the
-        // public appointment page's inbox. An AManager is who the new-request
-        // email goes to (AppointmentService), one department each.
+        // Appointment requests: the same per-department role as FManager, for
+        // the public appointment page's inbox. An AManager is who the
+        // new-request email goes to (AppointmentService), one department each.
+        //
+        // (AEmployee and AUser were removed 2026-09-20 with F*'s pair, for
+        // the same reason — this area was copied from feedback, tiers and
+        // all.)
         public const string AManager = "AManager";
-        public const string AEmployee = "AEmployee";
-        public const string AUser = "AUser";
         // Staff support tickets. Reshaped 2026-09-19: raising and solving are
         // now different jobs held by different people, and the two raising
         // roles are department-scoped where they were not before.
