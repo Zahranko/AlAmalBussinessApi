@@ -45,7 +45,13 @@ namespace AlAmalBusiness.Infrastructure.Migrations
             // the opposite to anyone reading the table. The code never asks
             // IsRequired about a rating question, so this is for the data's
             // own honesty rather than for behaviour.
-            migrationBuilder.Sql("UPDATE [QuestionnaireQuestions] SET [IsRequired] = 1 WHERE [Type] = 0;");
+            // Wrapped in EXEC on purpose: `dotnet ef database update` runs
+            // each operation as its own command, but `migrations script`
+            // emits the whole migration as ONE batch, and SQL Server
+            // compiles a batch before running it — a plain UPDATE naming
+            // columns added a few lines above fails with "Invalid column
+            // name" before anything executes. EXEC defers the compile.
+            migrationBuilder.Sql("EXEC(N'UPDATE [QuestionnaireQuestions] SET [IsRequired] = 1 WHERE [Type] = 0;');");
         }
 
         /// <inheritdoc />
