@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs.Email;
+﻿using AlAmalBusiness.Application.DTOs.Email;
 using AlAmalBusiness.Application.DTOs.Questionnaires;
 using AlAmalBusiness.Application.DTOs.Questionnaires.Response;
 using AlAmalBusiness.Application.Services.Interface;
@@ -191,8 +191,12 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                         Slug = q.Slug,
                         IsActive = q.IsActive,
                         Trend = QuestionnaireTrendBuilder.Build(monthsByQuestionnaire[q.Id], year, month, QuestionnaireService.TrendMonths),
+                        // Rating questions only: this table is "this month
+                        // against every month before", and a text question
+                        // has no number to compare. What people wrote is on
+                        // the results screen, not in a monthly digest.
                         Questions = thisMonth.Questions
-                            .Where(x => !x.IsArchived)
+                            .Where(x => !x.IsArchived && x.Type != nameof(QuestionType.Text))
                             .Select(x =>
                             {
                                 beforeById.TryGetValue(x.Id, out var b);

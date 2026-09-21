@@ -1,4 +1,4 @@
-using AlAmalBusiness.DbContext.Infrastructure;
+﻿using AlAmalBusiness.DbContext.Infrastructure;
 using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories.Questionnaires;
 using AlAmalBusiness.Domain.Models.Questionnaires;
@@ -68,11 +68,15 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
             var ratings = await (
                 from a in _context.QuestionnaireAnswers.AsNoTracking()
                 join s in submissions on a.SubmissionId equals s.Id
+                // Rating answers only. A text answer has no score, and
+                // counting it would drag every average and every satisfied
+                // share towards a number nobody gave.
+                where a.Rating != null
                 group a by s.QuestionnaireId into g
                 select new
                 {
                     QuestionnaireId = g.Key,
-                    Average = g.Average(a => (double)(int)a.Rating),
+                    Average = g.Average(a => (double)(int)a.Rating!.Value),
                     Positive = g.Count(a => a.Rating == QuestionRating.Good || a.Rating == QuestionRating.VeryGood),
                     Total = g.Count()
                 })
@@ -148,7 +152,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
             return (
                 from a in _context.QuestionnaireAnswers.AsNoTracking()
                 join s in submissions on a.SubmissionId equals s.Id
-                group a by new { a.QuestionId, a.Rating } into g
+                where a.Rating != null
+                group a by new { a.QuestionId, Rating = a.Rating!.Value } into g
                 select new QuestionRatingCountRow
                 {
                     QuestionId = g.Key.QuestionId,
@@ -190,7 +195,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                     Name = s.Name,
                     PhoneNumber = s.PhoneNumber,
                     Notes = s.Notes,
-                    AverageRating = s.Answers.Average(a => (double?)(int)a.Rating)
+                    AverageRating = s.Answers.Where(a => a.Rating != null).Average(a => (double?)(int)a.Rating!.Value)
                 })
                 .ToListAsync();
 
@@ -214,14 +219,20 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                     Name = s.Name,
                     PhoneNumber = s.PhoneNumber,
                     Notes = s.Notes,
-                    AverageRating = s.Answers.Average(a => (double?)(int)a.Rating)
+                    AverageRating = s.Answers.Where(a => a.Rating != null).Average(a => (double?)(int)a.Rating!.Value)
                 })
                 .ToListAsync();
 
             var answers = await (
                 from a in _context.QuestionnaireAnswers.AsNoTracking()
                 join s in newest on a.SubmissionId equals s.Id
-                select new QuestionnaireAnswerExportRow { SubmissionId = a.SubmissionId, QuestionId = a.QuestionId, Rating = a.Rating })
+                select new QuestionnaireAnswerExportRow
+                {
+                    SubmissionId = a.SubmissionId,
+                    QuestionId = a.QuestionId,
+                    Rating = a.Rating,
+                    Text = a.Text
+                })
                 .ToListAsync();
 
             return (submissions, answers);
@@ -243,6 +254,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
             var ratings = await (
                 from a in _context.QuestionnaireAnswers.AsNoTracking()
                 join s in submissions on a.SubmissionId equals s.Id
+                where a.Rating != null
                 group a by new { s.QuestionnaireId, s.CreatedDate.Year, s.CreatedDate.Month } into g
                 select new
                 {
@@ -250,7 +262,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                     g.Key.Year,
                     g.Key.Month,
                     Answers = g.Count(),
-                    Sum = g.Sum(a => (int)a.Rating),
+                    Sum = g.Sum(a => (int)a.Rating!.Value),
                     Positive = g.Count(a => a.Rating == QuestionRating.Good || a.Rating == QuestionRating.VeryGood)
                 })
                 .ToListAsync();
@@ -288,6 +300,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                     Id = q.Id,
                     QuestionnaireId = q.QuestionnaireId,
                     Text = q.Text,
+                    Type = q.Type,
+                    IsRequired = q.IsRequired,
                     DisplayOrder = q.DisplayOrder,
                     IsArchived = q.IsArchived
                 })
@@ -303,8 +317,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
             return await (
                 from a in _context.QuestionnaireAnswers.AsNoTracking()
                 join s in _context.QuestionnaireSubmissions.AsNoTracking() on a.SubmissionId equals s.Id
-                where ids.Contains(s.QuestionnaireId) && s.CreatedDate < periodEndExclusive
-                group a by new { s.QuestionnaireId, a.QuestionId, a.Rating, InPeriod = s.CreatedDate >= periodStart } into g
+                where ids.Contains(s.QuestionnaireId) && s.CreatedDate < periodEndExclusive && a.Rating != null
+                group a by new { s.QuestionnaireId, a.QuestionId, Rating = a.Rating!.Value, InPeriod = s.CreatedDate >= periodStart } into g
                 select new QuestionnairePeriodRatingRow
                 {
                     QuestionnaireId = g.Key.QuestionnaireId,
@@ -314,6 +328,54 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
                     Count = g.Count()
                 })
                 .ToListAsync();
+        }
+
+        // How many people wrote something, per text question. An empty box
+        // is stored as no answer at all, so this is a plain count.
+        public Task<List<QuestionTextCountRow>> GetTextAnswerCountsAsync(int questionnaireId, DateOnly? from, DateOnly? to)
+        {
+            var submissions = InPeriod(
+                _context.QuestionnaireSubmissions.AsNoTracking().Where(s => s.QuestionnaireId == questionnaireId),
+                from, to);
+
+            return (
+                from a in _context.QuestionnaireAnswers.AsNoTracking()
+                join s in submissions on a.SubmissionId equals s.Id
+                where a.Text != null
+                group a by a.QuestionId into g
+                select new QuestionTextCountRow { QuestionId = g.Key, Count = g.Count() })
+                .ToListAsync();
+        }
+
+        // One text question's answers, newest first, a page at a time — the
+        // per-question page reads these on demand rather than the stats
+        // endpoint carrying every paragraph anyone ever typed.
+        public async Task<(List<QuestionTextAnswerRow> Items, int TotalCount)> PageTextAnswersAsync(
+            int questionId, DateOnly? from, DateOnly? to, int page, int pageSize)
+        {
+            var submissions = InPeriod(_context.QuestionnaireSubmissions.AsNoTracking(), from, to);
+
+            var answers =
+                from a in _context.QuestionnaireAnswers.AsNoTracking()
+                join s in submissions on a.SubmissionId equals s.Id
+                where a.QuestionId == questionId && a.Text != null
+                select new QuestionTextAnswerRow
+                {
+                    SubmissionId = a.SubmissionId,
+                    Text = a.Text!,
+                    Name = s.Name,
+                    CreatedDate = s.CreatedDate
+                };
+
+            var total = await answers.CountAsync();
+            var items = await answers
+                .OrderByDescending(a => a.CreatedDate)
+                .ThenByDescending(a => a.SubmissionId)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, total);
         }
 
         public Task<bool> HasReportRunAsync(int year, int month) =>

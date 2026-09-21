@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
@@ -60,7 +60,14 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
     {
         public int Id { get; set; }
         public string Text { get; set; } = string.Empty;
+        // "Rating" | "Text".
+        public string Type { get; set; } = string.Empty;
+        public bool IsRequired { get; set; }
         public int DisplayOrder { get; set; }
+        // True once somebody has answered it: the editor may still rename
+        // it, but not change what it asks for. Nothing else could be done
+        // with the answers it already holds.
+        public bool HasAnswers { get; set; }
     }
 
     public class QuestionnaireActionResponse
@@ -99,6 +106,10 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
     {
         public int Id { get; set; }
         public string Text { get; set; } = string.Empty;
+        // "Rating" | "Text". A text question has an AnswerCount and nothing
+        // else: no average, no satisfaction, an empty distribution. Its
+        // answers are read from the answers endpoint, one page at a time.
+        public string Type { get; set; } = string.Empty;
         // Removed from the page after it had answers — listed last, and only
         // when it has answers in the period.
         public bool IsArchived { get; set; }
@@ -151,6 +162,8 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
         public string? Notes { get; set; }
         public double? AverageRating { get; set; }
         public Dictionary<int, AlAmalBusiness.Domain.Constants.QuestionRating> Ratings { get; set; } = new();
+        // What this response wrote, per text question.
+        public Dictionary<int, string> Texts { get; set; } = new();
     }
 
     // ---------- public page ----------
@@ -170,6 +183,33 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
     {
         public int Id { get; set; }
         public string Text { get; set; } = string.Empty;
+        // "Rating" | "Text" — which control the page draws.
+        public string Type { get; set; } = string.Empty;
+        // Rating questions are always true; a text one is what the builder
+        // chose. The page marks the optional ones and the API enforces it.
+        public bool IsRequired { get; set; }
+    }
+
+    // ---------- one text question's answers ----------
+
+    public class QuestionTextAnswerResponse
+    {
+        // The response it came from, so it can be found in the responses
+        // table; a text answer has no id worth showing of its own.
+        public int SubmissionId { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public string? Name { get; set; }
+        public DateTime CreatedDate { get; set; }
+    }
+
+    public class QuestionTextAnswersResponse
+    {
+        public int QuestionId { get; set; }
+        public string QuestionText { get; set; } = string.Empty;
+        public List<QuestionTextAnswerResponse> Items { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
     }
 
     public class QuestionnaireSubmittedResponse

@@ -1,4 +1,4 @@
-using AlAmalBusiness.Domain.Constants;
+﻿using AlAmalBusiness.Domain.Constants;
 using System;
 
 namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
@@ -49,12 +49,14 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         public int Positive { get; set; }
     }
 
-    // One rating inside one response, for the export's per-response sheet.
+    // One answer inside one response, for the export's per-response sheet.
+    // Exactly one of Rating and Text is set, following the question's type.
     public class QuestionnaireAnswerExportRow
     {
         public int SubmissionId { get; set; }
         public int QuestionId { get; set; }
-        public QuestionRating Rating { get; set; }
+        public QuestionRating? Rating { get; set; }
+        public string? Text { get; set; }
     }
 
     public class QuestionRatingCountRow
@@ -79,7 +81,28 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
         public int Id { get; set; }
         public int QuestionnaireId { get; set; }
         public string Text { get; set; } = string.Empty;
+        public QuestionType Type { get; set; }
+        public bool IsRequired { get; set; }
         public int DisplayOrder { get; set; }
         public bool IsArchived { get; set; }
+    }
+
+    // How many people wrote something, for one text question.
+    public class QuestionTextCountRow
+    {
+        public int QuestionId { get; set; }
+        public int Count { get; set; }
+    }
+
+    // One written answer. The submission id rather than the answer id: it is
+    // what ties this back to a response in the responses table, and a text
+    // answer has no identity of its own worth showing.
+    public class QuestionTextAnswerRow
+    {
+        public int SubmissionId { get; set; }
+        public string Text { get; set; } = string.Empty;
+        // Whatever the patient chose to leave; usually nothing.
+        public string? Name { get; set; }
+        public DateTime CreatedDate { get; set; }
     }
 }

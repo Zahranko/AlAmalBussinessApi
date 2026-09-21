@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs;
+﻿using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Feedback;
 using AlAmalBusiness.Application.DTOs.Questionnaires;
 using AlAmalBusiness.Application.DTOs.Questionnaires.Response;
@@ -85,7 +85,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             if (questionnaire == null || !CanSee(questionnaire.DepartmentId, actor))
                 return null;
 
-            return ToDetail(questionnaire);
+            var detail = ToDetail(questionnaire);
+
+            // Which questions are past changing their type. One query, and
+            // only for the edit form's benefit — the rule itself is enforced
+            // in UpdateAsync, whatever the form chooses to grey out.
+            var answered = await _repo.GetAnsweredQuestionIdsAsync(detail.Questions.Select(q => q.Id));
+            foreach (var question in detail.Questions)
+                question.HasAnswers = answered.Contains(question.Id);
+
+            return detail;
         }
 
         // ---------- results ----------
@@ -100,6 +109,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 (from, to) = (to, from);
 
             var counts = await _repo.GetRatingCountsAsync(id, from, to);
+            // Sequential, like every other pair of reads here: one scoped
+            // DbContext does not allow two queries at once.
+            var textCounts = await _repo.GetTextAnswerCountsAsync(id, from, to);
             var submissionCount = await _repo.CountSubmissionsAsync(id, from, to);
 
             return BuildStats(
@@ -110,10 +122,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                     Id = q.Id,
                     QuestionnaireId = q.QuestionnaireId,
                     Text = q.Text,
+                    Type = q.Type,
+                    IsRequired = q.IsRequired,
                     DisplayOrder = q.DisplayOrder,
                     IsArchived = q.IsArchived
                 }),
-                counts);
+                counts,
+                textCounts);
         }
 
         // The results numbers from parts already in hand. GetStatsAsync loads
@@ -123,25 +138,48 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
         internal static QuestionnaireStatsResponse BuildStats(
             int id, string title, string slug, string? departmentName, bool isActive,
             DateOnly? from, DateOnly? to, int submissionCount,
-            IEnumerable<QuestionnaireQuestionRow> allQuestions, IEnumerable<QuestionRatingCountRow> ratingCounts)
+            IEnumerable<QuestionnaireQuestionRow> allQuestions, IEnumerable<QuestionRatingCountRow> ratingCounts,
+            IEnumerable<QuestionTextCountRow>? textCounts = null)
         {
             var counts = ratingCounts.ToList();
             var byQuestion = counts.ToLookup(c => c.QuestionId);
+            // Absent (the monthly report doesn't read them) is the same as
+            // zero everywhere below.
+            var written = (textCounts ?? Enumerable.Empty<QuestionTextCountRow>())
+                .ToDictionary(t => t.QuestionId, t => t.Count);
 
             var questions = allQuestions
                 // Live questions in page order, then the archived ones that
-                // still have something to show for the period.
+                // still have something to show for the period — which for a
+                // text question means somebody wrote something, not a rating.
                 .OrderBy(q => q.DisplayOrder)
-                .Where(q => !q.IsArchived || byQuestion[q.Id].Any())
+                .Where(q => !q.IsArchived || byQuestion[q.Id].Any() || written.ContainsKey(q.Id))
                 .OrderBy(q => q.IsArchived)
                 .ThenBy(q => q.DisplayOrder)
                 .Select(q =>
                 {
+                    // A text answer has no score: no average, no satisfied
+                    // share, an empty distribution. Its one number is how
+                    // many people wrote something, and the answers
+                    // themselves are read separately.
+                    if (q.Type == QuestionType.Text)
+                    {
+                        return new QuestionStatsResponse
+                        {
+                            Id = q.Id,
+                            Text = q.Text,
+                            Type = nameof(QuestionType.Text),
+                            IsArchived = q.IsArchived,
+                            AnswerCount = written.TryGetValue(q.Id, out var n) ? n : 0
+                        };
+                    }
+
                     var distribution = ToDistribution(byQuestion[q.Id]);
                     return new QuestionStatsResponse
                     {
                         Id = q.Id,
                         Text = q.Text,
+                        Type = nameof(QuestionType.Rating),
                         IsArchived = q.IsArchived,
                         AnswerCount = Total(distribution),
                         AverageRating = Average(distribution),
@@ -254,7 +292,54 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                     PhoneNumber = s.PhoneNumber,
                     Notes = s.Notes,
                     AverageRating = s.AverageRating.HasValue ? Round2(s.AverageRating.Value) : null,
-                    Ratings = bySubmission[s.Id].ToDictionary(a => a.QuestionId, a => a.Rating)
+                    Ratings = bySubmission[s.Id]
+                        .Where(a => a.Rating.HasValue)
+                        .ToDictionary(a => a.QuestionId, a => a.Rating!.Value),
+                    Texts = bySubmission[s.Id]
+                        .Where(a => a.Text != null)
+                        .ToDictionary(a => a.QuestionId, a => a.Text!)
+                }).ToList()
+            };
+        }
+
+        // One text question's written answers, newest first. Scoped through
+        // the same 404 as everything else, and refused for a rating
+        // question — there is nothing to read there.
+        public async Task<QuestionTextAnswersResponse?> GetTextAnswersAsync(
+            int id, int questionId, QuestionnaireActor actor, DateOnly? from, DateOnly? to, int page, int pageSize)
+        {
+            var questionnaire = await _repo.GetDetailAsync(id);
+            if (questionnaire == null || !CanSee(questionnaire.DepartmentId, actor))
+                return null;
+
+            // Must be a text question OF THIS questionnaire: an id from
+            // another one would otherwise read a department the caller
+            // cannot see.
+            var question = questionnaire.Questions.FirstOrDefault(q => q.Id == questionId);
+            if (question == null || question.Type != QuestionType.Text)
+                return null;
+
+            if (from.HasValue && to.HasValue && from > to)
+                (from, to) = (to, from);
+
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize <= 0 ? DefaultPageSize : pageSize, 1, MaxPageSize);
+
+            var (items, total) = await _repo.PageTextAnswersAsync(questionId, from, to, page, pageSize);
+
+            return new QuestionTextAnswersResponse
+            {
+                QuestionId = question.Id,
+                QuestionText = question.Text,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize,
+                Items = items.Select(a => new QuestionTextAnswerResponse
+                {
+                    SubmissionId = a.SubmissionId,
+                    Text = a.Text,
+                    Name = a.Name,
+                    CreatedDate = a.CreatedDate
                 }).ToList()
             };
         }
@@ -278,8 +363,14 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             };
 
             var order = 1;
-            foreach (var text in fields.QuestionTexts)
-                questionnaire.Questions.Add(new QuestionnaireQuestion { Text = text, DisplayOrder = order++ });
+            foreach (var q in fields.Questions)
+                questionnaire.Questions.Add(new QuestionnaireQuestion
+                {
+                    Text = q.Text,
+                    Type = q.Type,
+                    IsRequired = q.IsRequired,
+                    DisplayOrder = order++
+                });
 
             _repo.Add(questionnaire);
             await _repo.SaveChangesAsync();
@@ -311,10 +402,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             questionnaire.DepartmentId = fields.DepartmentId;
             questionnaire.IsActive = request.IsActive;
 
-            // Questions left out: archive the answered ones so their results
-            // survive, delete the rest.
+            // Which questions have been answered, over ALL of them and not
+            // just the ones being removed: two rules need it now — an
+            // answered question is archived rather than deleted, and an
+            // answered question may not change what it asks for (below).
+            // Asking only about the removed ones let a type change through.
             var removed = live.Values.Where(q => !sentIds.Contains(q.Id)).ToList();
-            var answered = await _repo.GetAnsweredQuestionIdsAsync(removed.Select(q => q.Id));
+            var answered = await _repo.GetAnsweredQuestionIdsAsync(live.Keys);
             foreach (var question in removed)
             {
                 if (answered.Contains(question.Id))
@@ -326,18 +420,36 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             var order = 1;
             for (var i = 0; i < request.Questions.Count; i++)
             {
-                var text = fields.QuestionTexts[i];
+                var field = fields.Questions[i];
                 var sent = request.Questions[i];
 
                 if (sent.Id.HasValue)
                 {
                     var question = live[sent.Id.Value];
-                    question.Text = text;
+
+                    // Renaming a question keeps its answers; changing what
+                    // it ASKS FOR cannot. Ratings would sit under a text
+                    // question and prose under an averaged one, so a
+                    // question that has been answered keeps its type —
+                    // remove it and add a new one instead, which archives
+                    // the old answers where they still make sense.
+                    if (question.Type != field.Type && answered.Contains(question.Id))
+                        return Failed("لا يمكن تغيير نوع سؤال تمت الإجابة عليه. احذفه وأضف سؤالاً جديداً بدلاً من ذلك.");
+
+                    question.Text = field.Text;
+                    question.Type = field.Type;
+                    question.IsRequired = field.IsRequired;
                     question.DisplayOrder = order++;
                 }
                 else
                 {
-                    questionnaire.Questions.Add(new QuestionnaireQuestion { Text = text, DisplayOrder = order++ });
+                    questionnaire.Questions.Add(new QuestionnaireQuestion
+                    {
+                        Text = field.Text,
+                        Type = field.Type,
+                        IsRequired = field.IsRequired,
+                        DisplayOrder = order++
+                    });
                 }
             }
 
@@ -379,7 +491,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 Description = questionnaire.Description,
                 DepartmentName = questionnaire.Department?.Name,
                 Questions = questionnaire.Questions
-                    .Select(q => new PublicQuestionResponse { Id = q.Id, Text = q.Text })
+                    .Select(q => new PublicQuestionResponse
+                    {
+                        Id = q.Id,
+                        Text = q.Text,
+                        Type = q.Type.ToString(),
+                        IsRequired = q.IsRequired
+                    })
                     .ToList()
             };
         }
@@ -392,22 +510,51 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 return new QuestionnaireSubmittedResponse { NotFound = true, Error = "هذا الاستبيان غير متاح حالياً" };
 
             var answers = request.Answers ?? new List<SubmitAnswerDTO>();
-            var questionIds = questionnaire.Questions.Select(q => q.Id).ToHashSet();
+            var questions = questionnaire.Questions.ToDictionary(q => q.Id);
 
-            // Every live question answered exactly once, with a real rating —
-            // a partial response would skew the per-question averages against
-            // each other.
-            if (answers.Any(a => !questionIds.Contains(a.QuestionId)))
+            if (answers.Any(a => !questions.ContainsKey(a.QuestionId)))
                 return Rejected("تم تحديث الاستبيان. أعد تحميل الصفحة وحاول مرة أخرى.");
 
             if (answers.Select(a => a.QuestionId).Distinct().Count() != answers.Count)
                 return Rejected("إجابات مكررة لنفس السؤال");
 
-            if (answers.Any(a => !Enum.IsDefined(a.Rating)))
-                return Rejected("تقييم غير صحيح");
+            var sent = answers.ToDictionary(a => a.QuestionId);
+            // What actually gets stored: an entry per question that was
+            // answered. A skipped optional text question produces no row at
+            // all, so "how many answered this" stays a plain count.
+            var toSave = new List<QuestionnaireAnswer>();
 
-            if (answers.Count != questionIds.Count)
-                return Rejected("يرجى الإجابة على جميع الأسئلة");
+            foreach (var question in questionnaire.Questions)
+            {
+                sent.TryGetValue(question.Id, out var answer);
+
+                if (question.Type == QuestionType.Text)
+                {
+                    var text = Truncate(Clean(answer?.Text), 2000);
+                    if (text == null)
+                    {
+                        // Required means required; optional means the box may
+                        // be left empty, and an empty box is not an answer.
+                        if (question.IsRequired)
+                            return Rejected("يرجى الإجابة على جميع الأسئلة");
+                        continue;
+                    }
+
+                    toSave.Add(new QuestionnaireAnswer { QuestionId = question.Id, Text = text });
+                    continue;
+                }
+
+                // Every rating question still has to be answered, with a
+                // rating that exists — a partial scale would skew the
+                // per-question averages against each other.
+                if (answer?.Rating == null)
+                    return Rejected("يرجى الإجابة على جميع الأسئلة");
+
+                if (!Enum.IsDefined(answer.Rating.Value))
+                    return Rejected("تقييم غير صحيح");
+
+                toSave.Add(new QuestionnaireAnswer { QuestionId = question.Id, Rating = answer.Rating.Value });
+            }
 
             // Both optional; a phone, when given, has to be a plausible number.
             var phone = NormalizePhone(request.PhoneNumber);
@@ -425,8 +572,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 CreatedDate = AppClock.Now
             };
 
-            foreach (var answer in answers)
-                submission.Answers.Add(new QuestionnaireAnswer { QuestionId = answer.QuestionId, Rating = answer.Rating });
+            foreach (var answer in toSave)
+                submission.Answers.Add(answer);
 
             _repo.AddSubmission(submission);
             await _repo.SaveChangesAsync();
@@ -436,7 +583,12 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
         // ---------- validation ----------
 
-        private sealed record ValidFields(string Title, string Slug, string? Description, int DepartmentId, List<string> QuestionTexts);
+        private sealed record ValidFields(
+            string Title, string Slug, string? Description, int DepartmentId, List<ValidQuestion> Questions);
+
+        // A question as the service will save it: cleaned text, its type,
+        // and whether it must be answered (always true for a rating).
+        private sealed record ValidQuestion(string Text, QuestionType Type, bool IsRequired);
 
         private async Task<(ValidFields? Fields, string? Error)> ValidateAsync(
             SaveQuestionnaireDTO request, QuestionnaireActor actor, Questionnaire? existing)
@@ -470,7 +622,26 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             if (texts.Any(t => t == null))
                 return (null, "لا يمكن ترك نص سؤال فارغاً");
 
-            return (new ValidFields(title, slug, Clean(request.Description), departmentId.Id, texts!), null);
+            if (questions.Any(q => !Enum.IsDefined(q.Type)))
+                return (null, "نوع السؤال غير صحيح");
+
+            // At least one rating question: an all-text questionnaire has no
+            // average, no satisfaction and nothing on the dashboard — which
+            // is a form, not a questionnaire, and this feature's whole
+            // reporting side would read as empty.
+            if (questions.All(q => q.Type != QuestionType.Rating))
+                return (null, "أضف سؤال تقييم واحداً على الأقل إلى جانب الأسئلة النصية");
+
+            var valid = questions
+                .Select((q, i) => new ValidQuestion(
+                    texts[i]!,
+                    q.Type,
+                    // A rating question is always required; only a text one
+                    // takes the flag.
+                    q.Type == QuestionType.Rating || q.IsRequired))
+                .ToList();
+
+            return (new ValidFields(title, slug, Clean(request.Description), departmentId.Id, valid), null);
         }
 
         // A QManager's questionnaires live in a department they can read: the
@@ -615,7 +786,14 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             Questions = q.Questions
                 .Where(x => !x.IsArchived)
                 .OrderBy(x => x.DisplayOrder)
-                .Select(x => new QuestionResponse { Id = x.Id, Text = x.Text, DisplayOrder = x.DisplayOrder })
+                .Select(x => new QuestionResponse
+                {
+                    Id = x.Id,
+                    Text = x.Text,
+                    Type = x.Type.ToString(),
+                    IsRequired = x.IsRequired,
+                    DisplayOrder = x.DisplayOrder
+                })
                 .ToList()
         };
     }

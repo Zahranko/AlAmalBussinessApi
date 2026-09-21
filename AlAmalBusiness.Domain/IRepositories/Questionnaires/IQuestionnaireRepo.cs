@@ -1,4 +1,4 @@
-using AlAmalBusiness.Domain.Models.Questionnaires;
+﻿using AlAmalBusiness.Domain.Models.Questionnaires;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -32,8 +32,17 @@ namespace AlAmalBusiness.Domain.IRepositories.Questionnaires
 
         Task<bool> HasSubmissionsAsync(int questionnaireId);
 
-        // Per-question, per-rating counts for one questionnaire over a period.
+        // Per-question, per-rating counts for one questionnaire over a
+        // period. Rating questions only — a text answer has no rating and is
+        // filtered out of this and every other aggregate here.
         Task<List<QuestionRatingCountRow>> GetRatingCountsAsync(int questionnaireId, DateOnly? from, DateOnly? to);
+
+        // The text questions' side of the same screen: how many people wrote
+        // something, and then those answers a page at a time.
+        Task<List<QuestionTextCountRow>> GetTextAnswerCountsAsync(int questionnaireId, DateOnly? from, DateOnly? to);
+
+        Task<(List<QuestionTextAnswerRow> Items, int TotalCount)> PageTextAnswersAsync(
+            int questionId, DateOnly? from, DateOnly? to, int page, int pageSize);
 
         Task<int> CountSubmissionsAsync(int questionnaireId, DateOnly? from, DateOnly? to);
 

@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs.Questionnaires.Response;
+﻿using AlAmalBusiness.Application.DTOs.Questionnaires.Response;
 using AlAmalBusiness.Application.Services.Interface.Questionnaires;
 using AlAmalBusiness.Domain.Constants;
 using ClosedXML.Excel;
@@ -23,6 +23,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
         private const string AverageColor = "08517D";
         private const string SatisfiedColor = "159F8A";
         private const string ResponsesColor = "169FD9";
+
+        // QuestionStatsResponse.Type as it comes over the wire.
+        private const string TextType = nameof(QuestionType.Text);
 
         private const string AverageFormat = "0.00";
         private const string PercentFormat = "0.0%";
@@ -177,10 +180,18 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             const int headerRow = 4;
             WriteHeader(sheet, headerRow, headers);
 
+            // The table and both charts are the RATING questions: an
+            // average of a paragraph is not a thing, and a text question
+            // charted here would be a permanent gap in the bar. The text
+            // ones get their own block underneath, with the one number they
+            // do have.
+            var rated = stats.Questions.Where(q => q.Type != TextType).ToList();
+            var written = stats.Questions.Where(q => q.Type == TextType).ToList();
+
             var row = headerRow;
             var number = 0;
             var labels = new List<string>();
-            foreach (var q in stats.Questions)
+            foreach (var q in rated)
             {
                 row++;
                 var label = q.IsArchived ? $"{q.Text} (removed from the page)" : q.Text;
@@ -202,7 +213,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
 
             if (row == headerRow)
             {
-                WriteNoData(sheet, ref row, "No questions.");
+                WriteNoData(sheet, ref row, "No rating questions.");
             }
             else
             {
@@ -213,13 +224,38 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 // Stacked, same width (columns B..G), so the two read as a pair.
                 charts.Add(new ChartSpec(sheetName, "Average rating per question (out of 5)", ChartKind.Bar,
                     ExcelChartWriter.Ref(sheetName, 2, first, row), labels,
-                    ExcelChartWriter.Ref(sheetName, 4, first, row), stats.Questions.Select(q => q.AverageRating).ToList(),
+                    ExcelChartWriter.Ref(sheetName, 4, first, row), rated.Select(q => q.AverageRating).ToList(),
                     "Average", AverageColor, AverageFormat, 0, 5, 1, top, 7, top + height));
 
                 charts.Add(new ChartSpec(sheetName, "Satisfied per question (Good or Very good)", ChartKind.Bar,
                     ExcelChartWriter.Ref(sheetName, 2, first, row), labels,
-                    ExcelChartWriter.Ref(sheetName, 5, first, row), stats.Questions.Select(q => Fraction(q.SatisfactionPercent)).ToList(),
+                    ExcelChartWriter.Ref(sheetName, 5, first, row), rated.Select(q => Fraction(q.SatisfactionPercent)).ToList(),
                     "Satisfied", SatisfiedColor, PercentFormat, 0, 1, 1, top + height + 1, 7, top + height * 2 + 1));
+            }
+
+            // The written questions: how many people answered each. What
+            // they actually wrote is on the Responses sheet, under that
+            // question's own column, because an answer only means anything
+            // next to the rest of that person's response.
+            if (written.Count > 0)
+            {
+                row += 2;
+                sheet.Cell(row, 1).Value = "Text questions";
+                sheet.Cell(row, 1).Style.Font.Bold = true;
+                row++;
+                WriteHeader(sheet, row, new List<string> { "#", "Question", "Answers written" });
+
+                var textNumber = 0;
+                foreach (var q in written)
+                {
+                    row++;
+                    sheet.Cell(row, 1).Value = q.IsArchived ? "-" : (++textNumber).ToString();
+                    sheet.Cell(row, 2).Value = q.IsArchived ? $"{q.Text} (removed from the page)" : q.Text;
+                    sheet.Cell(row, 3).Value = q.AnswerCount;
+                    CenterRow(sheet, row, 3);
+                    sheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+                    sheet.Cell(row, 2).Style.Alignment.WrapText = true;
+                }
             }
 
             sheet.Column(1).Width = 5;
@@ -351,7 +387,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
                 var col = 5;
                 foreach (var q in stats.Questions)
                 {
-                    sheet.Cell(row, col++).Value = r.Ratings.TryGetValue(q.Id, out var rating) ? LabelOf(rating) : "-";
+                    var cell = sheet.Cell(row, col++);
+                    if (q.Type == TextType)
+                    {
+                        // What they wrote, or nothing if they skipped it.
+                        cell.Value = r.Texts.TryGetValue(q.Id, out var text) ? text : "-";
+                        cell.Style.Alignment.WrapText = true;
+                        continue;
+                    }
+
+                    cell.Value = r.Ratings.TryGetValue(q.Id, out var rating) ? LabelOf(rating) : "-";
                 }
 
                 sheet.Cell(row, notesCol).Value = r.Notes ?? "";

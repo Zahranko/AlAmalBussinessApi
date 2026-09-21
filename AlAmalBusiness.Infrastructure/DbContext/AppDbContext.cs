@@ -315,6 +315,11 @@ public class AppDbContext : IdentityDbContext<User>
             .HasForeignKey(a => a.QuestionId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // A text answer's prose. Bounded so it isn't a LOB — the per-question
+        // page reads these a page at a time and the export writes them into a
+        // cell, and neither wants an nvarchar(max) scan.
+        modelBuilder.Entity<QuestionnaireAnswer>().Property(a => a.Text).HasMaxLength(2000);
+
         // ---------- Appointments ----------
 
         // Restrict, like PatientFeedback: a department is retired with

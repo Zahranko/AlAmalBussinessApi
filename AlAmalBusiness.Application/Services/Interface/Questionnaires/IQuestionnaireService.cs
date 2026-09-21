@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs;
+﻿using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Feedback;
 using AlAmalBusiness.Application.DTOs.Questionnaires;
 using AlAmalBusiness.Application.DTOs.Questionnaires.Response;
@@ -21,6 +21,12 @@ namespace AlAmalBusiness.Application.Services.Interface.Questionnaires
 
         // The individual responses, newest first, with the patient's optional
         // name/phone. Null when the questionnaire isn't visible to the actor.
+        // One text question's written answers, a page at a time. Null when
+        // the questionnaire isn't the caller's to read, or when that id
+        // isn't a text question of it.
+        Task<QuestionTextAnswersResponse?> GetTextAnswersAsync(
+            int id, int questionId, QuestionnaireActor actor, DateOnly? from, DateOnly? to, int page, int pageSize);
+
         Task<PagedResultDTO<QuestionnaireSubmissionResponse>?> GetSubmissionsAsync(
             int id, QuestionnaireActor actor, DateOnly? from, DateOnly? to, bool contactOnly, int page, int pageSize);
 

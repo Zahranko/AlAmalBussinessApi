@@ -1,11 +1,12 @@
-using AlAmalBusiness.Domain.Constants;
+﻿using AlAmalBusiness.Domain.Constants;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace AlAmalBusiness.Application.DTOs.Questionnaires
 {
-    // The public page's payload: one rating per question, plus an optional
-    // name and phone. Arabic messages — a patient reads these.
+    // The public page's payload: one answer per question — a rating or a
+    // line of text, following the question's own type — plus an optional
+    // name and phone. Arabic messages: a patient reads these.
     public class SubmitQuestionnaireDTO
     {
         public List<SubmitAnswerDTO> Answers { get; set; } = new();
@@ -26,7 +27,13 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires
     {
         public int QuestionId { get; set; }
 
-        // "VeryGood" | "Good" | "Mid" | "Bad" | "VeryBad".
-        public QuestionRating Rating { get; set; }
+        // "VeryGood" | "Good" | "Mid" | "Bad" | "VeryBad". Null on a text
+        // question, where Text carries the answer instead.
+        public QuestionRating? Rating { get; set; }
+
+        // The answer to a text question. Blank counts as unanswered, which
+        // an optional question allows and a required one refuses.
+        [StringLength(2000, ErrorMessage = "الإجابة يجب ألا تتجاوز 2000 حرف")]
+        public string? Text { get; set; }
     }
 }

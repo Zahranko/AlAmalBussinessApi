@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs.Questionnaires;
+﻿using AlAmalBusiness.Application.DTOs.Questionnaires;
 using AlAmalBusiness.Application.DTOs.Questionnaires.Response;
 using AlAmalBusiness.Application.Services.Interface.Questionnaires;
 using AlAmalBusiness.Domain.Constants;
@@ -151,6 +151,22 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
         {
             var stats = await _questionnaireService.GetStatsAsync(id, Actor, fromDate, toDate);
             return stats == null ? NotFound() : Ok(stats);
+        }
+
+        // What people wrote on one text question, newest first. A rating
+        // question answers 404 here — it has no prose to read, and saying so
+        // any other way would mean confirming which ids exist.
+        [HttpGet("{id:int}/questions/{questionId:int}/answers")]
+        public async Task<IActionResult> GetTextAnswers(
+            int id,
+            int questionId,
+            DateOnly? fromDate = null,
+            DateOnly? toDate = null,
+            int page = 1,
+            int pageSize = 20)
+        {
+            var result = await _questionnaireService.GetTextAnswersAsync(id, questionId, Actor, fromDate, toDate, page, pageSize);
+            return result == null ? NotFound() : Ok(result);
         }
 
         // The individual responses, newest first, with the name/phone a

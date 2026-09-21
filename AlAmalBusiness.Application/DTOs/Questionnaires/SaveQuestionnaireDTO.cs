@@ -1,3 +1,4 @@
+﻿using AlAmalBusiness.Domain.Constants;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -39,5 +40,16 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires
         [Required(ErrorMessage = "نص السؤال مطلوب")]
         [StringLength(500, ErrorMessage = "نص السؤال يجب ألا يتجاوز 500 حرف")]
         public string? Text { get; set; }
+
+        // "Rating" (the five-point scale) or "Text" (a box the patient types
+        // in). Absent means Rating, so a client written before text
+        // questions existed still saves what it always did.
+        public QuestionType Type { get; set; } = QuestionType.Rating;
+
+        // Only read for a Text question — a Rating one is always required.
+        // Defaults to false: a free-text box the patient is forced to fill
+        // is the kind of thing that makes people abandon the page, so it is
+        // opt-in.
+        public bool IsRequired { get; set; }
     }
 }
