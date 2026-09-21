@@ -1,4 +1,5 @@
 ﻿using AlAmalBusiness.Api.Area.CRM.Hubs;
+using AlAmalBusiness.Api.Area.Tickets.Hubs;
 using AlAmalBusiness.Api.Email;
 using AlAmalBusiness.Application.Services.Imp.Appointments;
 using AlAmalBusiness.Application.Services.Interface.Appointments;
@@ -100,6 +101,7 @@ builder.Services.AddScoped<IQuestionnaireMonthlyReportService, QuestionnaireMont
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentListService, AppointmentListService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
+builder.Services.AddScoped<ITicketNotifier, SignalRTicketNotifier>();
 builder.Services.AddScoped<ITicketListService, TicketListService>();
 // Emails last month's questionnaire report to each department's QManagers,
 // once per month (QuestionnaireReport section) — see the scheduler.
@@ -486,6 +488,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<LeadHub>("/hubs/leads");
+// The solving agents' live queue. Grouped by desk inside the hub, not
+// broadcast like LeadHub — see TicketHub.
+app.MapHub<TicketHub>("/hubs/tickets");
 app.Map("/error", (HttpContext context) =>
 {
     var exceptionFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();

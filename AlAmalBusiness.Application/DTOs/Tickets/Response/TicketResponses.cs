@@ -83,4 +83,15 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
         public int Id { get; set; }
         public string? Name { get; set; }
     }
+
+    // What a solving agent's screen is handed the moment a ticket is raised
+    // (ITicketNotifier). A list row plus the reason: the whole point of the
+    // push is that the agent can read the ticket and act without opening
+    // anything, so the one piece of prose it has travels with it. Never
+    // broadcast — only the desk that owns the ticket receives it.
+    public class TicketPushResponse : TicketListItemResponse
+    {
+        public string? Reason { get; set; }
+        public string? PatientId { get; set; }
+    }
 }

@@ -43,6 +43,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         private readonly ITicketProcedureRepo _procedureRepo;
         private readonly IUserRepo _userRepo;
         private readonly IEmailQueue _emailQueue;
+        private readonly ITicketNotifier _notifier;
         private readonly ILogger<TicketService> _logger;
         private readonly string? _consoleBaseUrl;
 
@@ -65,6 +66,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             ITicketProcedureRepo procedureRepo,
             IUserRepo userRepo,
             IEmailQueue emailQueue,
+            ITicketNotifier notifier,
             ILogger<TicketService> logger,
             IConfiguration config)
         {
@@ -77,6 +79,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             _procedureRepo = procedureRepo;
             _userRepo = userRepo;
             _emailQueue = emailQueue;
+            _notifier = notifier;
             _logger = logger;
         }
 
@@ -164,6 +167,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
             var detail = await LoadDetailAsync(ticket.Id);
             await NotifyNewTicketAsync(detail!, ticket.IsInsurance, actor.UserId);
+            await PushCreatedAsync(detail!);
 
             return Ok(detail);
         }
@@ -290,6 +294,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             var detail = await LoadDetailAsync(id);
             if (ticket.CreatedById != actor.UserId)
                 await NotifyCreatorClosedAsync(detail!, request.Outcome == TicketStatus.Success, reason);
+            await PushChangedAsync(detail!);
 
             return Ok(detail);
         }
@@ -321,7 +326,10 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             });
             await _ticketRepo.SaveChangesAsync();
 
-            return Ok(await LoadDetailAsync(id));
+            var reopened = await LoadDetailAsync(id);
+            await PushChangedAsync(reopened!);
+
+            return Ok(reopened);
         }
 
         // ---------- dashboard ----------
@@ -485,6 +493,63 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ticket {Id}: failed to queue the closed email.", ticket.Id);
+            }
+        }
+
+        // The live push to whichever desk owns the ticket, sitting beside
+        // the email rather than replacing it: the panel is for whoever is at
+        // the browser now, the email for whoever isn't. Same best-effort
+        // rule — the ticket is already saved and a dropped push must never
+        // turn a good write into an error.
+        private async Task PushCreatedAsync(TicketDetailResponse ticket)
+        {
+            try
+            {
+                var push = new TicketPushResponse
+                {
+                    Id = ticket.Id,
+                    Title = ticket.Title,
+                    Name = ticket.Name,
+                    Status = ticket.Status,
+                    Type = ticket.Type,
+                    CategoryId = ticket.CategoryId,
+                    CategoryName = ticket.CategoryName,
+                    ProcedureId = ticket.ProcedureId,
+                    ProcedureName = ticket.ProcedureName,
+                    IsInsurance = ticket.IsInsurance,
+                    SourceUrl = ticket.SourceUrl,
+                    CreatedById = ticket.CreatedById,
+                    CreatedByName = ticket.CreatedByName,
+                    DepartmentId = ticket.DepartmentId,
+                    DepartmentName = ticket.DepartmentName,
+                    AssignedToId = ticket.AssignedToId,
+                    AssignedToName = ticket.AssignedToName,
+                    ClosedAt = ticket.ClosedAt,
+                    CreatedDate = ticket.CreatedDate,
+                    // The timeline is left off on purpose: a brand-new
+                    // ticket's history is one Created entry, and the panel
+                    // re-reads the ticket anyway the moment an agent opens it.
+                    Reason = ticket.Reason,
+                    PatientId = ticket.PatientId
+                };
+                await _notifier.TicketCreatedAsync(push);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ticket {Id}: failed to push the new ticket to the agents.", ticket.Id);
+            }
+        }
+
+        private async Task PushChangedAsync(TicketDetailResponse ticket)
+        {
+            try
+            {
+                await _notifier.TicketChangedAsync(
+                    ticket.Id, ticket.IsInsurance, ticket.Status ?? string.Empty, ticket.AssignedToName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ticket {Id}: failed to push the change to the agents.", ticket.Id);
             }
         }
 
