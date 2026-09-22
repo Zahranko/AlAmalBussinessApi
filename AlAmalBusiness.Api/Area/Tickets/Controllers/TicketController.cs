@@ -96,9 +96,18 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
             string? search = null,
             TicketStatus? status = null,
             TicketQueueScope scope = TicketQueueScope.Open,
-            int? categoryId = null)
+            int? categoryId = null,
+            bool oldestFirst = false)
         {
-            var query = new TicketListQuery { Page = page, PageSize = pageSize, Search = search, Status = status, CategoryId = categoryId };
+            var query = new TicketListQuery
+            {
+                Page = page,
+                PageSize = pageSize,
+                Search = search,
+                Status = status,
+                CategoryId = categoryId,
+                OldestFirst = oldestFirst
+            };
             return Ok(await _tickets.GetQueueAsync(query, scope, Actor));
         }
 

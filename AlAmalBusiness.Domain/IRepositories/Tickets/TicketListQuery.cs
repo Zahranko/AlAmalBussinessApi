@@ -30,6 +30,16 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         public TicketStatus? Status { get; set; }
         public int? CategoryId { get; set; }
 
+        // Work order rather than news order: the ticket that has been
+        // waiting longest first. The console's list is a list — you read the
+        // newest at the top — but a queue worked one ticket at a time is
+        // FIFO, or the oldest ticket starves while newer ones keep arriving
+        // in front of it. The CertaCure extension's agent panel asks for
+        // this; nothing else does. Ignored by the Closed tab, which is
+        // ordered by when each ticket was closed and means "what just
+        // happened".
+        public bool OldestFirst { get; set; }
+
         // ---- set by the service, never by the caller ----
 
         public TicketQueueScope Scope { get; set; } = TicketQueueScope.Open;

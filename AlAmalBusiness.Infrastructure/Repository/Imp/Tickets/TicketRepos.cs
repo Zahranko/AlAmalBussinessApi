@@ -1,4 +1,4 @@
-﻿using AlAmalBusiness.DbContext.Infrastructure;
+using AlAmalBusiness.DbContext.Infrastructure;
 using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories.Tickets;
 using AlAmalBusiness.Domain.Models.Tickets;
@@ -172,10 +172,18 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             var totalCount = await q.CountAsync();
 
             // A closed-only view reads by when each ticket was closed, most
-            // recent first; everything else by when it was raised.
+            // recent first; everything else by when it was raised — newest
+            // first for a list somebody reads, oldest first for a queue
+            // somebody works down one ticket at a time (OldestFirst). The
+            // second ordering has to happen HERE rather than in the caller:
+            // the page is cut after the sort, so a client re-sorting its own
+            // page would be re-sorting the newest 50 and never see the
+            // oldest ticket at all.
             var ordered = closedOnly
                 ? q.OrderByDescending(t => t.ClosedAt).ThenByDescending(t => t.CreatedDate)
-                : q.OrderByDescending(t => t.CreatedDate);
+                : query.OldestFirst
+                    ? q.OrderBy(t => t.CreatedDate).ThenBy(t => t.Id)
+                    : q.OrderByDescending(t => t.CreatedDate);
 
             var items = await ordered
                 .Skip((query.Page - 1) * query.PageSize)
