@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace AlAmalBusiness.Application.DTOs.Tickets.Response
@@ -93,5 +93,31 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
     {
         public string? Reason { get; set; }
         public string? PatientId { get; set; }
+    }
+
+    // What the raiser's screen is handed the moment their ticket is closed
+    // (ITicketNotifier.TicketResolvedAsync). Sent to that one user's group
+    // and to nobody else, so it may say what the ticket was about — enough
+    // for a desktop notification to be worth reading on its own, without
+    // the whole ticket travelling with it.
+    public class TicketResolvedPush
+    {
+        // Who it goes to: the raiser. The notifier addresses their group
+        // with it, which is why it travels on the push rather than being
+        // looked up at the far end.
+        public string? CreatedById { get; set; }
+        public int TicketId { get; set; }
+        public string? Title { get; set; }
+        public string? Name { get; set; }
+        // "Success" or "Failed" — the same names the API serializes
+        // everywhere else, not a bool, because the two read differently to
+        // the person who raised it.
+        public string? Status { get; set; }
+        public bool Success { get; set; }
+        // Who closed it, and (when it could not be solved) why.
+        public string? ByName { get; set; }
+        public string? Resolution { get; set; }
+        public string? ProcedureName { get; set; }
+        public DateTime? ClosedAt { get; set; }
     }
 }

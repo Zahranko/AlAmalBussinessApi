@@ -1,4 +1,4 @@
-﻿using AlAmalBusiness.Application.DTOs;
+using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Email;
 using AlAmalBusiness.Application.DTOs.Tickets;
 using AlAmalBusiness.Application.DTOs.Tickets.Response;
@@ -293,7 +293,10 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
             var detail = await LoadDetailAsync(id);
             if (ticket.CreatedById != actor.UserId)
+            {
                 await NotifyCreatorClosedAsync(detail!, request.Outcome == TicketStatus.Success, reason);
+                await PushResolvedAsync(detail!, request.Outcome == TicketStatus.Success, reason);
+            }
             await PushChangedAsync(detail!);
 
             return Ok(detail);
@@ -537,6 +540,35 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ticket {Id}: failed to push the new ticket to the agents.", ticket.Id);
+            }
+        }
+
+        // The raiser's own live push, sent wherever the closed email is sent
+        // and on the same terms: best-effort, after the write, never to the
+        // person who did it. The email is the record for whoever isn't at a
+        // browser; this is for whoever is.
+        private async Task PushResolvedAsync(TicketDetailResponse ticket, bool success, string? reason)
+        {
+            try
+            {
+                if (ticket.CreatedById == null) return;
+                await _notifier.TicketResolvedAsync(new TicketResolvedPush
+                {
+                    CreatedById = ticket.CreatedById,
+                    TicketId = ticket.Id,
+                    Title = ticket.Title,
+                    Name = ticket.Name,
+                    Status = ticket.Status,
+                    Success = success,
+                    ByName = ticket.AssignedToName,
+                    Resolution = reason,
+                    ProcedureName = ticket.ProcedureName,
+                    ClosedAt = ticket.ClosedAt
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ticket {Id}: failed to push the close to whoever raised it.", ticket.Id);
             }
         }
 

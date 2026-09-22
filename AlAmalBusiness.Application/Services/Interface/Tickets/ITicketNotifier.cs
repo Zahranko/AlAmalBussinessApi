@@ -23,5 +23,13 @@ namespace AlAmalBusiness.Application.Services.Interface.Tickets
         // so every other agent's panel can drop or re-add it instead of
         // showing work somebody else already did.
         Task TicketChangedAsync(int ticketId, bool isInsurance, string status, string? byName);
+
+        // The other direction: a ticket was closed, so tell the person who
+        // raised it. This one goes to that user alone, not to a desk — it is
+        // the live twin of the "your ticket was closed" email, for whoever
+        // is at the browser when it happens, and it carries the outcome and
+        // the reason so the notification says what happened without anything
+        // being opened.
+        Task TicketResolvedAsync(TicketResolvedPush resolved);
     }
 }

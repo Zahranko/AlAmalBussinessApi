@@ -21,6 +21,14 @@ namespace AlAmalBusiness.Api.Area.Tickets.Hubs
             _hubContext.Clients.Group(GroupFor(isInsurance))
                 .SendAsync("TicketChanged", new { ticketId, status, byName });
 
+        // Straight to the one person who raised it — their own group, not a
+        // desk's. A raiser is on the hub for this and nothing else.
+        public Task TicketResolvedAsync(TicketResolvedPush resolved) =>
+            string.IsNullOrEmpty(resolved.CreatedById)
+                ? Task.CompletedTask
+                : _hubContext.Clients.Group(TicketHub.UserGroup(resolved.CreatedById))
+                    .SendAsync("TicketResolved", resolved);
+
         // The flag decides the desk, here as everywhere else in this feature.
         // An Admin is in both groups, so they receive either way.
         private static string GroupFor(bool isInsurance) =>
