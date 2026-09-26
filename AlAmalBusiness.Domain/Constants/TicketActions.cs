@@ -14,6 +14,9 @@ namespace AlAmalBusiness.Domain.Constants
         // Closed with this outcome. A Failed entry carries the reason as its note.
         Success,
         Failed,
-        Reopened
+        Reopened,
+        // Sent to the back of the queue, and brought back (2026-09-26).
+        Delayed,
+        Undelayed
     }
 }

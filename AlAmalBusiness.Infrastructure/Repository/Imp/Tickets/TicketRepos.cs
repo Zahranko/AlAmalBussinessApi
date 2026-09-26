@@ -45,6 +45,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             ProcedureId = t.ProcedureId,
             ProcedureName = t.Procedure!.Name,
             IsInsurance = t.IsInsurance,
+            IsDelayed = t.IsDelayed,
             SourceUrl = t.SourceUrl,
             CreatedById = t.CreatedById,
             CreatedByName = t.CreatedBy!.UserName,
@@ -72,6 +73,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                     ProcedureId = t.ProcedureId,
                     ProcedureName = t.Procedure!.Name,
                     IsInsurance = t.IsInsurance,
+                    IsDelayed = t.IsDelayed,
                     SourceUrl = t.SourceUrl,
                     CreatedById = t.CreatedById,
                     CreatedByName = t.CreatedBy!.UserName,
@@ -179,11 +181,15 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             // the page is cut after the sort, so a client re-sorting its own
             // page would be re-sorting the newest 50 and never see the
             // oldest ticket at all.
+            //
+            // A delayed ticket goes after every one that isn't, in either
+            // open ordering — that is the whole of what the flag means, and
+            // it has to happen before the page is cut for the same reason.
             var ordered = closedOnly
                 ? q.OrderByDescending(t => t.ClosedAt).ThenByDescending(t => t.CreatedDate)
                 : query.OldestFirst
-                    ? q.OrderBy(t => t.CreatedDate).ThenBy(t => t.Id)
-                    : q.OrderByDescending(t => t.CreatedDate);
+                    ? q.OrderBy(t => t.IsDelayed).ThenBy(t => t.CreatedDate).ThenBy(t => t.Id)
+                    : q.OrderBy(t => t.IsDelayed).ThenByDescending(t => t.CreatedDate);
 
             var items = await ordered
                 .Skip((query.Page - 1) * query.PageSize)

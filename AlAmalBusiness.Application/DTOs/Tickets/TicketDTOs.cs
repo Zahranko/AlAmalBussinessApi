@@ -44,6 +44,12 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
         public bool IsInsurance { get; set; }
     }
 
+    // Park a ticket at the back of the queue, or bring it back.
+    public class DelayTicketDTO
+    {
+        public bool Delayed { get; set; }
+    }
+
     // A plain timeline comment.
     public class CommentTicketDTO
     {

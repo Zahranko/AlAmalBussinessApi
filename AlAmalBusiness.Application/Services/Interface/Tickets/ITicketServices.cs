@@ -37,6 +37,7 @@ namespace AlAmalBusiness.Application.Services.Interface.Tickets
         Task<TicketActionResponse> CommentAsync(int id, CommentTicketDTO request, TicketActor actor);
         Task<TicketActionResponse> CloseAsync(int id, CloseTicketDTO request, TicketActor actor);
         Task<TicketActionResponse> ReopenAsync(int id, TicketActor actor);
+        Task<TicketActionResponse> DelayAsync(int id, DelayTicketDTO request, TicketActor actor);
     }
 
     // The admin side: the three lists behind the New ticket form.

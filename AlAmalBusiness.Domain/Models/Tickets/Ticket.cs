@@ -70,6 +70,17 @@ namespace AlAmalBusiness.Domain.Models.Tickets
         // anything, so the other half was noise on every form.
         public bool IsInsurance { get; set; }
 
+        // Parked by the support desk: still open, still theirs, but sent to
+        // the back of the queue and kept there — however old it is, it never
+        // comes up before a ticket that isn't delayed. For a ticket waiting
+        // on something outside the desk (a reply, a colleague, a system)
+        // that would otherwise sit at the head of a FIFO queue blocking
+        // everything behind it. Set and cleared by TSupport/Admin only
+        // (TicketService.CanDelay), timelined each way, and cleared on close
+        // so a reopened ticket comes back in its normal place. Added
+        // 2026-09-26.
+        public bool IsDelayed { get; set; }
+
         [Required]
         public string? CreatedById { get; set; }
         public User? CreatedBy { get; set; }

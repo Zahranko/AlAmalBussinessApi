@@ -281,6 +281,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             ticket.Status = request.Outcome;
             ticket.Resolution = reason;
             ticket.ClosedAt = AppClock.Now;
+            // A close ends the parking too: if it is ever reopened it comes
+            // back in its normal place, not silently still at the back.
+            ticket.IsDelayed = false;
 
             _historyRepo.Add(new TicketHistory
             {
@@ -333,6 +336,41 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             await PushChangedAsync(reopened!);
 
             return Ok(reopened);
+        }
+
+        // Sends an open ticket to the back of the queue, or brings it back.
+        // The support desk's call alone: the insurance desk's queue is its
+        // own and unaffected, and the raising roles order nothing.
+        public async Task<TicketActionResponse> DelayAsync(int id, DelayTicketDTO request, TicketActor actor)
+        {
+            var ticket = await _ticketRepo.GetByIdAsync(id);
+            if (ticket == null || !CanSee(ticket.CreatedById, ticket.IsInsurance, ticket.DepartmentId, actor))
+                return NotFound();
+
+            if (!CanDelay(ticket.IsInsurance, actor))
+                return Failed("لا تملك صلاحية تأجيل هذه التذكرة.");
+
+            if (ticket.Status != TicketStatus.Open) return Failed(ClosedError);
+
+            // Asking for the state it is already in changes nothing and
+            // writes no timeline entry.
+            if (ticket.IsDelayed == request.Delayed) return Ok(await LoadDetailAsync(id));
+
+            ticket.IsDelayed = request.Delayed;
+            _historyRepo.Add(new TicketHistory
+            {
+                TicketId = ticket.Id,
+                ActorId = actor.UserId,
+                Type = request.Delayed ? TicketActions.Delayed : TicketActions.Undelayed
+            });
+            await _ticketRepo.SaveChangesAsync();
+
+            // Still Open, so every agent's panel re-reads its queue and the
+            // ticket moves to (or back from) the end.
+            var detail = await LoadDetailAsync(id);
+            await PushChangedAsync(detail!);
+
+            return Ok(detail);
         }
 
         // ---------- dashboard ----------
@@ -442,6 +480,12 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         // much of their department they can read.
         private static bool Works(bool isInsurance, TicketActor actor) =>
             actor.IsAdmin || (isInsurance ? actor.CanInsurance : actor.CanSupport);
+
+        // Who may park a ticket at the back of the queue: the support agent,
+        // over the tickets they solve, and Admin. Not the insurance desk and
+        // not the raising roles.
+        private static bool CanDelay(bool isInsurance, TicketActor actor) =>
+            actor.IsAdmin || (!isInsurance && actor.CanSupport);
 
         // Who may READ a ticket. Wider than Works, and deliberately so: a
         // manager watches their department without being able to act on it.
@@ -650,6 +694,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             target.ProcedureId = row.ProcedureId;
             target.ProcedureName = row.ProcedureName;
             target.IsInsurance = row.IsInsurance;
+            target.IsDelayed = row.IsDelayed;
             target.SourceUrl = row.SourceUrl;
             target.CreatedById = row.CreatedById;
             target.CreatedByName = row.CreatedByName;

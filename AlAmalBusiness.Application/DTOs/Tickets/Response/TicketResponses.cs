@@ -19,6 +19,8 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
         public string? ProcedureName { get; set; }
         // True when the ticket belongs to the insurance desk alone.
         public bool IsInsurance { get; set; }
+        // Parked at the back of the queue by the support desk.
+        public bool IsDelayed { get; set; }
         // Only set for CertaCure tickets — the page it was raised from.
         public string? SourceUrl { get; set; }
         public string? CreatedById { get; set; }

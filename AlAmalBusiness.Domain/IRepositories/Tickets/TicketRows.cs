@@ -24,6 +24,7 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         public int? ProcedureId { get; set; }
         public string? ProcedureName { get; set; }
         public bool IsInsurance { get; set; }
+        public bool IsDelayed { get; set; }
         public string? SourceUrl { get; set; }
         public string? CreatedById { get; set; }
         public string? CreatedByName { get; set; }

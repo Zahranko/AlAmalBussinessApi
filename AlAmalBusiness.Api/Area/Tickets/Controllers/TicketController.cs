@@ -39,6 +39,9 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
         // (TicketService.Works), and reopening belongs to the same desk that
         // closed it rather than to a separate seniority tier.
         private const string CanWork = nameof(AppRoles.TSupport) + "," + nameof(AppRoles.TInsurance) + "," + nameof(AppRoles.Admin);
+        // Parking a ticket at the back of the queue: the support agent and
+        // Admin. Nobody reorders the insurance desk's queue.
+        private const string CanDelay = nameof(AppRoles.TSupport) + "," + nameof(AppRoles.Admin);
         // The dashboard. Admin only — widen to TSupport here if the support
         // agent should read their own numbers.
         private const string CanReport = nameof(AppRoles.Admin);
@@ -156,6 +159,13 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
         [Authorize(Roles = CanWork)]
         public Task<IActionResult> Reopen(int id) =>
             Run(() => _tickets.ReopenAsync(id, Actor));
+
+        // Body { delayed: true | false }. A delayed ticket sorts after every
+        // other open one in the queue until it is brought back or closed.
+        [HttpPost("{id:int}/delay")]
+        [Authorize(Roles = CanDelay)]
+        public Task<IActionResult> Delay(int id, DelayTicketDTO request) =>
+            Run(() => _tickets.DelayAsync(id, request, Actor));
 
         // 404 for a ticket the caller may not see (not confirming that the id
         // exists), 409 for a rule they broke, otherwise the ticket as it now
