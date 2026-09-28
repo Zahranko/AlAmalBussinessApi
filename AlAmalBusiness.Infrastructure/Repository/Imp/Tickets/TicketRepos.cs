@@ -134,11 +134,21 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
                 var term = query.Search.Trim();
-                // Title is the MRN and Name is who the ticket is about — the
-                // two things someone hunting for a particular ticket actually
-                // knows. The free text is deliberately not searched: it is
-                // unbounded prose and would make this a scan.
-                q = q.Where(t => t.Title.Contains(term) || (t.Name != null && t.Name.Contains(term)));
+                // Title is the MRN, PatientId the MRN the extension read off
+                // the CertaCure page, Name who the ticket is about, and the
+                // ticket number is what the emails and the desk quote — the
+                // things someone hunting for a particular ticket actually
+                // knows. A term that is a number (optionally "#123") also
+                // matches the ticket id exactly. The free text is
+                // deliberately not searched: it is unbounded prose and would
+                // make this a scan.
+                var idText = term.TrimStart('#').Trim();
+                int? id = int.TryParse(idText, out var parsed) && parsed > 0 ? parsed : null;
+                q = q.Where(t =>
+                    (id != null && t.Id == id)
+                    || t.Title.Contains(term)
+                    || (t.PatientId != null && t.PatientId.Contains(term))
+                    || (t.Name != null && t.Name.Contains(term)));
             }
 
             // An explicit status wins over the scope's own status rule, as in
