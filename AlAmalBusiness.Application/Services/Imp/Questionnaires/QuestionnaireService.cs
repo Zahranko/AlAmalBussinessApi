@@ -240,6 +240,53 @@ namespace AlAmalBusiness.Application.Services.Imp.Questionnaires
             };
         }
 
+        public async Task<QuestionnaireSubmissionDetailResponse?> GetSubmissionAsync(int id, int submissionId, QuestionnaireActor actor)
+        {
+            var questionnaire = await _repo.GetDetailAsync(id);
+            if (questionnaire == null || !CanSee(questionnaire.DepartmentId, actor))
+                return null;
+
+            // Scoped to this questionnaire's id, so a response of another
+            // department's questionnaire answers 404 like everything else.
+            var submission = await _repo.GetSubmissionAsync(id, submissionId);
+            if (submission == null) return null;
+
+            var answers = (await _repo.GetSubmissionAnswersAsync(submissionId)).ToDictionary(a => a.QuestionId);
+            var questions = await _repo.GetQuestionsAsync(new[] { id });
+
+            // Every live question in page order, answered or not; an archived
+            // one only when this response answered it — the stats' order.
+            var lines = questions
+                .Where(q => !q.IsArchived || answers.ContainsKey(q.Id))
+                .OrderBy(q => q.IsArchived)
+                .ThenBy(q => q.DisplayOrder)
+                .Select(q =>
+                {
+                    answers.TryGetValue(q.Id, out var a);
+                    return new SubmissionAnswerResponse
+                    {
+                        QuestionId = q.Id,
+                        QuestionText = q.Text,
+                        Type = q.Type.ToString(),
+                        IsArchived = q.IsArchived,
+                        Rating = a?.Rating,
+                        Text = a?.Text
+                    };
+                })
+                .ToList();
+
+            return new QuestionnaireSubmissionDetailResponse
+            {
+                Id = submission.Id,
+                CreatedDate = submission.CreatedDate,
+                Name = submission.Name,
+                PhoneNumber = submission.PhoneNumber,
+                Notes = submission.Notes,
+                AverageRating = submission.AverageRating.HasValue ? Round2(submission.AverageRating.Value) : null,
+                Answers = lines
+            };
+        }
+
         // ---------- export ----------
 
         // A hard ceiling on response rows in one workbook: the API runs in a

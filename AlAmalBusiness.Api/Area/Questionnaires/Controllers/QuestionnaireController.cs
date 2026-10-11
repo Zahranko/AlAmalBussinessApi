@@ -184,6 +184,15 @@ namespace AlAmalBusiness.Api.Area.Questionnaires.Controllers
             return result == null ? NotFound() : Ok(result);
         }
 
+        // One response with every answer it gave, opened from the responses
+        // table. 404 for a response of another questionnaire.
+        [HttpGet("{id:int}/submissions/{submissionId:int}")]
+        public async Task<IActionResult> GetSubmission(int id, int submissionId)
+        {
+            var result = await _questionnaireService.GetSubmissionAsync(id, submissionId, Actor);
+            return result == null ? NotFound() : Ok(result);
+        }
+
         [HttpPost]
         public Task<IActionResult> Create(SaveQuestionnaireDTO request) =>
             Run(() => _questionnaireService.CreateAsync(request, Actor));

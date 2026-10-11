@@ -138,6 +138,27 @@ namespace AlAmalBusiness.Application.DTOs.Questionnaires.Response
         public double? AverageRating { get; set; }
     }
 
+    // One response opened from the responses table: the same row, plus what
+    // it answered on every question, in page order.
+    public class QuestionnaireSubmissionDetailResponse : QuestionnaireSubmissionResponse
+    {
+        public List<SubmissionAnswerResponse> Answers { get; set; } = new();
+    }
+
+    public class SubmissionAnswerResponse
+    {
+        public int QuestionId { get; set; }
+        public string QuestionText { get; set; } = string.Empty;
+        // "Rating" | "Text".
+        public string Type { get; set; } = string.Empty;
+        // Removed from the page since; listed last, and only when answered.
+        public bool IsArchived { get; set; }
+        // At most one of these is set; neither when the question was skipped
+        // (an optional text one) or added after this response came in.
+        public AlAmalBusiness.Domain.Constants.QuestionRating? Rating { get; set; }
+        public string? Text { get; set; }
+    }
+
     // ---------- export ----------
 
     // Everything the per-questionnaire workbook needs, already scoped: the

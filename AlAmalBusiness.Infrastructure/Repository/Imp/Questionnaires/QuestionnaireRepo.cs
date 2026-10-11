@@ -202,6 +202,32 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Questionnaires
             return (items, total);
         }
 
+        public Task<QuestionnaireSubmissionRow?> GetSubmissionAsync(int questionnaireId, int submissionId) =>
+            _context.QuestionnaireSubmissions.AsNoTracking()
+                .Where(s => s.Id == submissionId && s.QuestionnaireId == questionnaireId)
+                .Select(s => new QuestionnaireSubmissionRow
+                {
+                    Id = s.Id,
+                    CreatedDate = s.CreatedDate,
+                    Name = s.Name,
+                    PhoneNumber = s.PhoneNumber,
+                    Notes = s.Notes,
+                    AverageRating = s.Answers.Where(a => a.Rating != null).Average(a => (double?)(int)a.Rating!.Value)
+                })
+                .FirstOrDefaultAsync();
+
+        public Task<List<QuestionnaireAnswerExportRow>> GetSubmissionAnswersAsync(int submissionId) =>
+            _context.QuestionnaireAnswers.AsNoTracking()
+                .Where(a => a.SubmissionId == submissionId)
+                .Select(a => new QuestionnaireAnswerExportRow
+                {
+                    SubmissionId = a.SubmissionId,
+                    QuestionId = a.QuestionId,
+                    Rating = a.Rating,
+                    Text = a.Text
+                })
+                .ToListAsync();
+
         public async Task<(List<QuestionnaireSubmissionRow> Submissions, List<QuestionnaireAnswerExportRow> Answers)> GetExportRowsAsync(
             int questionnaireId, DateOnly? from, DateOnly? to, int max)
         {
