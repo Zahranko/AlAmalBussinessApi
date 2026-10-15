@@ -50,5 +50,9 @@ namespace AlAmalBusiness.Domain.Constants
         public const string TEmployee = "TEmployee";
         public const string TSupport = "TSupport";
         public const string TInsurance = "TInsurance";
+        // Mammogram follow-up register (added 2026-10-15): opens the monthly
+        // sheet, fills it and works its follow-up list. Not per-department —
+        // it is the one radiology team's register.
+        public const string MManager = "MManager";
     }
 }

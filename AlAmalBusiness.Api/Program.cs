@@ -5,6 +5,10 @@ using AlAmalBusiness.Application.Services.Imp.Appointments;
 using AlAmalBusiness.Application.Services.Interface.Appointments;
 using AlAmalBusiness.Domain.IRepositories.Appointments;
 using AlAmalBusiness.Infrastructure.Repository.Imp.Appointments;
+using AlAmalBusiness.Application.Services.Imp.Mammograms;
+using AlAmalBusiness.Application.Services.Interface.Mammograms;
+using AlAmalBusiness.Domain.IRepositories.Mammograms;
+using AlAmalBusiness.Infrastructure.Repository.Imp.Mammograms;
 using AlAmalBusiness.Application.Services.Imp.Tickets;
 using AlAmalBusiness.Application.Services.Interface.Tickets;
 using AlAmalBusiness.Domain.IRepositories.Tickets;
@@ -81,6 +85,8 @@ builder.Services.AddScoped<ITicketRepo, TicketRepo>();
 builder.Services.AddScoped<ITicketHistoryRepo, TicketHistoryRepo>();
 builder.Services.AddScoped<ITicketCategoryRepo, TicketCategoryRepo>();
 builder.Services.AddScoped<ITicketProcedureRepo, TicketProcedureRepo>();
+builder.Services.AddScoped<IMammogramSheetRepo, MammogramSheetRepo>();
+builder.Services.AddScoped<IMammogramRecordRepo, MammogramRecordRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -103,6 +109,7 @@ builder.Services.AddScoped<IAppointmentListService, AppointmentListService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<ITicketNotifier, SignalRTicketNotifier>();
 builder.Services.AddScoped<ITicketListService, TicketListService>();
+builder.Services.AddScoped<IMammogramService, MammogramService>();
 // Emails last month's questionnaire report to each department's QManagers,
 // once per month (QuestionnaireReport section) — see the scheduler.
 builder.Services.AddHostedService<AlAmalBusiness.Api.Area.Questionnaires.QuestionnaireMonthlyReportScheduler>();

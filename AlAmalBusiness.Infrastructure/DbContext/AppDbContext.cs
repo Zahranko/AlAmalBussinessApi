@@ -2,6 +2,7 @@
 using AlAmalBusiness.Domain.Models.Appointments;
 using AlAmalBusiness.Domain.Models.CRM;
 using AlAmalBusiness.Domain.Models.Feedback;
+using AlAmalBusiness.Domain.Models.Mammograms;
 using AlAmalBusiness.Domain.Models.Questionnaires;
 using AlAmalBusiness.Domain.Models.Tickets;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -40,6 +41,8 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<TicketHistory> TicketHistories { get; set; }
       public DbSet<TicketCategory> TicketCategories { get; set; }
       public DbSet<TicketProcedure> TicketProcedures { get; set; }
+      public DbSet<MammogramSheet> MammogramSheets { get; set; }
+      public DbSet<MammogramRecord> MammogramRecords { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -383,6 +386,49 @@ public class AppDbContext : IdentityDbContext<User>
         // A unique name backs the service's own duplicate check against a race.
         modelBuilder.Entity<AppointmentReferralSource>().Property(r => r.Name).HasMaxLength(200);
         modelBuilder.Entity<AppointmentReferralSource>().HasIndex(r => r.Name).IsUnique();
+
+        // ---------- Mammograms ----------
+
+        // One sheet per month — the "open a sheet" action relies on this
+        // against a double-click race.
+        modelBuilder.Entity<MammogramSheet>().HasIndex(s => new { s.Year, s.Month }).IsUnique();
+
+        modelBuilder.Entity<MammogramSheet>()
+            .HasOne(s => s.CreatedBy)
+            .WithMany()
+            .HasForeignKey(s => s.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Only an empty sheet may be deleted (MammogramService), so the
+        // cascade never actually takes rows with it; it just keeps EF from
+        // needing a second step.
+        modelBuilder.Entity<MammogramRecord>()
+            .HasOne(r => r.Sheet)
+            .WithMany(s => s.Records)
+            .HasForeignKey(r => r.SheetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MammogramRecord>()
+            .HasOne(r => r.CreatedBy)
+            .WithMany()
+            .HasForeignKey(r => r.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // A sheet is read in visit order; the follow-up list (and the future
+        // WhatsApp reminder job) by follow-up date, filtered on reminder state.
+        modelBuilder.Entity<MammogramRecord>().HasIndex(r => new { r.SheetId, r.VisitDate });
+        modelBuilder.Entity<MammogramRecord>().HasIndex(r => new { r.FollowUpDate, r.ReminderStatus });
+        modelBuilder.Entity<MammogramRecord>().HasIndex(r => r.PatientMrn);
+
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.PatientMrn).HasMaxLength(20);
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.FullName).HasMaxLength(200);
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.Tech).HasMaxLength(100);
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.BiRads).HasMaxLength(10);
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.Recommendation).HasMaxLength(1000);
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.PhoneCountryCode).HasMaxLength(6);
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.PhoneNumber).HasMaxLength(32);
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.ContactNote).HasMaxLength(1000);
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.ReminderMessageId).HasMaxLength(128);
 
         // ---------- Tickets ----------
 
