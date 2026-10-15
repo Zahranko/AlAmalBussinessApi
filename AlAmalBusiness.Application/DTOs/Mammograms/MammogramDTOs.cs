@@ -32,27 +32,22 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
     // Create and update body — update is a full replace, like the user DTOs.
     // The reminder fields are not here on purpose: they belong to the
     // WhatsApp integration, not to the person typing the sheet.
+    //
+    // No data annotations: MammogramService checks every rule (lengths
+    // included) and answers in words. The grid sends many of these in one
+    // batch, where an annotation failure on one row would 400 the lot.
     public class SaveMammogramRecordDTO
     {
-        [Required, StringLength(20)]
         public string? PatientMrn { get; set; }
 
         public Gender Gender { get; set; } = Gender.Female;
-
-        [Required, StringLength(200)]
         public string? FullName { get; set; }
-
-        [StringLength(100)]
         public string? Tech { get; set; }
-
-        [Range(0, 120)]
         public int? Age { get; set; }
 
         public bool BreastFeeding { get; set; }
         public bool PossiblePregnancy { get; set; }
         public bool HasImplants { get; set; }
-
-        [Required]
         public DateOnly? VisitDate { get; set; }
 
         // ["Mammogram", "BreastUltrasound", "BreastMri", "Biopsy"], any mix.
@@ -61,26 +56,36 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
         public MammogramExamType? ExamType { get; set; }
 
         // 0-6, optionally 4A/4B/4C, or two results as "0/4".
-        [StringLength(10)]
         public string? BiRads { get; set; }
-
-        [StringLength(1000)]
         public string? Recommendation { get; set; }
 
         public DateOnly? FollowUpDate { get; set; }
 
         // Defaults to +962. The number may be typed with or without its
         // leading zero, or with the country code in front.
-        [StringLength(6)]
         public string? PhoneCountryCode { get; set; }
-
-        [StringLength(32)]
         public string? PhoneNumber { get; set; }
-
-        [StringLength(1000)]
         public string? ContactNote { get; set; }
 
         public DateTime? ContactedAt { get; set; }
+    }
+
+    // One row of a grid save: Id for an existing row, none for a new one.
+    // ClientKey is the grid's own handle for a row that has no Id yet, echoed
+    // back so the result can be matched to the row that sent it.
+    public class SaveMammogramRowDTO : SaveMammogramRecordDTO
+    {
+        public int? Id { get; set; }
+        public string? ClientKey { get; set; }
+    }
+
+    // Per-row outcome of a grid save: the saved row, or why it wasn't.
+    public class MammogramRowResult
+    {
+        public string? ClientKey { get; set; }
+        public int? Id { get; set; }
+        public MammogramRecordResponse? Record { get; set; }
+        public string? Error { get; set; }
     }
 
     public class MammogramRecordResponse

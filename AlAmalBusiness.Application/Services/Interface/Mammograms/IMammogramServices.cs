@@ -19,6 +19,11 @@ namespace AlAmalBusiness.Application.Services.Interface.Mammograms
         Task<MammogramResult<MammogramRecordResponse>> UpdateRecordAsync(int id, SaveMammogramRecordDTO dto);
         Task<MammogramResult<bool>> DeleteRecordAsync(int id);
 
+        // The grid's save: every changed row of one sheet in one call. Each
+        // row passes or fails on its own; the good ones are saved together.
+        // NotFound when the sheet doesn't exist.
+        Task<MammogramResult<List<MammogramRowResult>>> SaveRowsAsync(int sheetId, List<SaveMammogramRowDTO> rows, string userId);
+
         Task<List<string>> GetTechNamesAsync();
 
         // The sheet as an .xlsx in the old workbook's column layout; null when

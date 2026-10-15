@@ -73,6 +73,9 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Mammograms
         public Task<MammogramRecord?> GetByIdAsync(int id) =>
             _context.MammogramRecords.FirstOrDefaultAsync(r => r.Id == id);
 
+        public Task<List<MammogramRecord>> GetByIdsAsync(int sheetId, List<int> ids) =>
+            _context.MammogramRecords.Where(r => r.SheetId == sheetId && ids.Contains(r.Id)).ToListAsync();
+
         public async Task<(List<MammogramRecord> Items, int TotalCount)> PageAsync(MammogramRecordQuery query)
         {
             var q = _context.MammogramRecords.AsNoTracking();
@@ -115,7 +118,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Mammograms
                 : q.OrderBy(r => r.VisitDate).ThenBy(r => r.Id);
 
             var page = Math.Max(1, query.Page);
-            var size = Math.Clamp(query.PageSize, 1, 500);
+            var size = Math.Clamp(query.PageSize, 1, 2000);
             var items = await q.Skip((page - 1) * size).Take(size).ToListAsync();
 
             return (items, total);

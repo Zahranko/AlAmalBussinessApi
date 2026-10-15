@@ -91,6 +91,13 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
         public Task<IActionResult> AddRecord(int id, SaveMammogramRecordDTO dto) =>
             Run(() => _mammograms.AddRecordAsync(id, dto, UserId));
 
+        // The grid's save: every changed row in one request, new ones without
+        // an id. Always 200 with one result per row, in order — a row that
+        // breaks a rule comes back with its error and the rest still save.
+        [HttpPost("sheets/{id:int}/rows")]
+        public Task<IActionResult> SaveRows(int id, List<SaveMammogramRowDTO> rows) =>
+            Run(() => _mammograms.SaveRowsAsync(id, rows, UserId));
+
         [HttpGet("sheets/{id:int}/export")]
         public async Task<IActionResult> ExportSheet(int id)
         {

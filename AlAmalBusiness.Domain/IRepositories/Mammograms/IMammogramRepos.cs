@@ -26,6 +26,9 @@ namespace AlAmalBusiness.Domain.IRepositories.Mammograms
         // Tracked, for update/delete.
         Task<MammogramRecord?> GetByIdAsync(int id);
 
+        // Tracked, only the ones that belong to this sheet.
+        Task<List<MammogramRecord>> GetByIdsAsync(int sheetId, List<int> ids);
+
         Task<(List<MammogramRecord> Items, int TotalCount)> PageAsync(MammogramRecordQuery query);
 
         // A whole sheet in visit order, for the Excel export.

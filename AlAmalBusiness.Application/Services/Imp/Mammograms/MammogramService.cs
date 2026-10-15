@@ -23,6 +23,10 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
     {
         private const string DefaultCountryCode = "+962";
 
+        // A pasted month is ~200 rows; this leaves room without letting one
+        // request rewrite an unbounded number.
+        private const int MaxRowsPerSave = 1000;
+
         // 0-6, BI-RADS 4 may carry its A/B/C subcategory, and the sheet's
         // "0/4" form records two results.
         private static readonly Regex BiRadsPattern = new(@"^[0-6][ABC]?(/[0-6][ABC]?)?$", RegexOptions.Compiled);
@@ -134,13 +138,80 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
 
             var sheet = (await _sheets.GetByIdAsync(record.SheetId))!;
 
+            var error = ApplyUpdate(record, dto, sheet);
+            if (error != null) return Failed<MammogramRecordResponse>(error);
+
+            await _records.SaveChangesAsync();
+            return Ok(ToResponse(record));
+        }
+
+        public async Task<MammogramResult<List<MammogramRowResult>>> SaveRowsAsync(int sheetId, List<SaveMammogramRowDTO> rows, string userId)
+        {
+            var sheet = await _sheets.GetByIdAsync(sheetId);
+            if (sheet == null) return Missing<List<MammogramRowResult>>();
+            if (rows.Count == 0) return Ok(new List<MammogramRowResult>());
+            if (rows.Count > MaxRowsPerSave)
+                return Failed<List<MammogramRowResult>>($"At most {MaxRowsPerSave} rows can be saved at once.");
+
+            // One query for every existing row in the batch; an id from
+            // another sheet simply isn't found.
+            var ids = rows.Where(r => r.Id.HasValue).Select(r => r.Id!.Value).Distinct().ToList();
+            var existing = ids.Count == 0
+                ? new Dictionary<int, MammogramRecord>()
+                : (await _records.GetByIdsAsync(sheetId, ids)).ToDictionary(r => r.Id);
+
+            var results = new List<(MammogramRowResult Result, MammogramRecord? Record)>();
+            foreach (var row in rows)
+            {
+                var result = new MammogramRowResult { ClientKey = row.ClientKey, Id = row.Id };
+                MammogramRecord? record;
+                string? error;
+
+                if (row.Id is { } id)
+                {
+                    if (!existing.TryGetValue(id, out record))
+                    {
+                        result.Error = "This row no longer exists — it may have been deleted.";
+                        results.Add((result, null));
+                        continue;
+                    }
+                    error = ApplyUpdate(record, row, sheet);
+                }
+                else
+                {
+                    record = new MammogramRecord { SheetId = sheet.Id, CreatedById = userId, CreatedAt = AppClock.Now };
+                    error = Apply(record, row, sheet);
+                    if (error == null) _records.Add(record);
+                }
+
+                result.Error = error;
+                results.Add((result, error == null ? record : null));
+            }
+
+            // A row that failed validation was never written to (Apply checks
+            // before it copies), so saving now only commits the good ones.
+            await _records.SaveChangesAsync();
+
+            return Ok(results.Select(x =>
+            {
+                if (x.Record != null)
+                {
+                    x.Result.Id = x.Record.Id;
+                    x.Result.Record = ToResponse(x.Record);
+                }
+                return x.Result;
+            }).ToList());
+        }
+
+        // Apply plus what an edit adds on top: the reminder reset and the
+        // edit stamp.
+        private static string? ApplyUpdate(MammogramRecord record, SaveMammogramRecordDTO dto, MammogramSheet sheet)
+        {
             var oldPhone = (record.PhoneCountryCode, record.PhoneNumber);
             var oldFollowUp = record.FollowUpDate;
 
-            // Apply validates everything before it writes anything, so an
-            // error leaves the tracked row untouched.
             var error = Apply(record, dto, sheet);
-            if (error != null) return Failed<MammogramRecordResponse>(error);
+            if (error != null) return error;
 
             // A reminder already sent went to the old number or for the old
             // date — a corrected row is due one again.
@@ -152,8 +223,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             }
 
             record.UpdatedAt = AppClock.Now;
-            await _records.SaveChangesAsync();
-            return Ok(ToResponse(record));
+            return null;
         }
 
         public async Task<MammogramResult<bool>> DeleteRecordAsync(int id)
@@ -186,9 +256,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
         {
             var mrn = Clean(dto.PatientMrn);
             if (mrn == null) return "Patient ID (MRN) is required.";
+            if (mrn.Length > 20) return "Patient ID (MRN) is longer than 20 characters.";
 
             var name = Clean(dto.FullName);
             if (name == null) return "Patient name is required.";
+            if (name.Length > 200) return "Patient name is longer than 200 characters.";
+
+            if (Clean(dto.Tech)?.Length > 100) return "Tech is longer than 100 characters.";
+            if (Clean(dto.Recommendation)?.Length > 1000) return "Recommendation is longer than 1000 characters.";
+            if (Clean(dto.ContactNote)?.Length > 1000) return "Contact note is longer than 1000 characters.";
+            if (Clean(dto.PhoneCountryCode)?.Length > 6) return "Country code is too long.";
 
             if (dto.VisitDate is not { } visit) return "Visit date is required.";
             if (visit.Year != sheet.Year || visit.Month != sheet.Month)
