@@ -34,6 +34,7 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
         public MammogramController(IMammogramService mammograms, IMammogramReminderService reminders)
         {
             _mammograms = mammograms;
+            _reminders = reminders;
         }
 
         private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
