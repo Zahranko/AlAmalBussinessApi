@@ -289,7 +289,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             var rows = await _appointments.GetBookedAsync(from, from.AddMonths(1));
 
             int Of(MammogramAppointmentStatus s) => rows.Count(r => r.Status == s);
-            var success = Of(MammogramAppointmentStatus.Success);
+            // The report counts a patient who arrived as a success (the
+            // radiology team's call, 2026-10-17): she came, whatever the
+            // outcome button says yet. Only this report — the stats card
+            // keeps the statuses apart.
+            static bool Succeeded(MammogramAppointmentRow r) =>
+                r.Status is MammogramAppointmentStatus.Success or MammogramAppointmentStatus.Arrived;
+            var success = rows.Count(Succeeded);
             var failed = Of(MammogramAppointmentStatus.Failed);
 
             static MammogramReportGroup Group(string name, IEnumerable<MammogramAppointmentRow> of)
@@ -299,7 +305,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
                 {
                     Name = name,
                     Total = list.Count,
-                    Success = list.Count(r => r.Status == MammogramAppointmentStatus.Success),
+                    Success = list.Count(Succeeded),
                     Failed = list.Count(r => r.Status == MammogramAppointmentStatus.Failed)
                 };
             }
@@ -318,7 +324,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
                 Total = rows.Count,
                 Booked = Of(MammogramAppointmentStatus.Booked),
                 FollowUp = Of(MammogramAppointmentStatus.FollowUp),
-                Arrived = Of(MammogramAppointmentStatus.Arrived),
                 Success = success,
                 Failed = failed,
                 SuccessRate = success + failed == 0 ? null : (double)success / (success + failed),

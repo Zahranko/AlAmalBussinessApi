@@ -124,7 +124,7 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
         public int Total { get; set; }
         public int Booked { get; set; }
         public int FollowUp { get; set; }
-        public int Arrived { get; set; }
+        // Arrived counts as Success here, in the totals and every breakdown.
         public int Success { get; set; }
         public int Failed { get; set; }
         // Success out of the appointments that reached an outcome; null when
