@@ -113,6 +113,40 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
         public int Count { get; set; }
     }
 
+    // The printed monthly report: the same month meaning as the stats card
+    // and the Excel export (by the day each appointment was booked), so the
+    // three never disagree, broken down for paper and followed by every
+    // appointment in the month.
+    public class MammogramAppointmentReportResponse
+    {
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public int Total { get; set; }
+        public int Booked { get; set; }
+        public int FollowUp { get; set; }
+        public int Arrived { get; set; }
+        public int Success { get; set; }
+        public int Failed { get; set; }
+        // Success out of the appointments that reached an outcome; null when
+        // none has yet, never 0.
+        public double? SuccessRate { get; set; }
+        public List<MammogramProcedureCount> Procedures { get; set; } = new();
+        public List<MammogramReportGroup> Rooms { get; set; } = new();
+        public List<MammogramReportGroup> BookedBy { get; set; } = new();
+        public List<MammogramReportGroup> ReferringDoctors { get; set; } = new();
+        public List<MammogramAppointmentResponse> Items { get; set; } = new();
+    }
+
+    // One row of a breakdown: how many of the month's appointments fell
+    // under it and how they ended.
+    public class MammogramReportGroup
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Total { get; set; }
+        public int Success { get; set; }
+        public int Failed { get; set; }
+    }
+
     public class MammogramAppointmentListQueryDTO
     {
         public MammogramAppointmentView View { get; set; } = MammogramAppointmentView.Today;

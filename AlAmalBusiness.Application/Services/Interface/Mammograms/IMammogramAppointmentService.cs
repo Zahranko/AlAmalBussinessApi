@@ -19,6 +19,7 @@ namespace AlAmalBusiness.Application.Services.Interface.Mammograms
         Task<MammogramResult<MammogramAppointmentDetailResponse>> ArriveAsync(int id, string userId);
 
         Task<MammogramAppointmentStatsResponse> GetStatsAsync(int? year, int? month);
+        Task<MammogramAppointmentReportResponse> GetMonthlyReportAsync(int? year, int? month);
         Task<MammogramResult<(byte[] Content, string FileName)>> ExportAsync(DateOnly? from, DateOnly? to);
 
         Task<List<string>> GetDoctorNamesAsync();

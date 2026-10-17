@@ -32,6 +32,10 @@ namespace AlAmalBusiness.Domain.IRepositories.Mammograms
         // the Excel export.
         Task<(List<MammogramAppointmentRow> Items, List<MammogramAppointmentHistoryRow> FollowUps)> GetForExportAsync(DateTime from, DateTime to);
 
+        // Appointments booked in [from, to), in appointment-time order, for
+        // the printed monthly report.
+        Task<List<MammogramAppointmentRow>> GetBookedAsync(DateTime from, DateTime to);
+
         // Doctor names already used on either side, for autocomplete.
         Task<List<string>> GetDoctorNamesAsync();
 

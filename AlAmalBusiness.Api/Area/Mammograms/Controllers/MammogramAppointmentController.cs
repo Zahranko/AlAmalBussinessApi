@@ -85,6 +85,13 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
         public async Task<ActionResult<MammogramAppointmentStatsResponse>> GetStats(int? year = null, int? month = null) =>
             Ok(await _appointments.GetStatsAsync(year, month));
 
+        // The printed monthly report: the stats card's month (by booking day)
+        // broken down, plus every appointment in it. This month without
+        // parameters.
+        [HttpGet("monthly-report")]
+        public async Task<ActionResult<MammogramAppointmentReportResponse>> GetMonthlyReport(int? year = null, int? month = null) =>
+            Ok(await _appointments.GetMonthlyReportAsync(year, month));
+
         // Appointments booked between two dates, both inclusive, as .xlsx.
         [HttpGet("export")]
         public async Task<IActionResult> Export(DateOnly? from = null, DateOnly? to = null)

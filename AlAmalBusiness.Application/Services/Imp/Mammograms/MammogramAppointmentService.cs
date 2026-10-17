@@ -276,6 +276,66 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             };
         }
 
+        // A month is a few hundred rows at most, so the report reads them once
+        // and every breakdown is counted from that list: the list printed
+        // under the numbers is the very rows they were counted from.
+        public async Task<MammogramAppointmentReportResponse> GetMonthlyReportAsync(int? year, int? month)
+        {
+            var today = AppClock.Today;
+            var y = year is >= 2000 and <= 9999 ? year.Value : today.Year;
+            var m = month is >= 1 and <= 12 ? month.Value : today.Month;
+            var from = new DateTime(y, m, 1);
+
+            var rows = await _appointments.GetBookedAsync(from, from.AddMonths(1));
+
+            int Of(MammogramAppointmentStatus s) => rows.Count(r => r.Status == s);
+            var success = Of(MammogramAppointmentStatus.Success);
+            var failed = Of(MammogramAppointmentStatus.Failed);
+
+            static MammogramReportGroup Group(string name, IEnumerable<MammogramAppointmentRow> of)
+            {
+                var list = of.ToList();
+                return new MammogramReportGroup
+                {
+                    Name = name,
+                    Total = list.Count,
+                    Success = list.Count(r => r.Status == MammogramAppointmentStatus.Success),
+                    Failed = list.Count(r => r.Status == MammogramAppointmentStatus.Failed)
+                };
+            }
+
+            // Blank names group under "", which the console labels.
+            List<MammogramReportGroup> By(Func<MammogramAppointmentRow, string?> key) => rows
+                .GroupBy(r => key(r) ?? "")
+                .Select(g => Group(g.Key, g))
+                .OrderByDescending(g => g.Total).ThenBy(g => g.Name)
+                .ToList();
+
+            return new MammogramAppointmentReportResponse
+            {
+                Year = y,
+                Month = m,
+                Total = rows.Count,
+                Booked = Of(MammogramAppointmentStatus.Booked),
+                FollowUp = Of(MammogramAppointmentStatus.FollowUp),
+                Arrived = Of(MammogramAppointmentStatus.Arrived),
+                Success = success,
+                Failed = failed,
+                SuccessRate = success + failed == 0 ? null : (double)success / (success + failed),
+                Procedures = Enum.GetValues<MammogramProcedures>()
+                    .Where(p => p != MammogramProcedures.None)
+                    .Select(p => new MammogramProcedureCount { Procedure = p, Count = rows.Count(r => r.Procedures.HasFlag(p)) })
+                    .Where(p => p.Count > 0)
+                    .OrderByDescending(p => p.Count)
+                    .ToList(),
+                // Every room, an empty one included, in room order.
+                Rooms = Enumerable.Range(1, RoomCount).Select(room => Group(room.ToString(), rows.Where(r => r.Room == room))).ToList(),
+                BookedBy = By(r => r.CreatedByName),
+                ReferringDoctors = By(r => r.ReferringDoctor),
+                Items = rows.Select(ToResponse).ToList()
+            };
+        }
+
         // Both ends inclusive, by the day the appointment was booked; this
         // month when neither is given.
         public async Task<MammogramResult<(byte[] Content, string FileName)>> ExportAsync(DateOnly? from, DateOnly? to)

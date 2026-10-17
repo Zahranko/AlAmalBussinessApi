@@ -189,6 +189,13 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Mammograms
             return (items, followUps);
         }
 
+        public Task<List<MammogramAppointmentRow>> GetBookedAsync(DateTime from, DateTime to) =>
+            _context.MammogramAppointments.AsNoTracking()
+                .Where(a => a.CreatedAt >= from && a.CreatedAt < to)
+                .OrderBy(a => a.AppointmentAt).ThenBy(a => a.Room)
+                .Select(ToRow)
+                .ToListAsync();
+
         public async Task<List<string>> GetDoctorNamesAsync()
         {
             var referring = _context.MammogramAppointments.Where(a => a.ReferringDoctor != null && a.ReferringDoctor != "").Select(a => a.ReferringDoctor!);
