@@ -595,6 +595,129 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.ToTable("Feedbacks");
                 });
 
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramAppointment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AppointmentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ArrivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PhoneCountryCode")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("Procedures")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReceivingDoctor")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReferringDoctor")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Room")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("AppointmentAt", "Room");
+
+                    b.HasIndex("Status", "AppointmentAt");
+
+                    b.ToTable("MammogramAppointments");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramAppointmentHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Action")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ActorId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("AppointmentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<bool?>("CallSucceeded")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int?>("ResultingStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Room")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("AppointmentId", "CreatedAt");
+
+                    b.ToTable("MammogramAppointmentHistories");
+                });
+
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -1553,6 +1676,34 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Navigation("Department");
                 });
 
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramAppointment", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramAppointmentHistory", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.Mammograms.MammogramAppointment", "Appointment")
+                        .WithMany("History")
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("Appointment");
+                });
+
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramRecord", b =>
                 {
                     b.HasOne("AlAmalBusiness.Domain.Models.User", "CreatedBy")
@@ -1813,6 +1964,11 @@ namespace AlAmalBusiness.Infrastructure.Migrations
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Departments", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramAppointment", b =>
+                {
+                    b.Navigation("History");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramSheet", b =>

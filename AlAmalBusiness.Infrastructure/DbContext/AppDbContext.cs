@@ -43,6 +43,8 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<TicketProcedure> TicketProcedures { get; set; }
       public DbSet<MammogramSheet> MammogramSheets { get; set; }
       public DbSet<MammogramRecord> MammogramRecords { get; set; }
+      public DbSet<MammogramAppointment> MammogramAppointments { get; set; }
+      public DbSet<MammogramAppointmentHistory> MammogramAppointmentHistories { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -429,6 +431,41 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<MammogramRecord>().Property(r => r.PhoneNumber).HasMaxLength(32);
         modelBuilder.Entity<MammogramRecord>().Property(r => r.ContactNote).HasMaxLength(1000);
         modelBuilder.Entity<MammogramRecord>().Property(r => r.ReminderMessageId).HasMaxLength(128);
+
+        // Mammogram appointments (the day calendar). The overlap check and the
+        // day view both read one day of one room; the lists read by status and
+        // by when it was booked.
+        modelBuilder.Entity<MammogramAppointment>().HasIndex(a => new { a.AppointmentAt, a.Room });
+        modelBuilder.Entity<MammogramAppointment>().HasIndex(a => new { a.Status, a.AppointmentAt });
+        modelBuilder.Entity<MammogramAppointment>().HasIndex(a => a.CreatedAt);
+
+        modelBuilder.Entity<MammogramAppointment>()
+            .HasOne(a => a.CreatedBy)
+            .WithMany()
+            .HasForeignKey(a => a.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MammogramAppointment>().Property(a => a.FullName).HasMaxLength(200);
+        modelBuilder.Entity<MammogramAppointment>().Property(a => a.PhoneCountryCode).HasMaxLength(6);
+        modelBuilder.Entity<MammogramAppointment>().Property(a => a.PhoneNumber).HasMaxLength(32);
+        modelBuilder.Entity<MammogramAppointment>().Property(a => a.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<MammogramAppointment>().Property(a => a.ReferringDoctor).HasMaxLength(100);
+        modelBuilder.Entity<MammogramAppointment>().Property(a => a.ReceivingDoctor).HasMaxLength(100);
+
+        modelBuilder.Entity<MammogramAppointmentHistory>()
+            .HasOne(h => h.Appointment)
+            .WithMany(a => a.History)
+            .HasForeignKey(h => h.AppointmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MammogramAppointmentHistory>()
+            .HasOne(h => h.Actor)
+            .WithMany()
+            .HasForeignKey(h => h.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MammogramAppointmentHistory>().HasIndex(h => new { h.AppointmentId, h.CreatedAt });
+        modelBuilder.Entity<MammogramAppointmentHistory>().Property(h => h.Note).HasMaxLength(2000);
 
         // ---------- Tickets ----------
 

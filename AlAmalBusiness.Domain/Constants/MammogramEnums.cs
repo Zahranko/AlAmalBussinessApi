@@ -41,4 +41,28 @@ namespace AlAmalBusiness.Domain.Constants
         Sent,
         Failed
     }
+
+    // Where a booked mammogram appointment stands (added 2026-10-17, ported
+    // from the alamal-appointments app). Booked -> FollowUp (a call was made,
+    // maybe a new time) -> Arrived (the patient is in the building) ->
+    // Success or Failed. Success and Failed are the terminal outcomes; a
+    // Failed appointment gives its slot back, every other status keeps it.
+    // Stored as int — append, never reorder.
+    public enum MammogramAppointmentStatus
+    {
+        Booked,
+        FollowUp,
+        Arrived,
+        Success,
+        Failed
+    }
+
+    // The appointment timeline's entries. Stored as int — append, never
+    // reorder.
+    public enum MammogramAppointmentActions
+    {
+        Created,
+        FollowUp,
+        Arrived
+    }
 }

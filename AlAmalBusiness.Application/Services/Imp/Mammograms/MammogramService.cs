@@ -345,7 +345,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
 
         internal static string Title(int year, int month) => $"{month}-{year}";
 
-        private static List<MammogramProcedures> ProcedureList(MammogramProcedures flags) =>
+        internal static List<MammogramProcedures> ProcedureList(MammogramProcedures flags) =>
             Enum.GetValues<MammogramProcedures>()
                 .Where(p => p != MammogramProcedures.None && flags.HasFlag(p))
                 .ToList();

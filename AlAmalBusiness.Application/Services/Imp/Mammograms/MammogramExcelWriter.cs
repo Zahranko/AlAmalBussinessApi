@@ -83,7 +83,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
         }
 
         // The sheet's own spelling: "MG+B.U.S+BREAST MRI+BIOPSY".
-        private static string ProcedureText(MammogramProcedures p) =>
+        internal static string ProcedureText(MammogramProcedures p) =>
             string.Join("+", new (MammogramProcedures Flag, string Label)[]
             {
                 (MammogramProcedures.Mammogram, "MG"),

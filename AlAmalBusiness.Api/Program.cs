@@ -87,6 +87,7 @@ builder.Services.AddScoped<ITicketCategoryRepo, TicketCategoryRepo>();
 builder.Services.AddScoped<ITicketProcedureRepo, TicketProcedureRepo>();
 builder.Services.AddScoped<IMammogramSheetRepo, MammogramSheetRepo>();
 builder.Services.AddScoped<IMammogramRecordRepo, MammogramRecordRepo>();
+builder.Services.AddScoped<IMammogramAppointmentRepo, MammogramAppointmentRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -110,6 +111,7 @@ builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<ITicketNotifier, SignalRTicketNotifier>();
 builder.Services.AddScoped<ITicketListService, TicketListService>();
 builder.Services.AddScoped<IMammogramService, MammogramService>();
+builder.Services.AddScoped<IMammogramAppointmentService, MammogramAppointmentService>();
 // Emails last month's questionnaire report to each department's QManagers,
 // once per month (QuestionnaireReport section) — see the scheduler.
 builder.Services.AddHostedService<AlAmalBusiness.Api.Area.Questionnaires.QuestionnaireMonthlyReportScheduler>();
