@@ -167,10 +167,20 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
         [Authorize(Roles = nameof(AppRoles.Admin))]
         public async Task<ActionResult<MammogramReminderRunResult>> RunReminders()
         {
-            var result = await _reminders.SendDueAsync();
-            if (!result.Enabled) return BadRequest(new { message = "WhatsApp is not configured (WhatsApp:ApiKey)." });
-            result.StatusesUpdated = await _reminders.SyncStatusesAsync();
-            return Ok(result);
+            try
+            {
+                var result = await _reminders.SendDueAsync();
+                if (!result.Enabled) return BadRequest(new { message = "WhatsApp is not configured (WhatsApp:ApiKey)." });
+                result.StatusesUpdated = await _reminders.SyncStatusesAsync();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                // A test button for an admin: say what broke instead of the
+                // global handler's bare 500, which hides it in production.
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = $"Send now failed: {ex.GetType().Name}: {ex.GetBaseException().Message}" });
+            }
         }
 
         // Tech names already used, for the form's autocomplete.

@@ -22,9 +22,11 @@ namespace AlAmalBusiness.Api.WhatsApp
         {
             _http = http;
             _logger = logger;
-            var key = config["WhatsApp:ApiKey"];
-            IsEnabled = !string.IsNullOrWhiteSpace(key) && _http.BaseAddress != null;
-            if (IsEnabled) _http.DefaultRequestHeaders.Add("X-Api-Key", key);
+            // Trimmed: a secret pasted with a trailing newline would otherwise
+            // be an invalid header value and fail every request.
+            var key = config["WhatsApp:ApiKey"]?.Trim();
+            IsEnabled = !string.IsNullOrEmpty(key) && _http.BaseAddress != null;
+            if (IsEnabled) _http.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-Key", key);
         }
 
         public bool IsEnabled { get; }

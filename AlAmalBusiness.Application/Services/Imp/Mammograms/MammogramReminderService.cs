@@ -70,20 +70,32 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
                 if (await _records.ClaimReminderAsync(row.Id, now)) claimed.Add(row);
             if (claimed.Count == 0) return result;
 
-            var sent = await _whatsApp.SendBulkAsync(new WhatsAppBulkMessage
+            WhatsAppBulkResult sent;
+            try
             {
-                Name = $"Radiology follow-up reminders {today:yyyy-MM-dd}",
-                Template = _template,
-                Language = _language,
-                Recipients = claimed.Select(row => new WhatsAppBulkRecipient
+                sent = await _whatsApp.SendBulkAsync(new WhatsAppBulkMessage
                 {
-                    Ref = row.Id.ToString(),
-                    Phone = MammogramService.WhatsAppNumber(row.PhoneCountryCode, row.PhoneNumber)!,
-                    Name = row.FullName,
-                    FileNumber = row.PatientMrn,
-                    Body = new List<string> { row.FollowUpExam ?? ExamText(row.Recommendation) }
-                }).ToList()
-            }, CancellationToken.None);
+                    Name = $"Radiology follow-up reminders {today:yyyy-MM-dd}",
+                    Template = _template,
+                    Language = _language,
+                    Recipients = claimed.Select(row => new WhatsAppBulkRecipient
+                    {
+                        Ref = row.Id.ToString(),
+                        Phone = MammogramService.WhatsAppNumber(row.PhoneCountryCode, row.PhoneNumber)!,
+                        Name = row.FullName,
+                        FileNumber = row.PatientMrn,
+                        Body = new List<string> { row.FollowUpExam ?? ExamText(row.Recommendation) }
+                    }).ToList()
+                }, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                // Something the client didn't expect (an answer it couldn't
+                // read, say). The platform may or may not have queued them, so
+                // the rows are failed rather than handed back — never twice.
+                _logger.LogError(ex, "Mammogram reminder bulk send of {Count} threw.", claimed.Count);
+                sent = new WhatsAppBulkResult { Error = $"{ex.GetType().Name}: {ex.Message}" };
+            }
             // Not cancelled from here on: the claims must be settled whatever
             // happens to the app, or the rows would sit in Queued for good.
 
