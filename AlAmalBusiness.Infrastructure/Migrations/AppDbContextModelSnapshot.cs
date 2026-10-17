@@ -755,6 +755,10 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Property<DateOnly?>("FollowUpDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("FollowUpExam")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -789,6 +793,10 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Property<string>("Recommendation")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ReminderError")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("ReminderMessageId")
                         .HasMaxLength(128)

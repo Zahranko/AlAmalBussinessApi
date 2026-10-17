@@ -1,4 +1,5 @@
 using AlAmalBusiness.DbContext.Infrastructure;
+using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories.Mammograms;
 using AlAmalBusiness.Domain.Models.Mammograms;
 using Microsoft.EntityFrameworkCore;
@@ -129,6 +130,61 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Mammograms
                 .Where(r => r.SheetId == sheetId)
                 .OrderBy(r => r.VisitDate).ThenBy(r => r.Id)
                 .ToListAsync();
+
+        public Task<List<MammogramReminderRow>> GetDueRemindersAsync(DateOnly day, int max) =>
+            _context.MammogramRecords.AsNoTracking()
+                .Where(r => r.FollowUpDate == day
+                    && r.ReminderStatus == MammogramReminderStatus.NotSent
+                    && r.PhoneNumber != null && r.PhoneNumber != "")
+                .OrderBy(r => r.Id)
+                .Take(max)
+                .Select(r => new MammogramReminderRow
+                {
+                    Id = r.Id,
+                    PatientMrn = r.PatientMrn,
+                    FullName = r.FullName,
+                    PhoneCountryCode = r.PhoneCountryCode,
+                    PhoneNumber = r.PhoneNumber!,
+                    Recommendation = r.Recommendation,
+                    FollowUpExam = r.FollowUpExam
+                })
+                .ToListAsync();
+
+        public async Task<bool> ClaimReminderAsync(int id, DateTime at) =>
+            await _context.MammogramRecords
+                .Where(r => r.Id == id && r.ReminderStatus == MammogramReminderStatus.NotSent)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.ReminderStatus, MammogramReminderStatus.Queued)
+                    .SetProperty(r => r.ReminderSentAt, at)
+                    .SetProperty(r => r.ReminderMessageId, (string?)null)
+                    .SetProperty(r => r.ReminderError, (string?)null)) == 1;
+
+        public Task FinishReminderClaimAsync(int id, MammogramReminderStatus status, string? messageId, string? error) =>
+            _context.MammogramRecords
+                .Where(r => r.Id == id && r.ReminderStatus == MammogramReminderStatus.Queued && r.ReminderMessageId == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.ReminderStatus, status)
+                    .SetProperty(r => r.ReminderMessageId, messageId)
+                    .SetProperty(r => r.ReminderError, error)
+                    // Back to NotSent means it was never sent: no stamp.
+                    .SetProperty(r => r.ReminderSentAt, r => status == MammogramReminderStatus.NotSent ? null : r.ReminderSentAt));
+
+        public Task<List<MammogramReminderInFlight>> GetRemindersInFlightAsync(DateTime since) =>
+            _context.MammogramRecords.AsNoTracking()
+                .Where(r => r.ReminderMessageId != null
+                    && r.ReminderSentAt >= since
+                    && (r.ReminderStatus == MammogramReminderStatus.Queued
+                        || r.ReminderStatus == MammogramReminderStatus.Sent
+                        || r.ReminderStatus == MammogramReminderStatus.Delivered))
+                .Select(r => new MammogramReminderInFlight { Id = r.Id, MessageId = r.ReminderMessageId!, Status = r.ReminderStatus })
+                .ToListAsync();
+
+        public Task UpdateReminderStatusAsync(int id, string messageId, MammogramReminderStatus status, string? error) =>
+            _context.MammogramRecords
+                .Where(r => r.Id == id && r.ReminderMessageId == messageId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.ReminderStatus, status)
+                    .SetProperty(r => r.ReminderError, error));
 
         public Task<List<string>> GetTechNamesAsync() =>
             _context.MammogramRecords.AsNoTracking()

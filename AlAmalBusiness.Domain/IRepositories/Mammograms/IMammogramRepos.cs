@@ -37,9 +37,48 @@ namespace AlAmalBusiness.Domain.IRepositories.Mammograms
         // Distinct "Tech" values already used, for the form's autocomplete.
         Task<List<string>> GetTechNamesAsync();
 
+        // ---- WhatsApp reminders (MammogramReminderService) ----
+        // Each write below is one conditional UPDATE rather than a tracked
+        // load, so two workers (an app-pool overlap) can never both send a
+        // row, and a row edited mid-send is never overwritten.
+
+        // Rows due a reminder that day: follow-up on it, not reminded, a phone.
+        Task<List<MammogramReminderRow>> GetDueRemindersAsync(DateOnly day, int max);
+
+        // NotSent -> Queued. False when someone else got there first.
+        Task<bool> ClaimReminderAsync(int id, DateTime at);
+
+        // Ends a claim: only while the row is still Queued with no message id
+        // (an edit in between reset it to NotSent, and the edit wins).
+        Task FinishReminderClaimAsync(int id, MammogramReminderStatus status, string? messageId, string? error);
+
+        // Reminders sent since then whose outcome can still change.
+        Task<List<MammogramReminderInFlight>> GetRemindersInFlightAsync(DateTime since);
+
+        // A status read back from the platform, for that message only.
+        Task UpdateReminderStatusAsync(int id, string messageId, MammogramReminderStatus status, string? error);
+
         void Add(MammogramRecord record);
         void Remove(MammogramRecord record);
         Task SaveChangesAsync();
+    }
+
+    public class MammogramReminderRow
+    {
+        public int Id { get; set; }
+        public string PatientMrn { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string PhoneCountryCode { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string? Recommendation { get; set; }
+        public string? FollowUpExam { get; set; }
+    }
+
+    public class MammogramReminderInFlight
+    {
+        public int Id { get; set; }
+        public string MessageId { get; set; } = string.Empty;
+        public MammogramReminderStatus Status { get; set; }
     }
 
     public class MammogramSheetRow

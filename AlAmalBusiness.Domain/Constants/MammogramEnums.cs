@@ -38,8 +38,15 @@ namespace AlAmalBusiness.Domain.Constants
     public enum MammogramReminderStatus
     {
         NotSent,
+        // Meta accepted it and sent it to the phone.
         Sent,
-        Failed
+        // Refused by the WhatsApp platform or by Meta; ReminderError says why.
+        Failed,
+        // Handed to the WhatsApp platform's queue, not sent by Meta yet. Also
+        // what a row is claimed as while the request is in flight.
+        Queued,
+        Delivered,
+        Read
     }
 
     // Where a booked mammogram appointment stands (added 2026-10-17, ported

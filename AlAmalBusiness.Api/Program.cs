@@ -112,6 +112,16 @@ builder.Services.AddScoped<ITicketNotifier, SignalRTicketNotifier>();
 builder.Services.AddScoped<ITicketListService, TicketListService>();
 builder.Services.AddScoped<IMammogramService, MammogramService>();
 builder.Services.AddScoped<IMammogramAppointmentService, MammogramAppointmentService>();
+// The register's WhatsApp follow-up reminders, through the hospital's own
+// WhatsApp platform (WhatsApp section; blank ApiKey = off) — see the scheduler.
+builder.Services.AddHttpClient<IWhatsAppSender, AlAmalBusiness.Api.WhatsApp.WhatsAppPlatformClient>(http =>
+{
+    if (Uri.TryCreate(builder.Configuration["WhatsApp:BaseUrl"]?.TrimEnd('/') + "/", UriKind.Absolute, out var baseUrl))
+        http.BaseAddress = baseUrl;
+    http.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddScoped<IMammogramReminderService, MammogramReminderService>();
+builder.Services.AddHostedService<AlAmalBusiness.Api.Area.Mammograms.MammogramReminderScheduler>();
 // Emails last month's questionnaire report to each department's QManagers,
 // once per month (QuestionnaireReport section) — see the scheduler.
 builder.Services.AddHostedService<AlAmalBusiness.Api.Area.Questionnaires.QuestionnaireMonthlyReportScheduler>();

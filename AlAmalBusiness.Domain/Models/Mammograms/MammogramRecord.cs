@@ -12,8 +12,9 @@ namespace AlAmalBusiness.Domain.Models.Mammograms
     // needs, so they are stored ready for it: the phone as country code +
     // national digits (leading zero stripped, the feedback/appointment
     // convention, which also matches what Excel did to the old numbers), and
-    // the follow-up as a plain date with an index. ReminderStatus/SentAt/
-    // MessageId are reserved for that integration and nothing writes them yet.
+    // the follow-up as a plain date with an index. The Reminder* columns are
+    // written by MammogramReminderService (2026-10-17): the radiologyreminde
+    // template goes out through the WhatsApp platform on the follow-up day.
     public class MammogramRecord
     {
         [Key]
@@ -59,6 +60,13 @@ namespace AlAmalBusiness.Domain.Models.Mammograms
         // recommendation is not a timed follow-up (biopsy, MRI ...).
         public DateOnly? FollowUpDate { get; set; }
 
+        // "نوع الفحص" (added 2026-10-17) — the exam the patient is due back
+        // for, in Arabic, exactly as the WhatsApp reminder should say it: it is
+        // the template's {{1}}. Blank falls back to reading the recommendation
+        // (MammogramReminderService.ExamText).
+        [MaxLength(100)]
+        public string? FollowUpExam { get; set; }
+
         // "Call Follow Up".
         public string PhoneCountryCode { get; set; } = "+962";
         public string? PhoneNumber { get; set; }
@@ -68,12 +76,15 @@ namespace AlAmalBusiness.Domain.Models.Mammograms
         public string? ContactNote { get; set; }
         public DateTime? ContactedAt { get; set; }
 
-        // Reserved for the WhatsApp integration (see the class comment).
-        // Reset to NotSent whenever the phone or the follow-up date changes,
-        // so a corrected row is reminded again.
+        // The WhatsApp reminder (see the class comment). Reset to NotSent
+        // whenever the phone or the follow-up date changes, so a corrected
+        // row is reminded again. MessageId is the WhatsApp platform's own
+        // message id, which its status is read back by.
         public MammogramReminderStatus ReminderStatus { get; set; } = MammogramReminderStatus.NotSent;
         public DateTime? ReminderSentAt { get; set; }
         public string? ReminderMessageId { get; set; }
+        [MaxLength(500)]
+        public string? ReminderError { get; set; }
 
         public string? CreatedById { get; set; }
         public User? CreatedBy { get; set; }

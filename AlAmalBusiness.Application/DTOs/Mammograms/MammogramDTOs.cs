@@ -61,6 +61,9 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
 
         public DateOnly? FollowUpDate { get; set; }
 
+        // The exam the WhatsApp reminder names ({{1}}), in Arabic.
+        public string? FollowUpExam { get; set; }
+
         // Defaults to +962. The number may be typed with or without its
         // leading zero, or with the country code in front.
         public string? PhoneCountryCode { get; set; }
@@ -106,6 +109,7 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
         public string? BiRads { get; set; }
         public string? Recommendation { get; set; }
         public DateOnly? FollowUpDate { get; set; }
+        public string? FollowUpExam { get; set; }
         public string PhoneCountryCode { get; set; } = string.Empty;
         public string? PhoneNumber { get; set; }
 
@@ -117,6 +121,8 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
         public DateTime? ContactedAt { get; set; }
         public MammogramReminderStatus ReminderStatus { get; set; }
         public DateTime? ReminderSentAt { get; set; }
+        // Why the reminder failed, in the WhatsApp platform's words.
+        public string? ReminderError { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }

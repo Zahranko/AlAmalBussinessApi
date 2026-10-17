@@ -220,6 +220,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
                 record.ReminderStatus = MammogramReminderStatus.NotSent;
                 record.ReminderSentAt = null;
                 record.ReminderMessageId = null;
+                record.ReminderError = null;
             }
 
             record.UpdatedAt = AppClock.Now;
@@ -264,6 +265,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
 
             if (Clean(dto.Tech)?.Length > 100) return "Tech is longer than 100 characters.";
             if (Clean(dto.Recommendation)?.Length > 1000) return "Recommendation is longer than 1000 characters.";
+            if (Clean(dto.FollowUpExam)?.Length > 100) return "Exam type is longer than 100 characters.";
             if (Clean(dto.ContactNote)?.Length > 1000) return "Contact note is longer than 1000 characters.";
             if (Clean(dto.PhoneCountryCode)?.Length > 6) return "Country code is too long.";
 
@@ -301,6 +303,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             record.BiRads = biRads;
             record.Recommendation = Clean(dto.Recommendation);
             record.FollowUpDate = dto.FollowUpDate;
+            record.FollowUpExam = Clean(dto.FollowUpExam);
             record.PhoneCountryCode = countryCode;
             record.PhoneNumber = phone;
             record.ContactNote = Clean(dto.ContactNote);
@@ -368,6 +371,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             BiRads = r.BiRads,
             Recommendation = r.Recommendation,
             FollowUpDate = r.FollowUpDate,
+            FollowUpExam = r.FollowUpExam,
             PhoneCountryCode = r.PhoneCountryCode,
             PhoneNumber = r.PhoneNumber,
             WhatsAppNumber = WhatsAppNumber(r.PhoneCountryCode, r.PhoneNumber),
@@ -375,6 +379,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             ContactedAt = r.ContactedAt,
             ReminderStatus = r.ReminderStatus,
             ReminderSentAt = r.ReminderSentAt,
+            ReminderError = r.ReminderError,
             CreatedAt = r.CreatedAt,
             UpdatedAt = r.UpdatedAt
         };

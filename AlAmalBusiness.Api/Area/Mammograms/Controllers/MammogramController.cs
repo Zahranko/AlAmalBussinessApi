@@ -29,8 +29,9 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
         private const string MammogramAccess = nameof(AppRoles.MManager) + "," + nameof(AppRoles.Admin);
 
         private readonly IMammogramService _mammograms;
+        private readonly IMammogramReminderService _reminders;
 
-        public MammogramController(IMammogramService mammograms)
+        public MammogramController(IMammogramService mammograms, IMammogramReminderService reminders)
         {
             _mammograms = mammograms;
         }
@@ -131,8 +132,8 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
         }
 
         // Rows due back between two dates, across every sheet, ordered by
-        // follow-up date — the call list today, and the query the WhatsApp
-        // reminder will run later (reminderStatus=NotSent&withPhone=true).
+        // follow-up date — the call list, with each row's WhatsApp reminder
+        // state (MammogramReminderService sends them).
         // Without dates: from today, 30 days ahead.
         [HttpGet("follow-ups")]
         public async Task<ActionResult<PagedResultDTO<MammogramRecordResponse>>> GetFollowUps(
@@ -156,6 +157,20 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
                 Page = page,
                 PageSize = pageSize
             }));
+        }
+
+        // TEMPORARY test hook behind the Follow-ups page's "Send now" button
+        // (asked for 2026-10-17, to be removed once the daily run is trusted):
+        // sends today's due reminders straight away instead of waiting for
+        // the 08:00 run, then reads back recent statuses. Admin only.
+        [HttpPost("reminders/run")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
+        public async Task<ActionResult<MammogramReminderRunResult>> RunReminders()
+        {
+            var result = await _reminders.SendDueAsync();
+            if (!result.Enabled) return BadRequest(new { message = "WhatsApp is not configured (WhatsApp:ApiKey)." });
+            result.StatusesUpdated = await _reminders.SyncStatusesAsync();
+            return Ok(result);
         }
 
         // Tech names already used, for the form's autocomplete.
