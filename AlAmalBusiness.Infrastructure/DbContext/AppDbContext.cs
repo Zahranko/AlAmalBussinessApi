@@ -43,6 +43,7 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<TicketProcedure> TicketProcedures { get; set; }
       public DbSet<MammogramSheet> MammogramSheets { get; set; }
       public DbSet<MammogramRecord> MammogramRecords { get; set; }
+      public DbSet<MammogramReport> MammogramReports { get; set; }
       public DbSet<MammogramAppointment> MammogramAppointments { get; set; }
       public DbSet<MammogramAppointmentHistory> MammogramAppointmentHistories { get; set; }
 
@@ -420,6 +421,7 @@ public class AppDbContext : IdentityDbContext<User>
         // WhatsApp reminder job) by follow-up date, filtered on reminder state.
         modelBuilder.Entity<MammogramRecord>().HasIndex(r => new { r.SheetId, r.VisitDate });
         modelBuilder.Entity<MammogramRecord>().HasIndex(r => new { r.FollowUpDate, r.ReminderStatus });
+        modelBuilder.Entity<MammogramRecord>().HasIndex(r => new { r.FollowUpDate2, r.Reminder2Status });
         modelBuilder.Entity<MammogramRecord>().HasIndex(r => r.PatientMrn);
 
         modelBuilder.Entity<MammogramRecord>().Property(r => r.PatientMrn).HasMaxLength(20);
@@ -431,6 +433,16 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<MammogramRecord>().Property(r => r.PhoneNumber).HasMaxLength(32);
         modelBuilder.Entity<MammogramRecord>().Property(r => r.ContactNote).HasMaxLength(1000);
         modelBuilder.Entity<MammogramRecord>().Property(r => r.ReminderMessageId).HasMaxLength(128);
+        modelBuilder.Entity<MammogramRecord>().Property(r => r.Reminder2MessageId).HasMaxLength(128);
+
+        // Saved report-builder definitions. A unique name backs the service's
+        // duplicate check, so "BI-RADS by month" is one report, not three.
+        modelBuilder.Entity<MammogramReport>().HasIndex(r => r.Name).IsUnique();
+        modelBuilder.Entity<MammogramReport>()
+            .HasOne(r => r.CreatedBy)
+            .WithMany()
+            .HasForeignKey(r => r.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Mammogram appointments (the day calendar). The overlap check and the
         // day view both read one day of one room; the lists read by status and

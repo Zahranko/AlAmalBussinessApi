@@ -87,6 +87,7 @@ builder.Services.AddScoped<ITicketCategoryRepo, TicketCategoryRepo>();
 builder.Services.AddScoped<ITicketProcedureRepo, TicketProcedureRepo>();
 builder.Services.AddScoped<IMammogramSheetRepo, MammogramSheetRepo>();
 builder.Services.AddScoped<IMammogramRecordRepo, MammogramRecordRepo>();
+builder.Services.AddScoped<IMammogramReportRepo, MammogramReportRepo>();
 builder.Services.AddScoped<IMammogramAppointmentRepo, MammogramAppointmentRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();

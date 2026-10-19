@@ -67,6 +67,14 @@ namespace AlAmalBusiness.Domain.Models.Mammograms
         [MaxLength(100)]
         public string? FollowUpExam { get; set; }
 
+        // "Follow Up-Date 2" / "نوع الفحص 2" (added 2026-10-19) — a second
+        // return visit, after the first, with its own exam and its own
+        // WhatsApp reminder (the Reminder2* columns below). Console-only: the
+        // Excel export keeps the old workbook's columns and leaves both out.
+        public DateOnly? FollowUpDate2 { get; set; }
+        [MaxLength(100)]
+        public string? FollowUpExam2 { get; set; }
+
         // "Call Follow Up".
         public string PhoneCountryCode { get; set; } = "+962";
         public string? PhoneNumber { get; set; }
@@ -85,6 +93,14 @@ namespace AlAmalBusiness.Domain.Models.Mammograms
         public string? ReminderMessageId { get; set; }
         [MaxLength(500)]
         public string? ReminderError { get; set; }
+
+        // The second follow-up's reminder, the same four fields. Reset when
+        // the phone or FollowUpDate2 changes.
+        public MammogramReminderStatus Reminder2Status { get; set; } = MammogramReminderStatus.NotSent;
+        public DateTime? Reminder2SentAt { get; set; }
+        public string? Reminder2MessageId { get; set; }
+        [MaxLength(500)]
+        public string? Reminder2Error { get; set; }
 
         public string? CreatedById { get; set; }
         public User? CreatedBy { get; set; }

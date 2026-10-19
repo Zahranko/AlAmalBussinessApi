@@ -7,6 +7,7 @@ using AlAmalBusiness.Domain.Models.Mammograms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -35,13 +36,20 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
         // gone — the only numbers WhatsApp can reach here.
         private static readonly Regex JordanMobile = new(@"^7[789]\d{7}$", RegexOptions.Compiled);
 
+        // The report builder counts in the browser over every row of the
+        // period; this bounds one read to a few years of the register.
+        private const int MaxReportRows = 20000;
+        private const int MaxReportDefinitionLength = 20000;
+
         private readonly IMammogramSheetRepo _sheets;
         private readonly IMammogramRecordRepo _records;
+        private readonly IMammogramReportRepo _reports;
 
-        public MammogramService(IMammogramSheetRepo sheets, IMammogramRecordRepo records)
+        public MammogramService(IMammogramSheetRepo sheets, IMammogramRecordRepo records, IMammogramReportRepo reports)
         {
             _sheets = sheets;
             _records = records;
+            _reports = reports;
         }
 
         // ---------- sheets ----------
@@ -103,6 +111,33 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
                 Page = query.Page,
                 PageSize = query.PageSize
             };
+        }
+
+        public async Task<PagedResultDTO<MammogramRecordResponse>> GetFollowUpsAsync(MammogramRecordQuery query)
+        {
+            var (items, total) = await _records.PageFollowUpsAsync(query);
+            return new PagedResultDTO<MammogramRecordResponse>
+            {
+                Items = items.Select(x =>
+                {
+                    var response = ToResponse(x.Record);
+                    response.FollowUpSlot = x.Slot;
+                    return response;
+                }).ToList(),
+                TotalCount = total,
+                Page = query.Page,
+                PageSize = query.PageSize
+            };
+        }
+
+        public async Task<MammogramResult<List<MammogramRecordResponse>>> GetReportRowsAsync(DateOnly from, DateOnly to)
+        {
+            if (to < from) return Failed<List<MammogramRecordResponse>>("The period ends before it starts.");
+            if (to.DayNumber - from.DayNumber > 366 * 5)
+                return Failed<List<MammogramRecordResponse>>("A report can cover at most five years.");
+
+            var rows = await _records.GetByVisitRangeAsync(from, to, MaxReportRows);
+            return Ok(rows.Select(ToResponse).ToList());
         }
 
         public async Task<MammogramRecordResponse?> GetRecordAsync(int id)
@@ -209,18 +244,28 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
         {
             var oldPhone = (record.PhoneCountryCode, record.PhoneNumber);
             var oldFollowUp = record.FollowUpDate;
+            var oldFollowUp2 = record.FollowUpDate2;
 
             var error = Apply(record, dto, sheet);
             if (error != null) return error;
 
             // A reminder already sent went to the old number or for the old
-            // date — a corrected row is due one again.
-            if (oldPhone != (record.PhoneCountryCode, record.PhoneNumber) || oldFollowUp != record.FollowUpDate)
+            // date — a corrected row is due one again. Each follow-up keeps
+            // its own: moving the second date leaves the first one's alone.
+            var phoneChanged = oldPhone != (record.PhoneCountryCode, record.PhoneNumber);
+            if (phoneChanged || oldFollowUp != record.FollowUpDate)
             {
                 record.ReminderStatus = MammogramReminderStatus.NotSent;
                 record.ReminderSentAt = null;
                 record.ReminderMessageId = null;
                 record.ReminderError = null;
+            }
+            if (phoneChanged || oldFollowUp2 != record.FollowUpDate2)
+            {
+                record.Reminder2Status = MammogramReminderStatus.NotSent;
+                record.Reminder2SentAt = null;
+                record.Reminder2MessageId = null;
+                record.Reminder2Error = null;
             }
 
             record.UpdatedAt = AppClock.Now;
@@ -238,6 +283,73 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
         }
 
         public Task<List<string>> GetTechNamesAsync() => _records.GetTechNamesAsync();
+
+        // ---------- saved reports ----------
+
+        public async Task<List<MammogramReportResponse>> GetReportsAsync() =>
+            (await _reports.GetAllAsync()).Select(r => new MammogramReportResponse
+            {
+                Id = r.Id,
+                Name = r.Name,
+                Definition = r.Definition,
+                CreatedByName = r.CreatedByName,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            }).ToList();
+
+        public async Task<MammogramResult<MammogramReportResponse>> SaveReportAsync(int? id, SaveMammogramReportDTO dto, string userId)
+        {
+            var name = Clean(dto.Name);
+            if (name == null) return Failed<MammogramReportResponse>("Give the report a name.");
+            if (name.Length > 100) return Failed<MammogramReportResponse>("The report name is longer than 100 characters.");
+
+            var definition = dto.Definition?.Trim() ?? "";
+            if (definition.Length == 0 || definition.Length > MaxReportDefinitionLength)
+                return Failed<MammogramReportResponse>("The report is empty or too large to save.");
+            try
+            {
+                using var doc = JsonDocument.Parse(definition);
+                if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                    return Failed<MammogramReportResponse>("The report definition isn't valid.");
+            }
+            catch (JsonException)
+            {
+                return Failed<MammogramReportResponse>("The report definition isn't valid.");
+            }
+
+            if (await _reports.NameExistsAsync(name, id))
+                return Conflicted<MammogramReportResponse>($"There is already a report called \"{name}\".");
+
+            MammogramReport report;
+            if (id is { } existing)
+            {
+                var found = await _reports.GetByIdAsync(existing);
+                if (found == null) return Missing<MammogramReportResponse>();
+                report = found;
+                report.UpdatedAt = AppClock.Now;
+            }
+            else
+            {
+                report = new MammogramReport { CreatedById = userId, CreatedAt = AppClock.Now };
+                _reports.Add(report);
+            }
+
+            report.Name = name;
+            report.Definition = definition;
+            await _reports.SaveChangesAsync();
+
+            return Ok((await GetReportsAsync()).First(r => r.Id == report.Id));
+        }
+
+        public async Task<MammogramResult<bool>> DeleteReportAsync(int id)
+        {
+            var report = await _reports.GetByIdAsync(id);
+            if (report == null) return Missing<bool>();
+
+            _reports.Remove(report);
+            await _reports.SaveChangesAsync();
+            return Ok(true);
+        }
 
         public async Task<(byte[] Content, string FileName)?> ExportSheetAsync(int id)
         {
@@ -266,6 +378,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             if (Clean(dto.Tech)?.Length > 100) return "Tech is longer than 100 characters.";
             if (Clean(dto.Recommendation)?.Length > 1000) return "Recommendation is longer than 1000 characters.";
             if (Clean(dto.FollowUpExam)?.Length > 100) return "Exam type is longer than 100 characters.";
+            if (Clean(dto.FollowUpExam2)?.Length > 100) return "Exam type 2 is longer than 100 characters.";
             if (Clean(dto.ContactNote)?.Length > 1000) return "Contact note is longer than 1000 characters.";
             if (Clean(dto.PhoneCountryCode)?.Length > 6) return "Country code is too long.";
 
@@ -275,6 +388,15 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
 
             if (dto.FollowUpDate is { } followUp && followUp < visit)
                 return "Follow-up date can't be before the visit date.";
+
+            // The second follow-up comes after the first: it is the visit
+            // after that one, and two reminders on one day would be one too
+            // many.
+            if (dto.FollowUpDate2 is { } followUp2)
+            {
+                if (dto.FollowUpDate is not { } first) return "Fill Follow-up date 1 before Follow-up date 2.";
+                if (followUp2 <= first) return "Follow-up date 2 must be after Follow-up date 1.";
+            }
 
             if (dto.Age is < 0 or > 120) return "Age must be between 0 and 120.";
 
@@ -304,6 +426,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             record.Recommendation = Clean(dto.Recommendation);
             record.FollowUpDate = dto.FollowUpDate;
             record.FollowUpExam = Clean(dto.FollowUpExam);
+            record.FollowUpDate2 = dto.FollowUpDate2;
+            record.FollowUpExam2 = Clean(dto.FollowUpExam2);
             record.PhoneCountryCode = countryCode;
             record.PhoneNumber = phone;
             record.ContactNote = Clean(dto.ContactNote);
@@ -372,6 +496,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             Recommendation = r.Recommendation,
             FollowUpDate = r.FollowUpDate,
             FollowUpExam = r.FollowUpExam,
+            FollowUpDate2 = r.FollowUpDate2,
+            FollowUpExam2 = r.FollowUpExam2,
             PhoneCountryCode = r.PhoneCountryCode,
             PhoneNumber = r.PhoneNumber,
             WhatsAppNumber = WhatsAppNumber(r.PhoneCountryCode, r.PhoneNumber),
@@ -380,6 +506,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             ReminderStatus = r.ReminderStatus,
             ReminderSentAt = r.ReminderSentAt,
             ReminderError = r.ReminderError,
+            Reminder2Status = r.Reminder2Status,
+            Reminder2SentAt = r.Reminder2SentAt,
+            Reminder2Error = r.Reminder2Error,
             CreatedAt = r.CreatedAt,
             UpdatedAt = r.UpdatedAt
         };

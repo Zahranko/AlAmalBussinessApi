@@ -64,6 +64,11 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
         // The exam the WhatsApp reminder names ({{1}}), in Arabic.
         public string? FollowUpExam { get; set; }
 
+        // The second follow-up: after the first, with its own exam and its
+        // own reminder.
+        public DateOnly? FollowUpDate2 { get; set; }
+        public string? FollowUpExam2 { get; set; }
+
         // Defaults to +962. The number may be typed with or without its
         // leading zero, or with the country code in front.
         public string? PhoneCountryCode { get; set; }
@@ -110,6 +115,8 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
         public string? Recommendation { get; set; }
         public DateOnly? FollowUpDate { get; set; }
         public string? FollowUpExam { get; set; }
+        public DateOnly? FollowUpDate2 { get; set; }
+        public string? FollowUpExam2 { get; set; }
         public string PhoneCountryCode { get; set; } = string.Empty;
         public string? PhoneNumber { get; set; }
 
@@ -123,6 +130,32 @@ namespace AlAmalBusiness.Application.DTOs.Mammograms
         public DateTime? ReminderSentAt { get; set; }
         // Why the reminder failed, in the WhatsApp platform's words.
         public string? ReminderError { get; set; }
+        public MammogramReminderStatus Reminder2Status { get; set; }
+        public DateTime? Reminder2SentAt { get; set; }
+        public string? Reminder2Error { get; set; }
+
+        // Set only on the follow-ups list, where a row with two follow-ups in
+        // the range is listed once per follow-up: which of the two this line
+        // is (1 or 2). Null everywhere else.
+        public int? FollowUpSlot { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    // A saved report-builder definition. Definition is the console's own
+    // JSON, stored as sent.
+    public class SaveMammogramReportDTO
+    {
+        public string? Name { get; set; }
+        public string? Definition { get; set; }
+    }
+
+    public class MammogramReportResponse
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Definition { get; set; } = "{}";
+        public string? CreatedByName { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }

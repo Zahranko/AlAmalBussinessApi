@@ -23,6 +23,11 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
     // "نوع الفحص" (FollowUpExam), or, when that is blank, the exam read from
     // its recommendation ("6months u s" -> breast ultrasound).
     //
+    // A row has two follow-ups (2026-10-19), each with its own date, exam and
+    // reminder state: on Follow Up-Date the reminder names "نوع الفحص", on
+    // Follow Up-Date 2 it names "نوع الفحص 2". Everything below works on
+    // (row, slot) pairs, and both slots due today go out in the same bulk send.
+    //
     // Exactly once: every row is claimed NotSent -> Queued by a conditional
     // UPDATE before the request goes out, so two workers can't both send it.
     // If the platform couldn't be reached, or refused the whole request, the
@@ -67,7 +72,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
 
             var claimed = new List<MammogramReminderRow>();
             foreach (var row in due)
-                if (await _records.ClaimReminderAsync(row.Id, now)) claimed.Add(row);
+                if (await _records.ClaimReminderAsync(row.Id, row.Slot, now)) claimed.Add(row);
             if (claimed.Count == 0) return result;
 
             WhatsAppBulkResult sent;
@@ -80,7 +85,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
                     Language = _language,
                     Recipients = claimed.Select(row => new WhatsAppBulkRecipient
                     {
-                        Ref = row.Id.ToString(),
+                        Ref = Ref(row.Id, row.Slot),
                         Phone = MammogramService.WhatsAppNumber(row.PhoneCountryCode, row.PhoneNumber)!,
                         Name = row.FullName,
                         FileNumber = row.PatientMrn,
@@ -104,7 +109,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
                 var status = sent.Retryable ? MammogramReminderStatus.NotSent : MammogramReminderStatus.Failed;
                 var error = sent.Retryable ? null : Clip(sent.Error);
                 foreach (var row in claimed)
-                    await _records.FinishReminderClaimAsync(row.Id, status, null, error);
+                    await _records.FinishReminderClaimAsync(row.Id, row.Slot, status, null, error);
 
                 if (sent.Retryable) result.Deferred = claimed.Count;
                 else result.Failed = claimed.Count;
@@ -117,14 +122,14 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
             var lines = sent.Results.Where(l => l.Ref != null).GroupBy(l => l.Ref!).ToDictionary(g => g.Key, g => g.First());
             foreach (var row in claimed)
             {
-                if (lines.TryGetValue(row.Id.ToString(), out var line) && line.MessageId != null)
+                if (lines.TryGetValue(Ref(row.Id, row.Slot), out var line) && line.MessageId != null)
                 {
-                    await _records.FinishReminderClaimAsync(row.Id, MammogramReminderStatus.Queued, line.MessageId, null);
+                    await _records.FinishReminderClaimAsync(row.Id, row.Slot, MammogramReminderStatus.Queued, line.MessageId, null);
                     result.Queued++;
                 }
                 else
                 {
-                    await _records.FinishReminderClaimAsync(row.Id, MammogramReminderStatus.Failed, null,
+                    await _records.FinishReminderClaimAsync(row.Id, row.Slot, MammogramReminderStatus.Failed, null,
                         Clip(line?.Error) ?? "The WhatsApp platform didn't answer for this row.");
                     result.Failed++;
                 }
@@ -148,12 +153,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
 
                 var mapped = Map(status.Status);
                 if (mapped == null || mapped == row.Status) continue;
-                await _records.UpdateReminderStatusAsync(row.Id, row.MessageId, mapped.Value,
+                await _records.UpdateReminderStatusAsync(row.Id, row.Slot, row.MessageId, mapped.Value,
                     mapped == MammogramReminderStatus.Failed ? Clip(status.Error) ?? "Failed." : null);
                 updated++;
             }
             return updated;
         }
+
+        // The bulk send's per-recipient handle: the row, and which follow-up.
+        // The first keeps the bare id it always had.
+        private static string Ref(int id, int slot) => slot == 2 ? $"{id}-2" : id.ToString();
 
         private static MammogramReminderStatus? Map(string platformStatus) => platformStatus switch
         {

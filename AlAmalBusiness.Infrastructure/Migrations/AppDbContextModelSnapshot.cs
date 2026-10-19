@@ -755,7 +755,14 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Property<DateOnly?>("FollowUpDate")
                         .HasColumnType("date");
 
+                    b.Property<DateOnly?>("FollowUpDate2")
+                        .HasColumnType("date");
+
                     b.Property<string>("FollowUpExam")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FollowUpExam2")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -794,6 +801,20 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("Reminder2Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Reminder2MessageId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("Reminder2SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Reminder2Status")
+                        .HasColumnType("int");
+
                     b.Property<string>("ReminderError")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -829,9 +850,47 @@ namespace AlAmalBusiness.Infrastructure.Migrations
 
                     b.HasIndex("FollowUpDate", "ReminderStatus");
 
+                    b.HasIndex("FollowUpDate2", "Reminder2Status");
+
                     b.HasIndex("SheetId", "VisitDate");
 
                     b.ToTable("MammogramRecords");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("MammogramReports");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramSheet", b =>
@@ -1728,6 +1787,16 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("Sheet");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramReport", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Mammograms.MammogramSheet", b =>

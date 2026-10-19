@@ -10,15 +10,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
 {
     // One month's sheet as an .xlsx with the old workbook's exact headers and
     // column order (its 9-2026 tab), so anyone still working from the Excel
-    // file reads it the same way — plus "نوع الفحص" after Follow Up-Date
-    // (2026-10-17), where the console grid has it.
+    // file reads it the same way. The console-only columns — "نوع الفحص" and
+    // the second follow-up with its own "نوع الفحص 2" — are left out on
+    // purpose (2026-10-19): the export is the old workbook, nothing added.
     internal static class MammogramExcelWriter
     {
         private static readonly string[] Headers =
         {
             "ID", "Female/male", "Name", "Tech", "THE AGE", "Breast feeding mother",
             "احتمالية حدوث حمل", "implants", "Vis_Date", "Procedure", "Screening/ Diadnostic",
-            "B", "Pros", "Follow Up-Date", "نوع الفحص", "Call Follow Up", "التواصل", "وقت التواصل"
+            "B", "Pros", "Follow Up-Date", "Call Follow Up", "التواصل", "وقت التواصل"
         };
 
         public static byte[] Build(string title, List<MammogramRecord> rows)
@@ -56,15 +57,14 @@ namespace AlAmalBusiness.Application.Services.Imp.Mammograms
                 sheet.Cell(r, 12).Value = row.BiRads;
                 sheet.Cell(r, 13).Value = row.Recommendation;
                 if (row.FollowUpDate is { } followUp) SetDate(sheet.Cell(r, 14), followUp.ToDateTime(TimeOnly.MinValue));
-                sheet.Cell(r, 15).Value = row.FollowUpExam;
                 // Text, keeping the leading zero the old sheet lost to Excel's
                 // number formatting.
-                sheet.Cell(r, 16).Value = PhoneText(row.PhoneCountryCode, row.PhoneNumber);
-                sheet.Cell(r, 17).Value = row.ContactNote;
+                sheet.Cell(r, 15).Value = PhoneText(row.PhoneCountryCode, row.PhoneNumber);
+                sheet.Cell(r, 16).Value = row.ContactNote;
                 if (row.ContactedAt is { } contacted)
                 {
-                    sheet.Cell(r, 18).Value = contacted;
-                    sheet.Cell(r, 18).Style.DateFormat.Format = "d-m-yyyy h:mm";
+                    sheet.Cell(r, 17).Value = contacted;
+                    sheet.Cell(r, 17).Style.DateFormat.Format = "d-m-yyyy h:mm";
                 }
                 r++;
             }

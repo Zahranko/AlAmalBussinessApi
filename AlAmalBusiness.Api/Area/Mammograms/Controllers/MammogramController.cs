@@ -132,9 +132,11 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
             return result.NotFound ? NotFound() : NoContent();
         }
 
-        // Rows due back between two dates, across every sheet, ordered by
-        // follow-up date — the call list, with each row's WhatsApp reminder
-        // state (MammogramReminderService sends them).
+        // Follow-ups due between two dates, across every sheet, ordered by
+        // date — the call list, with each one's WhatsApp reminder state
+        // (MammogramReminderService sends them). A row with both follow-ups in
+        // the range is listed twice; FollowUpSlot says which line is which,
+        // and reminderStatus filters on that follow-up's own reminder.
         // Without dates: from today, 30 days ahead.
         [HttpGet("follow-ups")]
         public async Task<ActionResult<PagedResultDTO<MammogramRecordResponse>>> GetFollowUps(
@@ -148,7 +150,7 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
         {
             var today = DateOnly.FromDateTime(AppClock.Today);
 
-            return Ok(await _mammograms.GetRecordsAsync(new MammogramRecordQuery
+            return Ok(await _mammograms.GetFollowUpsAsync(new MammogramRecordQuery
             {
                 FollowUpFrom = from ?? today,
                 FollowUpTo = to ?? (from ?? today).AddDays(30),
@@ -182,6 +184,34 @@ namespace AlAmalBusiness.Api.Area.Mammograms.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new { message = $"Send now failed: {ex.GetType().Name}: {ex.GetBaseException().Message}" });
             }
+        }
+
+        // ---------- report builder ----------
+
+        // Every row visited between two days (inclusive, max five years),
+        // for the console's custom reports — it counts in the browser.
+        [HttpGet("report/rows")]
+        public Task<IActionResult> GetReportRows(DateOnly from, DateOnly to) =>
+            Run(() => _mammograms.GetReportRowsAsync(from, to));
+
+        // Saved report definitions, shared by everyone with the role.
+        [HttpGet("report/definitions")]
+        public async Task<ActionResult<List<MammogramReportResponse>>> GetReports() =>
+            Ok(await _mammograms.GetReportsAsync());
+
+        [HttpPost("report/definitions")]
+        public Task<IActionResult> CreateReport(SaveMammogramReportDTO dto) =>
+            Run(() => _mammograms.SaveReportAsync(null, dto, UserId));
+
+        [HttpPut("report/definitions/{id:int}")]
+        public Task<IActionResult> UpdateReport(int id, SaveMammogramReportDTO dto) =>
+            Run(() => _mammograms.SaveReportAsync(id, dto, UserId));
+
+        [HttpDelete("report/definitions/{id:int}")]
+        public async Task<IActionResult> DeleteReport(int id)
+        {
+            var result = await _mammograms.DeleteReportAsync(id);
+            return result.NotFound ? NotFound() : NoContent();
         }
 
         // Tech names already used, for the form's autocomplete.
