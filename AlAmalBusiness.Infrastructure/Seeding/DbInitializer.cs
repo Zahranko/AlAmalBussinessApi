@@ -72,7 +72,9 @@ namespace AlAmalBusiness.Infrastructure.Seeding
                 AppRoles.TEmployee,
                 AppRoles.TSupport,
                 AppRoles.TInsurance,
-                AppRoles.MManager
+                AppRoles.MManager,
+                AppRoles.MRaiser,
+                AppRoles.MSupport
             };
             // Runs on every cold start — one SELECT for the existing names
             // rather than one RoleExistsAsync round trip per role.

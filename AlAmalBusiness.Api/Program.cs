@@ -85,6 +85,8 @@ builder.Services.AddScoped<ITicketRepo, TicketRepo>();
 builder.Services.AddScoped<ITicketHistoryRepo, TicketHistoryRepo>();
 builder.Services.AddScoped<ITicketCategoryRepo, TicketCategoryRepo>();
 builder.Services.AddScoped<ITicketProcedureRepo, TicketProcedureRepo>();
+builder.Services.AddScoped<IMaintenanceTicketRepo, MaintenanceTicketRepo>();
+builder.Services.AddScoped<IMaintenanceTicketHistoryRepo, MaintenanceTicketHistoryRepo>();
 builder.Services.AddScoped<IMammogramSheetRepo, MammogramSheetRepo>();
 builder.Services.AddScoped<IMammogramRecordRepo, MammogramRecordRepo>();
 builder.Services.AddScoped<IMammogramReportRepo, MammogramReportRepo>();
@@ -111,6 +113,7 @@ builder.Services.AddScoped<IAppointmentListService, AppointmentListService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<ITicketNotifier, SignalRTicketNotifier>();
 builder.Services.AddScoped<ITicketListService, TicketListService>();
+builder.Services.AddScoped<IMaintenanceTicketService, MaintenanceTicketService>();
 builder.Services.AddScoped<IMammogramService, MammogramService>();
 builder.Services.AddScoped<IMammogramAppointmentService, MammogramAppointmentService>();
 // The register's WhatsApp follow-up reminders, through the hospital's own

@@ -32,8 +32,25 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
                 heading: success ? $"أغلق {closedBy} تذكرتك: تم الحل" : $"أغلق {closedBy} تذكرتك: تعذّر الحل",
                 noteLabel: success ? null : "السبب", note: reason);
 
+        // A maintenance request was raised — to the maintenance team
+        // (MSupport). Same layout; the location takes the payment row's place.
+        public static EmailMessage NewMaintenance(string to, TicketFacts ticket, string? location, string? link) =>
+            Build(to, ticket, link,
+                subject: $"طلب صيانة جديد - {ticket.Title}",
+                heading: "وصل طلب صيانة جديد إلى فريق الصيانة",
+                noteLabel: null, note: null, location: location);
+
+        // To the raiser: their maintenance request was closed.
+        public static EmailMessage MaintenanceClosed(
+            string to, TicketFacts ticket, string? location, bool success, string closedBy, string? reason, string? link) =>
+            Build(to, ticket, link,
+                subject: $"تم إغلاق طلب الصيانة ({(success ? "تم الإصلاح" : "تعذّر الإصلاح")}) - {ticket.Title}",
+                heading: success ? $"أغلق {closedBy} طلب الصيانة: تم الإصلاح" : $"أغلق {closedBy} طلب الصيانة: تعذّر الإصلاح",
+                noteLabel: success ? null : "السبب", note: reason, location: location);
+
         private static EmailMessage Build(
-            string to, TicketFacts ticket, string? link, string subject, string heading, string? noteLabel, string? note)
+            string to, TicketFacts ticket, string? link, string subject, string heading, string? noteLabel, string? note,
+            string? location = null)
         {
             // Line breaks flattened before the title goes anywhere near a header.
             subject = subject.Replace('\r', ' ').Replace('\n', ' ');
@@ -47,6 +64,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             };
             if (!string.IsNullOrWhiteSpace(ticket.PaymentMethod))
                 rows.Add(("طريقة الدفع", ticket.PaymentMethod, false));
+            if (!string.IsNullOrWhiteSpace(location))
+                rows.Add(("الموقع", location, false));
             rows.Add(("تاريخ الإنشاء", ticket.Created, true));
 
             var html = new StringBuilder();

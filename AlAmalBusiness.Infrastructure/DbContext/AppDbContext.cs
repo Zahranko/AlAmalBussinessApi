@@ -41,6 +41,8 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<TicketHistory> TicketHistories { get; set; }
       public DbSet<TicketCategory> TicketCategories { get; set; }
       public DbSet<TicketProcedure> TicketProcedures { get; set; }
+      public DbSet<MaintenanceTicket> MaintenanceTickets { get; set; }
+      public DbSet<MaintenanceTicketHistory> MaintenanceTicketHistories { get; set; }
       public DbSet<MammogramSheet> MammogramSheets { get; set; }
       public DbSet<MammogramRecord> MammogramRecords { get; set; }
       public DbSet<MammogramReport> MammogramReports { get; set; }
@@ -559,6 +561,54 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<TicketCategory>().HasIndex(c => c.Name).IsUnique();
         modelBuilder.Entity<TicketProcedure>().Property(p => p.Name).HasMaxLength(200);
         modelBuilder.Entity<TicketProcedure>().HasIndex(p => p.Name).IsUnique();
+
+        // ---------- Maintenance tickets ----------
+
+        // Same Restrict reasoning as Ticket: users are disabled and
+        // departments retired, never deleted out from under a request.
+        modelBuilder.Entity<MaintenanceTicket>()
+            .HasOne(t => t.CreatedBy)
+            .WithMany()
+            .HasForeignKey(t => t.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MaintenanceTicket>()
+            .HasOne(t => t.AssignedTo)
+            .WithMany()
+            .HasForeignKey(t => t.AssignedToId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MaintenanceTicket>()
+            .HasOne(t => t.Department)
+            .WithMany()
+            .HasForeignKey(t => t.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The queue filters on Status, created-by-me on the creator, Mine on
+        // the closer — each sorted by CreatedDate.
+        modelBuilder.Entity<MaintenanceTicket>().HasIndex(t => new { t.Status, t.CreatedDate });
+        modelBuilder.Entity<MaintenanceTicket>().HasIndex(t => new { t.CreatedById, t.CreatedDate });
+        modelBuilder.Entity<MaintenanceTicket>().HasIndex(t => new { t.AssignedToId, t.CreatedDate });
+
+        modelBuilder.Entity<MaintenanceTicket>().Property(t => t.Title).HasMaxLength(200);
+        modelBuilder.Entity<MaintenanceTicket>().Property(t => t.Location).HasMaxLength(200);
+        modelBuilder.Entity<MaintenanceTicket>().Property(t => t.Details).HasMaxLength(4000);
+        modelBuilder.Entity<MaintenanceTicket>().Property(t => t.Resolution).HasMaxLength(2000);
+
+        modelBuilder.Entity<MaintenanceTicketHistory>()
+            .HasOne(h => h.Ticket)
+            .WithMany()
+            .HasForeignKey(h => h.TicketId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MaintenanceTicketHistory>()
+            .HasOne(h => h.Actor)
+            .WithMany()
+            .HasForeignKey(h => h.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MaintenanceTicketHistory>().HasIndex(h => new { h.TicketId, h.CreatedAt });
+        modelBuilder.Entity<MaintenanceTicketHistory>().Property(h => h.Note).HasMaxLength(2000);
 
     }
     }

@@ -54,5 +54,13 @@ namespace AlAmalBusiness.Domain.Constants
         // sheet, fills it and works its follow-up list. Not per-department —
         // it is the one radiology team's register.
         public const string MManager = "MManager";
+        // Maintenance tickets (added 2026-10-21): the support tickets'
+        // raise/solve split for building and equipment faults. MRaiser raises
+        // requests and follows only their own; MSupport is the maintenance
+        // team, receiving and solving every request from every department.
+        // Neither is per-department. (The M- prefix is shared with MManager
+        // only by spelling — that one is the mammogram register's.)
+        public const string MRaiser = "MRaiser";
+        public const string MSupport = "MSupport";
     }
 }
