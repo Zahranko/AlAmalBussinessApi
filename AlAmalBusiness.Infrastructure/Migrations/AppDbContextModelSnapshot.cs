@@ -1161,7 +1161,6 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("CreatedById")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreatedDate")
@@ -1178,6 +1177,14 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("RequesterName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RequesterPhone")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
                     b.Property<string>("Resolution")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
@@ -1185,10 +1192,18 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<string>("SubmittedFromIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
 
                     b.HasKey("Id");
 
@@ -1212,7 +1227,6 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ActorId")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1980,8 +1994,7 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.HasOne("AlAmalBusiness.Domain.Models.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("AlAmalBusiness.Domain.Models.Departments", "Department")
                         .WithMany()
@@ -2000,8 +2013,7 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.HasOne("AlAmalBusiness.Domain.Models.User", "Actor")
                         .WithMany()
                         .HasForeignKey("ActorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("AlAmalBusiness.Domain.Models.Tickets.MaintenanceTicket", "Ticket")
                         .WithMany()

@@ -32,12 +32,25 @@ namespace AlAmalBusiness.Domain.Models.Tickets
 
         public TicketStatus Status { get; set; } = TicketStatus.Open;
 
-        [Required]
+        // The raiser's account. Null for a request sent from the public page
+        // (ments.<domain>, added 2026-10-25), which nobody signs in to — the
+        // Requester* fields below say who sent it instead.
         public string? CreatedById { get; set; }
         public User? CreatedBy { get; set; }
 
-        // The raiser's department at the moment they raised it, from their
-        // own token. Descriptive only — nothing here is department-scoped.
+        // Who sent a public request and how to reach them — typed by the
+        // sender, so free text (an extension is as likely as a mobile).
+        // Null on a request raised from the console.
+        public string? RequesterName { get; set; }
+        public string? RequesterPhone { get; set; }
+
+        // Audit for the anonymous submit, as on the other public forms.
+        public string? SubmittedFromIp { get; set; }
+        public string? UserAgent { get; set; }
+
+        // The raiser's department at the moment they raised it — from their
+        // own token in the console, picked from the list on the public page.
+        // Descriptive only — nothing here is department-scoped.
         public int? DepartmentId { get; set; }
         public Departments? Department { get; set; }
 
@@ -66,7 +79,8 @@ namespace AlAmalBusiness.Domain.Models.Tickets
         public int TicketId { get; set; }
         public MaintenanceTicket? Ticket { get; set; }
 
-        [Required]
+        // Null only on the Created entry of a public request, which no
+        // account sent; its timeline names the ticket's RequesterName.
         public string? ActorId { get; set; }
         public User? Actor { get; set; }
 

@@ -45,7 +45,7 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 12;
 
-        // Matches the title, the location, or "#id".
+        // Matches the title, the location, a public sender's name, or "#id".
         public string? Search { get; set; }
         // An explicit status always wins over what the scope would show.
         public TicketStatus? Status { get; set; }
@@ -76,7 +76,10 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         public string? Location { get; set; }
         public TicketStatus Status { get; set; }
         public string? CreatedById { get; set; }
+        // The account's username, or the typed name on a public request.
         public string? CreatedByName { get; set; }
+        public string? RequesterName { get; set; }
+        public string? RequesterPhone { get; set; }
         public int? DepartmentId { get; set; }
         public string? DepartmentName { get; set; }
         public string? AssignedToId { get; set; }

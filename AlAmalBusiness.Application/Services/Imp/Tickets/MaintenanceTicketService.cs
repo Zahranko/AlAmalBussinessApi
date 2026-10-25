@@ -1,5 +1,6 @@
 using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Email;
+using AlAmalBusiness.Application.DTOs.Feedback;
 using AlAmalBusiness.Application.DTOs.Tickets;
 using AlAmalBusiness.Application.DTOs.Tickets.Response;
 using AlAmalBusiness.Application.Services.Interface;
@@ -29,6 +30,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         private readonly IMaintenanceTicketRepo _ticketRepo;
         private readonly IMaintenanceTicketHistoryRepo _historyRepo;
         private readonly IUserRepo _userRepo;
+        private readonly IDepartmentRepo _departmentRepo;
         private readonly IEmailQueue _emailQueue;
         private readonly ILogger<MaintenanceTicketService> _logger;
         private readonly string? _consoleBaseUrl;
@@ -44,6 +46,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             IMaintenanceTicketRepo ticketRepo,
             IMaintenanceTicketHistoryRepo historyRepo,
             IUserRepo userRepo,
+            IDepartmentRepo departmentRepo,
             IEmailQueue emailQueue,
             ILogger<MaintenanceTicketService> logger,
             IConfiguration config)
@@ -52,6 +55,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             _ticketRepo = ticketRepo;
             _historyRepo = historyRepo;
             _userRepo = userRepo;
+            _departmentRepo = departmentRepo;
             _emailQueue = emailQueue;
             _logger = logger;
         }
@@ -88,6 +92,87 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
             return Ok(detail);
         }
+
+        // The public page (ments.<domain>, added 2026-10-25): nobody signs in,
+        // so the sender types who they are and picks their department, and
+        // the request is saved with no account behind it. From there it
+        // follows the console's path exactly — same queue, same email to MSupport.
+        public async Task<MaintenancePublicSubmitResponse> SubmitPublicAsync(PublicMaintenanceTicketDTO request, SubmissionContext context)
+        {
+            var name = Clean(request.RequesterName);
+            if (name == null || name.Length < 2 || name.Length > 100)
+                return Rejected("الاسم مطلوب (بين حرفين و100 حرف)");
+
+            var phone = Clean(request.RequesterPhone);
+            if (phone == null || !IsPhone(phone))
+                return Rejected("رقم الهاتف أو التحويلة مطلوب (3 أرقام على الأقل)");
+
+            if (request.DepartmentId is not int departmentId)
+                return Rejected("اختر القسم");
+            // Inactive answers the same as missing: it can't be picked again.
+            var department = await _departmentRepo.GetDepartmentByIdAsync(departmentId);
+            if (department == null || !department.IsActive)
+                return Rejected("القسم المختار غير موجود");
+
+            var title = Clean(request.Title);
+            if (title == null || title.Length < 2 || title.Length > 200)
+                return Rejected("وصف المشكلة باختصار مطلوب (بين حرفين و200 حرف)");
+
+            // Required here, unlike the console form: the team has no account
+            // to ask, so where to go has to come with the request.
+            var location = Clean(request.Location);
+            if (location == null || location.Length > 200)
+                return Rejected("الموقع مطلوب (200 حرف كحد أقصى)");
+
+            var details = Clean(request.Details);
+            if (details != null && details.Length > 4000)
+                return Rejected("التفاصيل 4000 حرف كحد أقصى");
+
+            var ticket = new MaintenanceTicket
+            {
+                Title = title,
+                Location = location,
+                Details = details,
+                RequesterName = name,
+                RequesterPhone = phone,
+                DepartmentId = departmentId,
+                SubmittedFromIp = context.IpAddress,
+                UserAgent = Truncate(context.UserAgent, 400),
+                Status = TicketStatus.Open,
+                CreatedDate = AppClock.Now
+            };
+
+            await _ticketRepo.CreateAsync(ticket);
+
+            _historyRepo.Add(new MaintenanceTicketHistory
+            {
+                TicketId = ticket.Id,
+                ActorId = null,
+                Type = TicketActions.Created
+            });
+            await _ticketRepo.SaveChangesAsync();
+
+            var detail = await LoadDetailAsync(ticket.Id);
+            await NotifyNewTicketAsync(detail!, null);
+
+            return new MaintenancePublicSubmitResponse { Success = true, TicketId = ticket.Id, CreatedDate = ticket.CreatedDate };
+        }
+
+        // A mobile, a landline or a 3-4 digit extension: digits plus the usual
+        // separators, three to fifteen digits.
+        private static bool IsPhone(string value)
+        {
+            if (value.Length > 32 || value.Any(c => !(char.IsAsciiDigit(c) || c is ' ' or '+' or '-' or '(' or ')' or '/')))
+                return false;
+            var digits = value.Count(char.IsAsciiDigit);
+            return digits is >= 3 and <= 15;
+        }
+
+        private static MaintenancePublicSubmitResponse Rejected(string error) =>
+            new() { Success = false, Error = error };
+
+        private static string? Truncate(string? value, int max) =>
+            string.IsNullOrEmpty(value) || value.Length <= max ? value : value[..max];
 
         // ---------- lists ----------
 
@@ -248,13 +333,14 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
         // ---------- notifications (best-effort) ----------
 
-        private async Task NotifyNewTicketAsync(MaintenanceTicketDetailResponse ticket, string actorId)
+        // actorId is null for a public request — there is nobody to leave out.
+        private async Task NotifyNewTicketAsync(MaintenanceTicketDetailResponse ticket, string? actorId)
         {
             try
             {
                 var recipients = await _userRepo.GetActiveEmailsInRolesAsync(SupportRoles, actorId);
                 Enqueue(ticket.Id, "new-maintenance", recipients,
-                    to => TicketEmailTemplate.NewMaintenance(to, Facts(ticket), ticket.Location, Link(ticket.Id)));
+                    to => TicketEmailTemplate.NewMaintenance(to, Facts(ticket), ticket.Location, ticket.RequesterPhone, Link(ticket.Id)));
             }
             catch (Exception ex)
             {
@@ -336,6 +422,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             target.Status = row.Status.ToString();
             target.CreatedById = row.CreatedById;
             target.CreatedByName = row.CreatedByName;
+            target.RequesterName = row.RequesterName;
+            target.RequesterPhone = row.RequesterPhone;
             target.DepartmentId = row.DepartmentId;
             target.DepartmentName = row.DepartmentName;
             target.AssignedToId = row.AssignedToId;

@@ -594,6 +594,10 @@ public class AppDbContext : IdentityDbContext<User>
         modelBuilder.Entity<MaintenanceTicket>().Property(t => t.Location).HasMaxLength(200);
         modelBuilder.Entity<MaintenanceTicket>().Property(t => t.Details).HasMaxLength(4000);
         modelBuilder.Entity<MaintenanceTicket>().Property(t => t.Resolution).HasMaxLength(2000);
+        modelBuilder.Entity<MaintenanceTicket>().Property(t => t.RequesterName).HasMaxLength(100);
+        modelBuilder.Entity<MaintenanceTicket>().Property(t => t.RequesterPhone).HasMaxLength(32);
+        modelBuilder.Entity<MaintenanceTicket>().Property(t => t.SubmittedFromIp).HasMaxLength(64);
+        modelBuilder.Entity<MaintenanceTicket>().Property(t => t.UserAgent).HasMaxLength(400);
 
         modelBuilder.Entity<MaintenanceTicketHistory>()
             .HasOne(h => h.Ticket)

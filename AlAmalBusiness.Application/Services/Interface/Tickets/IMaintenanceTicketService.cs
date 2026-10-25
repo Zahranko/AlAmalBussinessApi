@@ -1,4 +1,5 @@
 using AlAmalBusiness.Application.DTOs;
+using AlAmalBusiness.Application.DTOs.Feedback;
 using AlAmalBusiness.Application.DTOs.Tickets;
 using AlAmalBusiness.Application.DTOs.Tickets.Response;
 using AlAmalBusiness.Domain.IRepositories.Tickets;
@@ -11,6 +12,10 @@ namespace AlAmalBusiness.Application.Services.Interface.Tickets
         // Saves the request, then queues the email to the maintenance team
         // (best-effort).
         Task<MaintenanceTicketActionResponse> CreateAsync(CreateMaintenanceTicketDTO request, MaintenanceTicketActor actor);
+
+        // The anonymous public page: validates, saves with no account behind
+        // it, then the same email. Answers the request number only.
+        Task<MaintenancePublicSubmitResponse> SubmitPublicAsync(PublicMaintenanceTicketDTO request, SubmissionContext context);
 
         // The queue: every request for the maintenance team, the caller's own
         // for anyone else, narrowed by the scope tab.

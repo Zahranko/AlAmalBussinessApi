@@ -37,7 +37,10 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             Location = t.Location,
             Status = t.Status,
             CreatedById = t.CreatedById,
-            CreatedByName = t.CreatedBy!.UserName,
+            // A public request has no account behind it — show who typed it.
+            CreatedByName = t.CreatedById != null ? t.CreatedBy!.UserName : t.RequesterName,
+            RequesterName = t.RequesterName,
+            RequesterPhone = t.RequesterPhone,
             DepartmentId = t.DepartmentId,
             DepartmentName = t.Department!.Name,
             AssignedToId = t.AssignedToId,
@@ -57,7 +60,9 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                     Location = t.Location,
                     Status = t.Status,
                     CreatedById = t.CreatedById,
-                    CreatedByName = t.CreatedBy!.UserName,
+                    CreatedByName = t.CreatedById != null ? t.CreatedBy!.UserName : t.RequesterName,
+                    RequesterName = t.RequesterName,
+                    RequesterPhone = t.RequesterPhone,
                     DepartmentId = t.DepartmentId,
                     DepartmentName = t.Department!.Name,
                     AssignedToId = t.AssignedToId,
@@ -89,7 +94,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                 q = q.Where(t =>
                     (id != null && t.Id == id)
                     || t.Title.Contains(term)
-                    || (t.Location != null && t.Location.Contains(term)));
+                    || (t.Location != null && t.Location.Contains(term))
+                    || (t.RequesterName != null && t.RequesterName.Contains(term)));
             }
 
             var closedOnly = false;
@@ -155,7 +161,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                 {
                     Id = h.Id,
                     Type = h.Type,
-                    ActorName = h.Actor!.UserName,
+                    // No actor only on a public request's Created entry.
+                    ActorName = h.ActorId != null ? h.Actor!.UserName : h.Ticket!.RequesterName,
                     Note = h.Note,
                     CreatedAt = h.CreatedAt
                 })
