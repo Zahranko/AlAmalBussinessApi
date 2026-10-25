@@ -18,13 +18,12 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
     }
 
     // The public request page (ments.<domain>). Nobody signs in there, so it
-    // says who is asking and from which department; length rules are the
-    // service's (Arabic messages, one place).
+    // says who is asking; length rules are the service's (Arabic messages,
+    // one place).
     public class PublicMaintenanceTicketDTO
     {
         public string? RequesterName { get; set; }
         public string? RequesterPhone { get; set; }
-        public int? DepartmentId { get; set; }
         public string? Title { get; set; }
         public string? Location { get; set; }
         public string? Details { get; set; }

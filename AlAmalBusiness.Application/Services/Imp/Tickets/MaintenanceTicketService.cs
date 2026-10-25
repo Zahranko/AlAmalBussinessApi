@@ -30,7 +30,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         private readonly IMaintenanceTicketRepo _ticketRepo;
         private readonly IMaintenanceTicketHistoryRepo _historyRepo;
         private readonly IUserRepo _userRepo;
-        private readonly IDepartmentRepo _departmentRepo;
         private readonly IEmailQueue _emailQueue;
         private readonly ILogger<MaintenanceTicketService> _logger;
         private readonly string? _consoleBaseUrl;
@@ -46,7 +45,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             IMaintenanceTicketRepo ticketRepo,
             IMaintenanceTicketHistoryRepo historyRepo,
             IUserRepo userRepo,
-            IDepartmentRepo departmentRepo,
             IEmailQueue emailQueue,
             ILogger<MaintenanceTicketService> logger,
             IConfiguration config)
@@ -55,7 +53,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             _ticketRepo = ticketRepo;
             _historyRepo = historyRepo;
             _userRepo = userRepo;
-            _departmentRepo = departmentRepo;
             _emailQueue = emailQueue;
             _logger = logger;
         }
@@ -94,8 +91,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         }
 
         // The public page (ments.<domain>, added 2026-10-25): nobody signs in,
-        // so the sender types who they are and picks their department, and
-        // the request is saved with no account behind it. From there it
+        // so the sender types who they are, and the request is saved with no
+        // account behind it and no department (the page doesn't ask). From there it
         // follows the console's path exactly — same queue, same email to MSupport.
         public async Task<MaintenancePublicSubmitResponse> SubmitPublicAsync(PublicMaintenanceTicketDTO request, SubmissionContext context)
         {
@@ -106,13 +103,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             var phone = Clean(request.RequesterPhone);
             if (phone == null || !IsPhone(phone))
                 return Rejected("رقم الهاتف أو التحويلة مطلوب (3 أرقام على الأقل)");
-
-            if (request.DepartmentId is not int departmentId)
-                return Rejected("اختر القسم");
-            // Inactive answers the same as missing: it can't be picked again.
-            var department = await _departmentRepo.GetDepartmentByIdAsync(departmentId);
-            if (department == null || !department.IsActive)
-                return Rejected("القسم المختار غير موجود");
 
             var title = Clean(request.Title);
             if (title == null || title.Length < 2 || title.Length > 200)
@@ -135,7 +125,6 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
                 Details = details,
                 RequesterName = name,
                 RequesterPhone = phone,
-                DepartmentId = departmentId,
                 SubmittedFromIp = context.IpAddress,
                 UserAgent = Truncate(context.UserAgent, 400),
                 Status = TicketStatus.Open,

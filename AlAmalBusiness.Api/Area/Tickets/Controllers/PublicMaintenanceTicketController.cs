@@ -1,6 +1,5 @@
 using AlAmalBusiness.Application.DTOs.Feedback;
 using AlAmalBusiness.Application.DTOs.Tickets;
-using AlAmalBusiness.Application.Services.Interface;
 using AlAmalBusiness.Application.Services.Interface.Tickets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,11 +10,10 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
 {
     // The public maintenance request page (ments.<domain>, added 2026-10-25)
     // — anonymous, like PublicAppointmentController, and kept to exactly what
-    // the page needs: the department list and the submit. Nothing here reads
-    // a stored request back; a submit answers its number and nothing else.
-    // A separate controller from MaintenanceTicketController so
-    // [AllowAnonymous] can never leak onto a read endpoint. Shares the tight
-    // "PublicFormLimit" (10/min per IP).
+    // the page needs: the submit. Nothing here reads a stored request back; a
+    // submit answers its number and nothing else. A separate controller from
+    // MaintenanceTicketController so [AllowAnonymous] can never leak onto a
+    // read endpoint. Shares the tight "PublicFormLimit" (10/min per IP).
     [ApiController]
     [Route("api/public/maintenance")]
     [AllowAnonymous]
@@ -23,19 +21,11 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
     public class PublicMaintenanceTicketController : ControllerBase
     {
         private readonly IMaintenanceTicketService _tickets;
-        private readonly IDepartmentService _departmentService;
 
-        public PublicMaintenanceTicketController(IMaintenanceTicketService tickets, IDepartmentService departmentService)
+        public PublicMaintenanceTicketController(IMaintenanceTicketService tickets)
         {
             _tickets = tickets;
-            _departmentService = departmentService;
         }
-
-        // The sender's department picker. Active departments only, the same
-        // list the feedback page shows.
-        [HttpGet("departments")]
-        public async Task<IActionResult> GetDepartments() =>
-            Ok(await _departmentService.GetActiveDepartmentsAsync());
 
         [HttpPost]
         public async Task<IActionResult> Submit(PublicMaintenanceTicketDTO request)
