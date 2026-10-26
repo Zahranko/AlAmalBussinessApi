@@ -186,6 +186,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             query.SeesInsurance = actor.CanInsurance;
             query.SeesDepartmentId = actor.CanReadDepartment ? actor.DepartmentId : null;
             query.ViewerId = actor.UserId;
+            query.DelayedLast = actor.IsAdmin || actor.CanSupport;
             return PageAsync(query);
         }
 
@@ -193,6 +194,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         {
             query.CreatedById = actor.UserId;
             query.AssignedToId = null;
+            // What they raised, in the order they raised it.
+            query.DelayedLast = false;
             return PageAsync(query);
         }
 

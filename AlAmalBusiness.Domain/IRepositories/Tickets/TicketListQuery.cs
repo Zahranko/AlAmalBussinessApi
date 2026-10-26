@@ -16,6 +16,16 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         Closed
     }
 
+    // The raiser's own list (created-by-me), added 2026-10-26: still open,
+    // everything, or closed either way. Open is the default — what a raiser
+    // opens the page to check is what is still waiting.
+    public enum TicketRaisedView
+    {
+        Open,
+        All,
+        Closed
+    }
+
     // One filter object for both ticket lists (the queue and created-by-me),
     // passed controller -> service -> repository so adding a filter doesn't
     // ripple through three signatures. Mirrors AppointmentListQuery.
@@ -39,6 +49,10 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         // ordered by when each ticket was closed and means "what just
         // happened".
         public bool OldestFirst { get; set; }
+
+        // Which of the caller's own tickets the created-by-me list shows.
+        // Ignored by the queue, which has its scope instead.
+        public TicketRaisedView RaisedView { get; set; } = TicketRaisedView.Open;
 
         // ---- set by the service, never by the caller ----
 
@@ -69,5 +83,10 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         // The caller, so their own tickets are always in their queue
         // alongside whatever the flags above let them see.
         public string? ViewerId { get; set; }
+
+        // Parks delayed tickets after every other open one. Only for whoever
+        // may delay (TSupport, Admin) — the flag is their queue-ordering
+        // tool, and a raiser's own list keeps its plain order (2026-10-26).
+        public bool DelayedLast { get; set; }
     }
 }

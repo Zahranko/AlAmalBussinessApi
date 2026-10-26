@@ -174,6 +174,20 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                         break;
                 }
             }
+            // The raiser's own list: its Open / All / Closed switch.
+            else if (query.Status == null)
+            {
+                switch (query.RaisedView)
+                {
+                    case TicketRaisedView.Open:
+                        q = q.Where(t => t.Status == TicketStatus.Open);
+                        break;
+                    case TicketRaisedView.Closed:
+                        q = q.Where(t => t.Status != TicketStatus.Open);
+                        closedOnly = true;
+                        break;
+                }
+            }
 
             if (query.Status.HasValue)
             {
@@ -192,14 +206,17 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             // page would be re-sorting the newest 50 and never see the
             // oldest ticket at all.
             //
-            // A delayed ticket goes after every one that isn't, in either
-            // open ordering — that is the whole of what the flag means, and
-            // it has to happen before the page is cut for the same reason.
+            // For whoever may delay (DelayedLast), a delayed ticket goes after
+            // every one that isn't, in either open ordering — that is the
+            // whole of what the flag means, and it has to happen before the
+            // page is cut for the same reason. Everyone else reads plain
+            // date order: delaying is the desk's tool, not news to a raiser.
+            var delayedLast = query.DelayedLast;
             var ordered = closedOnly
                 ? q.OrderByDescending(t => t.ClosedAt).ThenByDescending(t => t.CreatedDate)
                 : query.OldestFirst
-                    ? q.OrderBy(t => t.IsDelayed).ThenBy(t => t.CreatedDate).ThenBy(t => t.Id)
-                    : q.OrderBy(t => t.IsDelayed).ThenByDescending(t => t.CreatedDate);
+                    ? q.OrderBy(t => delayedLast && t.IsDelayed).ThenBy(t => t.CreatedDate).ThenBy(t => t.Id)
+                    : q.OrderBy(t => delayedLast && t.IsDelayed).ThenByDescending(t => t.CreatedDate);
 
             var items = await ordered
                 .Skip((query.Page - 1) * query.PageSize)

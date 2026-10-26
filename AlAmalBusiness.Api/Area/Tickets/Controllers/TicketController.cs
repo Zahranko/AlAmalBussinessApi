@@ -122,9 +122,10 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
             int pageSize = 12,
             string? search = null,
             TicketStatus? status = null,
-            int? categoryId = null)
+            int? categoryId = null,
+            TicketRaisedView view = TicketRaisedView.Open)
         {
-            var query = new TicketListQuery { Page = page, PageSize = pageSize, Search = search, Status = status, CategoryId = categoryId };
+            var query = new TicketListQuery { Page = page, PageSize = pageSize, Search = search, Status = status, CategoryId = categoryId, RaisedView = view };
             return Ok(await _tickets.GetCreatedByMeAsync(query, Actor));
         }
 
