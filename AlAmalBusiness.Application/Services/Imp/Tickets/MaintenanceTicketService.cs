@@ -63,11 +63,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             if (title == null || title.Length < 2)
                 return Failed("عنوان الطلب مطلوب (حرفان على الأقل).");
 
+            var priority = request.Priority ?? MaintenancePriority.Normal;
+            if (!Enum.IsDefined(priority))
+                return Failed("اختر الأهمية من القائمة.");
+
             var ticket = new MaintenanceTicket
             {
                 Title = title,
                 Location = Clean(request.Location),
                 Details = Clean(request.Details),
+                Priority = priority,
                 CreatedById = actor.UserId,
                 DepartmentId = actor.DepartmentId,
                 Status = TicketStatus.Open,
@@ -118,11 +123,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             if (details != null && details.Length > 4000)
                 return Rejected("التفاصيل 4000 حرف كحد أقصى");
 
+            var priority = request.Priority ?? MaintenancePriority.Normal;
+            if (!Enum.IsDefined(priority))
+                return Rejected("اختر الأهمية من القائمة");
+
             var ticket = new MaintenanceTicket
             {
                 Title = title,
                 Location = location,
                 Details = details,
+                Priority = priority,
                 RequesterName = name,
                 RequesterPhone = phone,
                 SubmittedFromIp = context.IpAddress,
@@ -329,7 +339,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             {
                 var recipients = await _userRepo.GetActiveEmailsInRolesAsync(SupportRoles, actorId);
                 Enqueue(ticket.Id, "new-maintenance", recipients,
-                    to => TicketEmailTemplate.NewMaintenance(to, Facts(ticket), ticket.Location, ticket.RequesterPhone, Link(ticket.Id)));
+                    to => TicketEmailTemplate.NewMaintenance(to, Facts(ticket), ticket.Location, ticket.RequesterPhone, PriorityLabel(ticket.Priority), Link(ticket.Id)));
             }
             catch (Exception ex)
             {
@@ -377,6 +387,14 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             null,
             ticket.CreatedDate.ToString("yyyy-MM-dd HH:mm"));
 
+        // Left out of the email for Normal — only worth a row when it says something.
+        private static string? PriorityLabel(string? priority) => priority switch
+        {
+            nameof(MaintenancePriority.Important) => "مهمة",
+            nameof(MaintenancePriority.Urgent) => "عاجلة",
+            _ => null
+        };
+
         // The console's request page; its login round-trips ?next= back here.
         private string? Link(int id) =>
             string.IsNullOrWhiteSpace(_consoleBaseUrl) ? null : $"{_consoleBaseUrl}/tk/maintenance/{id}";
@@ -409,6 +427,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             target.Title = row.Title;
             target.Location = row.Location;
             target.Status = row.Status.ToString();
+            target.Priority = row.Priority.ToString();
             target.CreatedById = row.CreatedById;
             target.CreatedByName = row.CreatedByName;
             target.RequesterName = row.RequesterName;

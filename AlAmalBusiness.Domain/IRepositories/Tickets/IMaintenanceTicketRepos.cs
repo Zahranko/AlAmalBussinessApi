@@ -75,6 +75,7 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         public string? Title { get; set; }
         public string? Location { get; set; }
         public TicketStatus Status { get; set; }
+        public MaintenancePriority Priority { get; set; }
         public string? CreatedById { get; set; }
         // The account's username, or the typed name on a public request.
         public string? CreatedByName { get; set; }

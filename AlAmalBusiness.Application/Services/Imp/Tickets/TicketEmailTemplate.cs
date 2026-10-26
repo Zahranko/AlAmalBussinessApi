@@ -35,11 +35,11 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         // A maintenance request was raised — to the maintenance team
         // (MSupport). Same layout; the location takes the payment row's place,
         // and a request from the public page adds the number it left.
-        public static EmailMessage NewMaintenance(string to, TicketFacts ticket, string? location, string? phone, string? link) =>
+        public static EmailMessage NewMaintenance(string to, TicketFacts ticket, string? location, string? phone, string? priority, string? link) =>
             Build(to, ticket, link,
-                subject: $"طلب صيانة جديد - {ticket.Title}",
+                subject: priority == null ? $"طلب صيانة جديد - {ticket.Title}" : $"طلب صيانة جديد ({priority}) - {ticket.Title}",
                 heading: "وصل طلب صيانة جديد إلى فريق الصيانة",
-                noteLabel: null, note: null, location: location, phone: phone);
+                noteLabel: null, note: null, location: location, phone: phone, priority: priority);
 
         // To the raiser: their maintenance request was closed.
         public static EmailMessage MaintenanceClosed(
@@ -51,7 +51,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
         private static EmailMessage Build(
             string to, TicketFacts ticket, string? link, string subject, string heading, string? noteLabel, string? note,
-            string? location = null, string? phone = null)
+            string? location = null, string? phone = null, string? priority = null)
         {
             // Line breaks flattened before the title goes anywhere near a header.
             subject = subject.Replace('\r', ' ').Replace('\n', ' ');
@@ -65,6 +65,8 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             };
             if (!string.IsNullOrWhiteSpace(ticket.PaymentMethod))
                 rows.Add(("طريقة الدفع", ticket.PaymentMethod, false));
+            if (!string.IsNullOrWhiteSpace(priority))
+                rows.Add(("الأهمية", priority, false));
             if (!string.IsNullOrWhiteSpace(location))
                 rows.Add(("الموقع", location, false));
             if (!string.IsNullOrWhiteSpace(phone))

@@ -9,6 +9,7 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
         public string? Title { get; set; }
         public string? Location { get; set; }
         public string? Status { get; set; }
+        public string? Priority { get; set; }
         public string? CreatedById { get; set; }
         public string? CreatedByName { get; set; }
         // Set on a request from the public page, which has no account behind it.

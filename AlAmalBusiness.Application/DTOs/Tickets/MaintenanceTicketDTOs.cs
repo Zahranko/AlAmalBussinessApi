@@ -1,3 +1,4 @@
+using AlAmalBusiness.Domain.Constants;
 using System.ComponentModel.DataAnnotations;
 
 namespace AlAmalBusiness.Application.DTOs.Tickets
@@ -15,6 +16,9 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
 
         [StringLength(4000, ErrorMessage = "التفاصيل 4000 حرف كحد أقصى")]
         public string? Details { get; set; }
+
+        // Missing = Normal.
+        public MaintenancePriority? Priority { get; set; }
     }
 
     // The public request page (ments.<domain>). Nobody signs in there, so it
@@ -27,6 +31,8 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
         public string? Title { get; set; }
         public string? Location { get; set; }
         public string? Details { get; set; }
+        // Missing = Normal; a value outside the enum is refused by the service.
+        public MaintenancePriority? Priority { get; set; }
     }
 
     // Who is acting, from the caller's own validated token.

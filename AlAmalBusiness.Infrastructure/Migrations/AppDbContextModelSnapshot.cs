@@ -1177,6 +1177,9 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
                     b.Property<string>("RequesterName")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");

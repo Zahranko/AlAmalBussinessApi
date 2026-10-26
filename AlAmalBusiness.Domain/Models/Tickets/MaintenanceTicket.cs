@@ -32,6 +32,9 @@ namespace AlAmalBusiness.Domain.Models.Tickets
 
         public TicketStatus Status { get; set; } = TicketStatus.Open;
 
+        // الأهمية — picked on both forms; Normal when none is sent.
+        public MaintenancePriority Priority { get; set; } = MaintenancePriority.Normal;
+
         // The raiser's account. Null for a request sent from the public page
         // (ments.<domain>, added 2026-10-25), which nobody signs in to — the
         // Requester* fields below say who sent it instead.

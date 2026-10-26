@@ -36,6 +36,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             Title = t.Title,
             Location = t.Location,
             Status = t.Status,
+            Priority = t.Priority,
             CreatedById = t.CreatedById,
             // A public request has no account behind it — show who typed it.
             CreatedByName = t.CreatedById != null ? t.CreatedBy!.UserName : t.RequesterName,
@@ -59,6 +60,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                     Title = t.Title,
                     Location = t.Location,
                     Status = t.Status,
+                    Priority = t.Priority,
                     CreatedById = t.CreatedById,
                     CreatedByName = t.CreatedById != null ? t.CreatedBy!.UserName : t.RequesterName,
                     RequesterName = t.RequesterName,
