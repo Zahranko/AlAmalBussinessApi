@@ -67,9 +67,13 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             if (!Enum.IsDefined(priority))
                 return Failed("اختر الأهمية من القائمة.");
 
+            if (request.Site.HasValue && !Enum.IsDefined(request.Site.Value))
+                return Failed("اختر المبنى من القائمة.");
+
             var ticket = new MaintenanceTicket
             {
                 Title = title,
+                Site = request.Site,
                 Location = Clean(request.Location),
                 Details = Clean(request.Details),
                 Priority = priority,
@@ -105,9 +109,10 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             if (name == null || name.Length < 2 || name.Length > 100)
                 return Rejected("الاسم مطلوب (بين حرفين و100 حرف)");
 
+            // Optional since 2026-10-26; checked only when given.
             var phone = Clean(request.RequesterPhone);
-            if (phone == null || !IsPhone(phone))
-                return Rejected("رقم الهاتف أو التحويلة مطلوب (3 أرقام على الأقل)");
+            if (phone != null && !IsPhone(phone))
+                return Rejected("رقم الهاتف أو التحويلة غير صحيح (3 أرقام على الأقل)");
 
             var title = Clean(request.Title);
             if (title == null || title.Length < 2 || title.Length > 200)
@@ -115,6 +120,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
 
             // Required here, unlike the console form: the team has no account
             // to ask, so where to go has to come with the request.
+            if (request.Site is not { } site || !Enum.IsDefined(site))
+                return Rejected("اختر المبنى");
+
             var location = Clean(request.Location);
             if (location == null || location.Length > 200)
                 return Rejected("الموقع مطلوب (200 حرف كحد أقصى)");
@@ -130,6 +138,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             var ticket = new MaintenanceTicket
             {
                 Title = title,
+                Site = site,
                 Location = location,
                 Details = details,
                 Priority = priority,
@@ -339,7 +348,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             {
                 var recipients = await _userRepo.GetActiveEmailsInRolesAsync(SupportRoles, actorId);
                 Enqueue(ticket.Id, "new-maintenance", recipients,
-                    to => TicketEmailTemplate.NewMaintenance(to, Facts(ticket), ticket.Location, ticket.RequesterPhone, PriorityLabel(ticket.Priority), Link(ticket.Id)));
+                    to => TicketEmailTemplate.NewMaintenance(to, Facts(ticket), Where(ticket), ticket.RequesterPhone, PriorityLabel(ticket.Priority), Link(ticket.Id)));
             }
             catch (Exception ex)
             {
@@ -356,7 +365,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
                 var recipients = email == null ? new List<string>() : new List<string> { email };
                 Enqueue(ticket.Id, "closed", recipients,
                     to => TicketEmailTemplate.MaintenanceClosed(
-                        to, Facts(ticket), ticket.Location, success, ticket.AssignedToName ?? "-", reason, Link(ticket.Id)));
+                        to, Facts(ticket), Where(ticket), success, ticket.AssignedToName ?? "-", reason, Link(ticket.Id)));
             }
             catch (Exception ex)
             {
@@ -386,6 +395,22 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             ticket.DepartmentName,
             null,
             ticket.CreatedDate.ToString("yyyy-MM-dd HH:mm"));
+
+        // The email's location row: the building, then the spot typed under it.
+        private static string? Where(MaintenanceTicketDetailResponse ticket)
+        {
+            var site = ticket.Site switch
+            {
+                nameof(MaintenanceSite.Hospital) => "مستشفى",
+                nameof(MaintenanceSite.Clinics) => "عيادات",
+                nameof(MaintenanceSite.Administration) => "ادارة",
+                nameof(MaintenanceSite.NursingHousing) => "سكن التمريض",
+                _ => null
+            };
+            var parts = new[] { site, ticket.Location }.Where(s => !string.IsNullOrWhiteSpace(s));
+            var text = string.Join(" — ", parts);
+            return text.Length == 0 ? null : text;
+        }
 
         // Left out of the email for Normal — only worth a row when it says something.
         private static string? PriorityLabel(string? priority) => priority switch
@@ -425,6 +450,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         {
             target.Id = row.Id;
             target.Title = row.Title;
+            target.Site = row.Site?.ToString();
             target.Location = row.Location;
             target.Status = row.Status.ToString();
             target.Priority = row.Priority.ToString();

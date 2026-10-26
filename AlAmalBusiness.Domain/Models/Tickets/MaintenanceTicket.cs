@@ -24,6 +24,10 @@ namespace AlAmalBusiness.Domain.Models.Tickets
         [Required]
         public string Title { get; set; } = string.Empty;
 
+        // Which building, from a fixed list (2026-10-26). Null on older rows
+        // and on a console request that didn't pick one.
+        public MaintenanceSite? Site { get; set; }
+
         // Where the problem is — a room, a floor, a ward — in free text.
         public string? Location { get; set; }
 
@@ -42,7 +46,8 @@ namespace AlAmalBusiness.Domain.Models.Tickets
         public User? CreatedBy { get; set; }
 
         // Who sent a public request and how to reach them — typed by the
-        // sender, so free text (an extension is as likely as a mobile).
+        // sender, so free text (an extension is as likely as a mobile). The
+        // phone is optional since 2026-10-26.
         // Null on a request raised from the console.
         public string? RequesterName { get; set; }
         public string? RequesterPhone { get; set; }

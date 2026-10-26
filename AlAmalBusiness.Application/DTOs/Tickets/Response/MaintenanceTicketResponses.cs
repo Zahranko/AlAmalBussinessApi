@@ -7,6 +7,7 @@ namespace AlAmalBusiness.Application.DTOs.Tickets.Response
     {
         public int Id { get; set; }
         public string? Title { get; set; }
+        public string? Site { get; set; }
         public string? Location { get; set; }
         public string? Status { get; set; }
         public string? Priority { get; set; }

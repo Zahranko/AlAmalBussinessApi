@@ -34,6 +34,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
         {
             Id = t.Id,
             Title = t.Title,
+            Site = t.Site,
             Location = t.Location,
             Status = t.Status,
             Priority = t.Priority,
@@ -58,6 +59,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
                 {
                     Id = t.Id,
                     Title = t.Title,
+                    Site = t.Site,
                     Location = t.Location,
                     Status = t.Status,
                     Priority = t.Priority,

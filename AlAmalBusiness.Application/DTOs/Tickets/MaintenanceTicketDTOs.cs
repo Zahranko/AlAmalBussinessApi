@@ -11,6 +11,9 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
         [StringLength(200, MinimumLength = 2, ErrorMessage = "العنوان بين حرفين و200 حرف")]
         public string? Title { get; set; }
 
+        // Optional here; an undefined value is refused by the service.
+        public MaintenanceSite? Site { get; set; }
+
         [StringLength(200, ErrorMessage = "الموقع 200 حرف كحد أقصى")]
         public string? Location { get; set; }
 
@@ -29,6 +32,8 @@ namespace AlAmalBusiness.Application.DTOs.Tickets
         public string? RequesterName { get; set; }
         public string? RequesterPhone { get; set; }
         public string? Title { get; set; }
+        // Required on the public page.
+        public MaintenanceSite? Site { get; set; }
         public string? Location { get; set; }
         public string? Details { get; set; }
         // Missing = Normal; a value outside the enum is refused by the service.

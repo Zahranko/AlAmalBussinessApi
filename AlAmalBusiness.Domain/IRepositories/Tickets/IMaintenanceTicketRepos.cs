@@ -73,6 +73,7 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
     {
         public int Id { get; set; }
         public string? Title { get; set; }
+        public MaintenanceSite? Site { get; set; }
         public string? Location { get; set; }
         public TicketStatus Status { get; set; }
         public MaintenancePriority Priority { get; set; }
