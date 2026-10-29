@@ -161,6 +161,133 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.ToTable("AppointmentRequests");
                 });
 
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal>("Hours")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceCodes");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceEntry", b =>
+                {
+                    b.Property<int>("RowId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Day")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CodeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RowId", "Day");
+
+                    b.HasIndex("CodeId");
+
+                    b.ToTable("AttendanceEntries");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceRow", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EmployeeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmployeeNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("SheetId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SheetId", "EmployeeNumber")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceRows");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceSheet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("DepartmentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("RequiredHours")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("DepartmentId", "Year", "Month");
+
+                    b.HasIndex("Year", "Month", "DepartmentId")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceSheets");
+                });
+
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.CRM.ClosedReason", b =>
                 {
                     b.Property<int>("Id")
@@ -1699,6 +1826,54 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Navigation("ReferralSource");
                 });
 
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceEntry", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.Attendance.AttendanceCode", "Code")
+                        .WithMany()
+                        .HasForeignKey("CodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.Attendance.AttendanceRow", "Row")
+                        .WithMany("Entries")
+                        .HasForeignKey("RowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Code");
+
+                    b.Navigation("Row");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceRow", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.Attendance.AttendanceSheet", "Sheet")
+                        .WithMany("Rows")
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Sheet");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceSheet", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.Departments", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Department");
+                });
+
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.CRM.DeletedLead", b =>
                 {
                     b.HasOne("AlAmalBusiness.Domain.Models.User", "DeletedBy")
@@ -2169,6 +2344,16 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceRow", b =>
+                {
+                    b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceSheet", b =>
+                {
+                    b.Navigation("Rows");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.CRM.ClosedReason", b =>

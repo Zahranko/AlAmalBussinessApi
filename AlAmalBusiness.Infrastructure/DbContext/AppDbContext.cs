@@ -1,5 +1,6 @@
 ﻿using AlAmalBusiness.Domain.Models;
 using AlAmalBusiness.Domain.Models.Appointments;
+using AlAmalBusiness.Domain.Models.Attendance;
 using AlAmalBusiness.Domain.Models.CRM;
 using AlAmalBusiness.Domain.Models.Feedback;
 using AlAmalBusiness.Domain.Models.Mammograms;
@@ -48,6 +49,10 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<MammogramReport> MammogramReports { get; set; }
       public DbSet<MammogramAppointment> MammogramAppointments { get; set; }
       public DbSet<MammogramAppointmentHistory> MammogramAppointmentHistories { get; set; }
+      public DbSet<AttendanceCode> AttendanceCodes { get; set; }
+      public DbSet<AttendanceSheet> AttendanceSheets { get; set; }
+      public DbSet<AttendanceRow> AttendanceRows { get; set; }
+      public DbSet<AttendanceEntry> AttendanceEntries { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -480,6 +485,55 @@ public class AppDbContext : IdentityDbContext<User>
 
         modelBuilder.Entity<MammogramAppointmentHistory>().HasIndex(h => new { h.AppointmentId, h.CreatedAt });
         modelBuilder.Entity<MammogramAppointmentHistory>().Property(h => h.Note).HasMaxLength(2000);
+
+        // ---------- Attendance ----------
+
+        // A unique code backs the service's duplicate check against a race.
+        modelBuilder.Entity<AttendanceCode>().HasIndex(c => c.Code).IsUnique();
+        modelBuilder.Entity<AttendanceCode>().Property(c => c.Hours).HasPrecision(5, 2);
+
+        // One sheet per department per month — opening a month for several
+        // departments relies on this against a double-click race.
+        modelBuilder.Entity<AttendanceSheet>().HasIndex(s => new { s.Year, s.Month, s.DepartmentId }).IsUnique();
+        modelBuilder.Entity<AttendanceSheet>().HasIndex(s => new { s.DepartmentId, s.Year, s.Month });
+        modelBuilder.Entity<AttendanceSheet>().Property(s => s.RequiredHours).HasPrecision(6, 2);
+
+        modelBuilder.Entity<AttendanceSheet>()
+            .HasOne(s => s.Department)
+            .WithMany()
+            .HasForeignKey(s => s.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AttendanceSheet>()
+            .HasOne(s => s.CreatedBy)
+            .WithMany()
+            .HasForeignKey(s => s.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AttendanceRow>()
+            .HasOne(r => r.Sheet)
+            .WithMany(s => s.Rows)
+            .HasForeignKey(r => r.SheetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // An employee number appears once per sheet.
+        modelBuilder.Entity<AttendanceRow>().HasIndex(r => new { r.SheetId, r.EmployeeNumber }).IsUnique();
+
+        // A blank day is no row, so (row, day) is the whole identity.
+        modelBuilder.Entity<AttendanceEntry>().HasKey(e => new { e.RowId, e.Day });
+
+        modelBuilder.Entity<AttendanceEntry>()
+            .HasOne(e => e.Row)
+            .WithMany(r => r.Entries)
+            .HasForeignKey(e => e.RowId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Codes are retired with IsActive, never deleted from under a day.
+        modelBuilder.Entity<AttendanceEntry>()
+            .HasOne(e => e.Code)
+            .WithMany()
+            .HasForeignKey(e => e.CodeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ---------- Tickets ----------
 

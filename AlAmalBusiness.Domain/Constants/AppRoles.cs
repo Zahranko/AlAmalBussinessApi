@@ -62,5 +62,10 @@ namespace AlAmalBusiness.Domain.Constants
         // only by spelling — that one is the mammogram register's.)
         public const string MRaiser = "MRaiser";
         public const string MSupport = "MSupport";
+        // Staff attendance (added 2026-10-29): opens a department's monthly
+        // attendance sheet and fills its codes. Per-department, the feedback
+        // way — the departments on their token, Admin every department. Spelt
+        // out in full because every short prefix (A-, M-) is already taken.
+        public const string AttendanceManager = "AttendanceManager";
     }
 }

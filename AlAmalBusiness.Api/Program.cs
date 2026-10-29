@@ -5,6 +5,10 @@ using AlAmalBusiness.Application.Services.Imp.Appointments;
 using AlAmalBusiness.Application.Services.Interface.Appointments;
 using AlAmalBusiness.Domain.IRepositories.Appointments;
 using AlAmalBusiness.Infrastructure.Repository.Imp.Appointments;
+using AlAmalBusiness.Application.Services.Imp.Attendance;
+using AlAmalBusiness.Application.Services.Interface.Attendance;
+using AlAmalBusiness.Domain.IRepositories.Attendance;
+using AlAmalBusiness.Infrastructure.Repository.Imp.Attendance;
 using AlAmalBusiness.Application.Services.Imp.Mammograms;
 using AlAmalBusiness.Application.Services.Interface.Mammograms;
 using AlAmalBusiness.Domain.IRepositories.Mammograms;
@@ -91,6 +95,9 @@ builder.Services.AddScoped<IMammogramSheetRepo, MammogramSheetRepo>();
 builder.Services.AddScoped<IMammogramRecordRepo, MammogramRecordRepo>();
 builder.Services.AddScoped<IMammogramReportRepo, MammogramReportRepo>();
 builder.Services.AddScoped<IMammogramAppointmentRepo, MammogramAppointmentRepo>();
+builder.Services.AddScoped<IAttendanceCodeRepo, AttendanceCodeRepo>();
+builder.Services.AddScoped<IAttendanceSheetRepo, AttendanceSheetRepo>();
+builder.Services.AddScoped<IAttendanceRowRepo, AttendanceRowRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -116,6 +123,8 @@ builder.Services.AddScoped<ITicketListService, TicketListService>();
 builder.Services.AddScoped<IMaintenanceTicketService, MaintenanceTicketService>();
 builder.Services.AddScoped<IMammogramService, MammogramService>();
 builder.Services.AddScoped<IMammogramAppointmentService, MammogramAppointmentService>();
+builder.Services.AddScoped<IAttendanceCodeService, AttendanceCodeService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 // The register's WhatsApp follow-up reminders, through the hospital's own
 // WhatsApp platform (WhatsApp section; blank ApiKey = off) — see the scheduler.
 builder.Services.AddHttpClient<IWhatsAppSender, AlAmalBusiness.Api.WhatsApp.WhatsAppPlatformClient>(http =>
