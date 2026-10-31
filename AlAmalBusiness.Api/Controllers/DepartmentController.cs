@@ -77,6 +77,24 @@ namespace AlAmalBusiness.Api.Controllers
             }
         }
 
+        // The order the attendance screens list departments in (nursing
+        // first, security second...) — same body and rules as reorder, but
+        // its own column, so the public form keeps the order patients see.
+        [HttpPut("attendance-order")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
+        public async Task<IActionResult> ReorderAttendance(ReorderDepartmentsDTO request)
+        {
+            var result = await _departmentServices.ReorderDepartmentsAsync(request, attendance: true);
+            if (result.Success)
+            {
+                return NoContent();
+            }
+            else
+            {
+                return BadRequest(result.Message);
+            }
+        }
+
         [HttpPut("updateDepartment/{id}")]
         [Authorize(Roles = nameof(AppRoles.Admin))]
         public async Task<IActionResult> UpdateDepartment(int id, DepartmentDTO dto)

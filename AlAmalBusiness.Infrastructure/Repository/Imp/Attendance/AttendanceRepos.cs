@@ -1,4 +1,4 @@
-using AlAmalBusiness.DbContext.Infrastructure;
+﻿using AlAmalBusiness.DbContext.Infrastructure;
 using AlAmalBusiness.Domain.IRepositories.Attendance;
 using AlAmalBusiness.Domain.Models.Attendance;
 using Microsoft.EntityFrameworkCore;
@@ -72,8 +72,11 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Attendance
             if (query.Month.HasValue) q = q.Where(s => s.Month == query.Month.Value);
             if (query.DepartmentId.HasValue) q = q.Where(s => s.DepartmentId == query.DepartmentId.Value);
 
-            return Rows(q)
-                .OrderByDescending(s => s.Year).ThenByDescending(s => s.Month).ThenBy(s => s.DepartmentName)
+            // Departments in the admin's attendance order (Settings ->
+            // Attendance), name only to break ties.
+            return Rows(q
+                    .OrderByDescending(s => s.Year).ThenByDescending(s => s.Month)
+                    .ThenBy(s => s.Department!.AttendanceOrder).ThenBy(s => s.Department!.Name))
                 .ToListAsync();
         }
 

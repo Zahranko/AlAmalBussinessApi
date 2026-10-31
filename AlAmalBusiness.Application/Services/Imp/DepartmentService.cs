@@ -64,7 +64,8 @@ namespace AlAmalBusiness.Application.Services.Imp
                 Id = d.Id,
                 Name = d.Name,
                 IsActive = d.IsActive,
-                DisplayOrder = d.DisplayOrder
+                DisplayOrder = d.DisplayOrder,
+                AttendanceOrder = d.AttendanceOrder
             });
         }
 
@@ -77,7 +78,8 @@ namespace AlAmalBusiness.Application.Services.Imp
                 Id = d.Id,
                 Name = d.Name,
                 IsActive = d.IsActive,
-                DisplayOrder = d.DisplayOrder
+                DisplayOrder = d.DisplayOrder,
+                AttendanceOrder = d.AttendanceOrder
             });
         }
 
@@ -151,7 +153,7 @@ namespace AlAmalBusiness.Application.Services.Imp
             };
         }
 
-        public async Task<DepartmentResponse> ReorderDepartmentsAsync(ReorderDepartmentsDTO request)
+        public async Task<DepartmentResponse> ReorderDepartmentsAsync(ReorderDepartmentsDTO request, bool attendance = false)
         {
             if (request?.DepartmentIds == null || request.DepartmentIds.Count == 0)
             {
@@ -162,7 +164,7 @@ namespace AlAmalBusiness.Application.Services.Imp
                 };
             }
 
-            var reordered = await _repo.ReorderAsync(request.DepartmentIds);
+            var reordered = await _repo.ReorderAsync(request.DepartmentIds, attendance);
 
             return reordered
                 ? new DepartmentResponse { Success = true }

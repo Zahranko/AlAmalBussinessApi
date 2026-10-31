@@ -14,5 +14,9 @@ namespace AlAmalBusiness.Application.DTOs.Departments
         // Read-only as far as Create/Update are concerned — only the
         // reorder endpoint writes it, so an edit can't silently move a row.
         public int DisplayOrder { get; set; }
+
+        // Where it sits on the attendance screens. Read-only here too; only
+        // PUT /api/Department/attendance-order writes it.
+        public int AttendanceOrder { get; set; }
     }
 }

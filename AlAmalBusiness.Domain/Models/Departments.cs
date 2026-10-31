@@ -18,6 +18,12 @@ namespace AlAmalBusiness.Domain.Models
         // (1-based, contiguous). Admin-controlled from the console's
         // Settings -> Departments screen; new departments land last.
         public int DisplayOrder { get; set; }
+
+        // Position in the attendance screens (the month's sheet list and the
+        // open-month dialog) — nursing first, security second and so on.
+        // Its own column on purpose: the public form's order is for patients,
+        // this one is the HR grouping, and moving one must not move the other.
+        public int AttendanceOrder { get; set; }
         public ICollection<User> Users { get; set; } = new List<User>();
 
     }

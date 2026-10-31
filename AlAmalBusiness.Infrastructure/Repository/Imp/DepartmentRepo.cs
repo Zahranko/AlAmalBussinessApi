@@ -31,6 +31,9 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
                var lastOrder = await _context.Departments
                    .MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
                department.DisplayOrder = lastOrder + 1;
+               // Last on the attendance screens too.
+               department.AttendanceOrder = (await _context.Departments
+                   .MaxAsync(d => (int?)d.AttendanceOrder) ?? 0) + 1;
                _context.Departments.Add(department);
                await _context.SaveChangesAsync();
                 return department;
@@ -61,7 +64,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
                 .ToListAsync();
         }
 
-        public async Task<bool> ReorderAsync(IReadOnlyList<int> orderedIds)
+        public async Task<bool> ReorderAsync(IReadOnlyList<int> orderedIds, bool attendance = false)
         {
             var departments = await _context.Departments.ToListAsync();
 
@@ -85,7 +88,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
 
             foreach (var department in departments)
             {
-                department.DisplayOrder = positions[department.Id];
+                if (attendance) department.AttendanceOrder = positions[department.Id];
+                else department.DisplayOrder = positions[department.Id];
             }
 
             await _context.SaveChangesAsync();
