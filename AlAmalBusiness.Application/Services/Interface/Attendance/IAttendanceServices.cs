@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs.Attendance;
+﻿using AlAmalBusiness.Application.DTOs.Attendance;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -20,6 +20,8 @@ namespace AlAmalBusiness.Application.Services.Interface.Attendance
 
         // Only while no day has been filled.
         Task<AttendanceResult<bool>> DeleteSheetAsync(int id, AttendanceActor actor);
+        Task<AttendanceResult<AttendanceSheetResponse>> CloseSheetAsync(int id, AttendanceActor actor);
+        Task<AttendanceResult<AttendanceSheetResponse>> ReopenSheetAsync(int id, AttendanceActor actor);
 
         Task<AttendanceGridResponse?> GetGridAsync(int id, AttendanceActor actor);
 

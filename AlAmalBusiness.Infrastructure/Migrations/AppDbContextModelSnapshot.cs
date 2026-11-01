@@ -257,6 +257,12 @@ namespace AlAmalBusiness.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosedById")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -265,6 +271,9 @@ namespace AlAmalBusiness.Infrastructure.Migrations
 
                     b.Property<int>("DepartmentId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsClosed")
+                        .HasColumnType("bit");
 
                     b.Property<int>("Month")
                         .HasColumnType("int");
@@ -277,6 +286,8 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClosedById");
 
                     b.HasIndex("CreatedById");
 
@@ -575,6 +586,125 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Referals");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.CarCheckDay", b =>
+                {
+                    b.Property<int>("SheetId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Day")
+                        .HasColumnType("int");
+
+                    b.Property<bool?>("BodyDamage")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("BrakeOil")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("EmployeeName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool?>("EngineOil")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool?>("PowerSteeringOil")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("RadiatorWater")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("SheetId", "Day");
+
+                    b.HasIndex("UpdatedById");
+
+                    b.ToTable("CarCheckDays");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.CarCheckSheet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CarId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsClosed")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClosedById");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("CarId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("CarCheckSheets");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.SecurityCar", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PlateNumber")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("SecurityCars");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Departments", b =>
@@ -1861,6 +1991,11 @@ namespace AlAmalBusiness.Infrastructure.Migrations
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceSheet", b =>
                 {
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "ClosedBy")
+                        .WithMany()
+                        .HasForeignKey("ClosedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AlAmalBusiness.Domain.Models.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedById")
@@ -1871,6 +2006,8 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("ClosedBy");
 
                     b.Navigation("CreatedBy");
 
@@ -1993,6 +2130,49 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Navigation("Doctor");
 
                     b.Navigation("Lead");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.CarCheckDay", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.CarChecks.CarCheckSheet", "Sheet")
+                        .WithMany("Days")
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "UpdatedBy")
+                        .WithMany()
+                        .HasForeignKey("UpdatedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Sheet");
+
+                    b.Navigation("UpdatedBy");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.CarCheckSheet", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.CarChecks.SecurityCar", "Car")
+                        .WithMany("Sheets")
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "ClosedBy")
+                        .WithMany()
+                        .HasForeignKey("ClosedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Car");
+
+                    b.Navigation("ClosedBy");
+
+                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Feedback.FeedbackHistory", b =>
@@ -2377,6 +2557,16 @@ namespace AlAmalBusiness.Infrastructure.Migrations
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.CRM.ReferalSource", b =>
                 {
                     b.Navigation("Patients");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.CarCheckSheet", b =>
+                {
+                    b.Navigation("Days");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.SecurityCar", b =>
+                {
+                    b.Navigation("Sheets");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Departments", b =>

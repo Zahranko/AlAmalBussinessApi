@@ -1,6 +1,7 @@
 ﻿using AlAmalBusiness.Domain.Models;
 using AlAmalBusiness.Domain.Models.Appointments;
 using AlAmalBusiness.Domain.Models.Attendance;
+using AlAmalBusiness.Domain.Models.CarChecks;
 using AlAmalBusiness.Domain.Models.CRM;
 using AlAmalBusiness.Domain.Models.Feedback;
 using AlAmalBusiness.Domain.Models.Mammograms;
@@ -53,6 +54,9 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<AttendanceSheet> AttendanceSheets { get; set; }
       public DbSet<AttendanceRow> AttendanceRows { get; set; }
       public DbSet<AttendanceEntry> AttendanceEntries { get; set; }
+      public DbSet<SecurityCar> SecurityCars { get; set; }
+      public DbSet<CarCheckSheet> CarCheckSheets { get; set; }
+      public DbSet<CarCheckDay> CarCheckDays { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -510,6 +514,12 @@ public class AppDbContext : IdentityDbContext<User>
             .HasForeignKey(s => s.CreatedById)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<AttendanceSheet>()
+            .HasOne(s => s.ClosedBy)
+            .WithMany()
+            .HasForeignKey(s => s.ClosedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<AttendanceRow>()
             .HasOne(r => r.Sheet)
             .WithMany(s => s.Rows)
@@ -533,6 +543,47 @@ public class AppDbContext : IdentityDbContext<User>
             .HasOne(e => e.Code)
             .WithMany()
             .HasForeignKey(e => e.CodeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // ---------- Security: car checks ----------
+
+        modelBuilder.Entity<SecurityCar>().HasIndex(c => c.Name).IsUnique();
+
+        // One sheet per car per month, against a double-click race.
+        modelBuilder.Entity<CarCheckSheet>().HasIndex(s => new { s.CarId, s.Year, s.Month }).IsUnique();
+
+        // Cars are retired with IsActive, never deleted from under a sheet.
+        modelBuilder.Entity<CarCheckSheet>()
+            .HasOne(s => s.Car)
+            .WithMany(c => c.Sheets)
+            .HasForeignKey(s => s.CarId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CarCheckSheet>()
+            .HasOne(s => s.CreatedBy)
+            .WithMany()
+            .HasForeignKey(s => s.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CarCheckSheet>()
+            .HasOne(s => s.ClosedBy)
+            .WithMany()
+            .HasForeignKey(s => s.ClosedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // A blank day is no row, so (sheet, day) is the whole identity.
+        modelBuilder.Entity<CarCheckDay>().HasKey(d => new { d.SheetId, d.Day });
+
+        modelBuilder.Entity<CarCheckDay>()
+            .HasOne(d => d.Sheet)
+            .WithMany(s => s.Days)
+            .HasForeignKey(d => d.SheetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CarCheckDay>()
+            .HasOne(d => d.UpdatedBy)
+            .WithMany()
+            .HasForeignKey(d => d.UpdatedById)
             .OnDelete(DeleteBehavior.Restrict);
 
         // ---------- Tickets ----------

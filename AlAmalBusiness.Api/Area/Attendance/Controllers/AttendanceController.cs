@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs.Attendance;
+﻿using AlAmalBusiness.Application.DTOs.Attendance;
 using AlAmalBusiness.Application.Services.Interface.Attendance;
 using AlAmalBusiness.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -15,6 +15,11 @@ namespace AlAmalBusiness.Api.Area.Attendance.Controllers
     // fill each employee's days with codes, read back totals and shortages.
     // Department-scoped the feedback way — a sheet outside the caller's
     // departments answers 404.
+    //
+    // An AttendanceManager does everything but delete, reopen a closed month
+    // or edit one: deletes and reopen are Admin-only here, the closed-month
+    // rule is the service's. The codes list is AttendanceListsController's,
+    // Admin-only as a whole.
     //
     // Answers: the saved item on success, { message } with 400 for a broken
     // rule, 409 for a duplicate/blocked action, 404 for no such id.
@@ -84,8 +89,19 @@ namespace AlAmalBusiness.Api.Area.Attendance.Controllers
         public Task<IActionResult> UpdateSheet(int id, UpdateAttendanceSheetDTO dto) =>
             Run(() => _attendance.UpdateSheetAsync(id, dto, Actor));
 
-        // Only while no day has been filled.
+        // Any AttendanceManager may close a month; only an Admin reopens it.
+        [HttpPost("sheets/{id:int}/close")]
+        public Task<IActionResult> CloseSheet(int id) =>
+            Run(() => _attendance.CloseSheetAsync(id, Actor));
+
+        [HttpPost("sheets/{id:int}/reopen")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
+        public Task<IActionResult> ReopenSheet(int id) =>
+            Run(() => _attendance.ReopenSheetAsync(id, Actor));
+
+        // Admin only, and only while no day has been filled.
         [HttpDelete("sheets/{id:int}")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
         public async Task<IActionResult> DeleteSheet(int id)
         {
             var result = await _attendance.DeleteSheetAsync(id, Actor);
@@ -100,11 +116,15 @@ namespace AlAmalBusiness.Api.Area.Attendance.Controllers
         public Task<IActionResult> SaveRows(int id, List<SaveAttendanceRowDTO> rows) =>
             Run(() => _attendance.SaveRowsAsync(id, rows, Actor));
 
+        // Admin only.
         [HttpDelete("rows/{id:int}")]
+        [Authorize(Roles = nameof(AppRoles.Admin))]
         public async Task<IActionResult> DeleteRow(int id)
         {
             var result = await _attendance.DeleteRowAsync(id, Actor);
-            return result.NotFound ? NotFound() : NoContent();
+            if (result.NotFound) return NotFound();
+            if (!result.Success) return Conflict(new { message = result.Error });
+            return NoContent();
         }
 
         private async Task<IActionResult> Run<T>(Func<Task<AttendanceResult<T>>> action)

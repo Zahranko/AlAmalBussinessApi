@@ -55,7 +55,10 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Attendance
                 RequiredHours = s.RequiredHours,
                 EmployeeCount = s.Rows.Count(),
                 CreatedByName = s.CreatedBy!.UserName,
-                CreatedAt = s.CreatedAt
+                CreatedAt = s.CreatedAt,
+                IsClosed = s.IsClosed,
+                ClosedAt = s.ClosedAt,
+                ClosedByName = s.ClosedBy!.UserName
             });
 
         public Task<List<AttendanceSheetRow>> GetAllAsync(AttendanceSheetQuery query)

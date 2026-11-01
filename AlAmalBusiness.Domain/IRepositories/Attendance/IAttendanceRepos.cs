@@ -1,4 +1,4 @@
-using AlAmalBusiness.Domain.Models.Attendance;
+﻿using AlAmalBusiness.Domain.Models.Attendance;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -79,6 +79,9 @@ namespace AlAmalBusiness.Domain.IRepositories.Attendance
         public int EmployeeCount { get; set; }
         public string? CreatedByName { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsClosed { get; set; }
+        public DateTime? ClosedAt { get; set; }
+        public string? ClosedByName { get; set; }
     }
 
     public class AttendanceGridRow

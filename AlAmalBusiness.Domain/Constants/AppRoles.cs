@@ -67,5 +67,9 @@ namespace AlAmalBusiness.Domain.Constants
         // way — the departments on their token, Admin every department. Spelt
         // out in full because every short prefix (A-, M-) is already taken.
         public const string AttendanceManager = "AttendanceManager";
+        // Security's daily vehicle checks (added 2026-11-01): works the cars'
+        // monthly check sheets. Like AttendanceManager it may do everything
+        // but delete, change the managed list, or reopen/edit a closed month.
+        public const string SecurityManager = "SecurityManager";
     }
 }

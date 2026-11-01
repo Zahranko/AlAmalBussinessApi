@@ -1,4 +1,4 @@
-using AlAmalBusiness.Domain.Constants;
+﻿using AlAmalBusiness.Domain.Constants;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -28,6 +28,13 @@ namespace AlAmalBusiness.Domain.Models.Attendance
         public User? CreatedBy { get; set; }
 
         public DateTime CreatedAt { get; set; } = AppClock.Now;
+
+        // A closed month is read-only for everyone but an Admin, who alone
+        // may reopen it. Any AttendanceManager may close one.
+        public bool IsClosed { get; set; }
+        public DateTime? ClosedAt { get; set; }
+        public string? ClosedById { get; set; }
+        public User? ClosedBy { get; set; }
 
         public List<AttendanceRow> Rows { get; set; } = new();
     }

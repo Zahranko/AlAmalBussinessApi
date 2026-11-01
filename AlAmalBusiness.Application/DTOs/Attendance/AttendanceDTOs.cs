@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -68,6 +68,10 @@ namespace AlAmalBusiness.Application.DTOs.Attendance
         public int EmployeeCount { get; set; }
         public string? CreatedByName { get; set; }
         public DateTime CreatedAt { get; set; }
+        // Closed = read-only for an AttendanceManager; only an Admin reopens.
+        public bool IsClosed { get; set; }
+        public DateTime? ClosedAt { get; set; }
+        public string? ClosedByName { get; set; }
     }
 
     // The whole grid in one read: the sheet, the codes its dropdowns offer

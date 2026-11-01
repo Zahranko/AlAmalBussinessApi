@@ -1,4 +1,4 @@
-using AlAmalBusiness.Application.DTOs.Attendance;
+﻿using AlAmalBusiness.Application.DTOs.Attendance;
 using AlAmalBusiness.Application.Services.Interface.Attendance;
 using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories;
@@ -19,6 +19,11 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
     // Scoping is the feedback rule: Admin reads every department, everyone
     // else the departments on their own token, and a sheet outside that set
     // answers 404, not 403.
+    //
+    // An AttendanceManager may do everything but delete, change the codes,
+    // reopen a closed month or edit one — those are Admin's alone. Deletes
+    // and reopen are gated on the controller; the closed-month rule lives
+    // here because it depends on the sheet. (CanViewAll is Admin alone.)
     public class AttendanceService : IAttendanceService
     {
         private const decimal DefaultRequiredHours = 208;
@@ -127,6 +132,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
         {
             var sheet = await _sheets.GetByIdAsync(id);
             if (sheet == null || !CanSee(sheet.DepartmentId, actor)) return Missing<AttendanceSheetResponse>();
+            if (Locked(sheet, actor)) return Conflicted<AttendanceSheetResponse>(ClosedMessage);
             if (dto.RequiredHours is <= 0 or > 744) return Failed<AttendanceSheetResponse>("Required hours must be between 1 and 744.");
 
             sheet.RequiredHours = dto.RequiredHours;
@@ -146,6 +152,34 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
             _sheets.Remove(sheet);
             await _sheets.SaveChangesAsync();
             return Ok(true);
+        }
+
+        // Ends the month: read-only from here for everyone but an Admin.
+        public async Task<AttendanceResult<AttendanceSheetResponse>> CloseSheetAsync(int id, AttendanceActor actor)
+        {
+            var sheet = await _sheets.GetByIdAsync(id);
+            if (sheet == null || !CanSee(sheet.DepartmentId, actor)) return Missing<AttendanceSheetResponse>();
+            if (sheet.IsClosed) return Conflicted<AttendanceSheetResponse>("This month is already closed.");
+
+            sheet.IsClosed = true;
+            sheet.ClosedAt = AppClock.Now;
+            sheet.ClosedById = actor.UserId;
+            await _sheets.SaveChangesAsync();
+            return Ok(ToResponse((await _sheets.GetRowAsync(id))!));
+        }
+
+        // Admin only (the controller's gate).
+        public async Task<AttendanceResult<AttendanceSheetResponse>> ReopenSheetAsync(int id, AttendanceActor actor)
+        {
+            var sheet = await _sheets.GetByIdAsync(id);
+            if (sheet == null || !CanSee(sheet.DepartmentId, actor)) return Missing<AttendanceSheetResponse>();
+            if (!sheet.IsClosed) return Conflicted<AttendanceSheetResponse>("This month isn't closed.");
+
+            sheet.IsClosed = false;
+            sheet.ClosedAt = null;
+            sheet.ClosedById = null;
+            await _sheets.SaveChangesAsync();
+            return Ok(ToResponse((await _sheets.GetRowAsync(id))!));
         }
 
         // ---------- grid ----------
@@ -177,6 +211,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
         {
             var sheet = await _sheets.GetByIdAsync(sheetId);
             if (sheet == null || !CanSee(sheet.DepartmentId, actor)) return Missing<List<AttendanceRowResult>>();
+            if (Locked(sheet, actor)) return Conflicted<List<AttendanceRowResult>>(ClosedMessage);
             if (rows.Count == 0) return Ok(new List<AttendanceRowResult>());
             if (rows.Count > MaxRowsPerSave)
                 return Failed<List<AttendanceRowResult>>($"At most {MaxRowsPerSave} rows can be saved at once.");
@@ -260,6 +295,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
 
             var sheet = await _sheets.GetByIdAsync(row.SheetId);
             if (sheet == null || !CanSee(sheet.DepartmentId, actor)) return Missing<bool>();
+            if (Locked(sheet, actor)) return Conflicted<bool>(ClosedMessage);
 
             _rows.Remove(row);
             await _rows.SaveChangesAsync();
@@ -373,8 +409,17 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
             RequiredHours = s.RequiredHours,
             EmployeeCount = s.EmployeeCount,
             CreatedByName = s.CreatedByName,
-            CreatedAt = s.CreatedAt
+            CreatedAt = s.CreatedAt,
+            IsClosed = s.IsClosed,
+            ClosedAt = s.ClosedAt,
+            ClosedByName = s.ClosedByName
         };
+
+        private const string ClosedMessage = "This month is closed — only an admin can change it.";
+
+        // A closed sheet refuses every edit but an Admin's.
+        private static bool Locked(AttendanceSheet sheet, AttendanceActor actor) =>
+            sheet.IsClosed && !actor.CanViewAll;
 
         internal static string Title(int year, int month) => $"{month}-{year}";
 
