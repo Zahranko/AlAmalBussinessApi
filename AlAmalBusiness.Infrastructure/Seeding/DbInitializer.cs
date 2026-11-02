@@ -77,7 +77,8 @@ namespace AlAmalBusiness.Infrastructure.Seeding
                 AppRoles.MSupport,
                 AppRoles.AttendanceManager,
                 AppRoles.SecurityManager,
-                AppRoles.Driver
+                AppRoles.Driver,
+                AppRoles.QRManager
             };
             // Runs on every cold start — one SELECT for the existing names
             // rather than one RoleExistsAsync round trip per role.

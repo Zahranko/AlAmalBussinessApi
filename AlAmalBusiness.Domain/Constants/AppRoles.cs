@@ -76,5 +76,11 @@ namespace AlAmalBusiness.Domain.Constants
         // and submits each one, after which only an Admin may change it. Reads
         // only their own trips; SecurityManager and Admin read everyone's.
         public const string Driver = "Driver";
+        // Dynamic QR codes (added 2026-11-02): creates, edits, pauses and reads
+        // the statistics of the hospital's QR codes from the console. The codes
+        // live in the separate AmalQR service — nothing in this API reads this
+        // role; the console's server checks it (via /api/Auth/me) before it
+        // calls AmalQR with its server key.
+        public const string QRManager = "QRManager";
     }
 }
