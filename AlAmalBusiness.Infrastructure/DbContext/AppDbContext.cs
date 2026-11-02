@@ -57,6 +57,7 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<SecurityCar> SecurityCars { get; set; }
       public DbSet<CarCheckSheet> CarCheckSheets { get; set; }
       public DbSet<CarCheckDay> CarCheckDays { get; set; }
+      public DbSet<CarTrip> CarTrips { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -585,6 +586,32 @@ public class AppDbContext : IdentityDbContext<User>
             .WithMany()
             .HasForeignKey(d => d.UpdatedById)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // ---------- Security: movement orders (car trips) ----------
+
+        modelBuilder.Entity<CarTrip>()
+            .HasOne(t => t.Car)
+            .WithMany()
+            .HasForeignKey(t => t.CarId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CarTrip>()
+            .HasOne(t => t.Driver)
+            .WithMany()
+            .HasForeignKey(t => t.DriverId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CarTrip>()
+            .HasOne(t => t.LastEditedBy)
+            .WithMany()
+            .HasForeignKey(t => t.LastEditedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The list (by car or a driver's own, newest first) and the
+        // "is this car already out" check.
+        modelBuilder.Entity<CarTrip>().HasIndex(t => new { t.CarId, t.DepartedAt });
+        modelBuilder.Entity<CarTrip>().HasIndex(t => new { t.DriverId, t.CreatedAt });
+        modelBuilder.Entity<CarTrip>().HasIndex(t => t.CreatedAt);
 
         // ---------- Tickets ----------
 

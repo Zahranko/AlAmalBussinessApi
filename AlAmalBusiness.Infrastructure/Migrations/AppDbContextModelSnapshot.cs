@@ -676,6 +676,69 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.ToTable("CarCheckSheets");
                 });
 
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.CarTrip", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CarId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CompanionName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DepartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Destination")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DriverId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("EndOdometer")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsSubmitted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastEditedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("ReturnedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("StartOdometer")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("LastEditedById");
+
+                    b.HasIndex("CarId", "DepartedAt");
+
+                    b.HasIndex("DriverId", "CreatedAt");
+
+                    b.ToTable("CarTrips");
+                });
+
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.SecurityCar", b =>
                 {
                     b.Property<int>("Id")
@@ -2173,6 +2236,32 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Navigation("ClosedBy");
 
                     b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CarChecks.CarTrip", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.CarChecks.SecurityCar", "Car")
+                        .WithMany()
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "Driver")
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "LastEditedBy")
+                        .WithMany()
+                        .HasForeignKey("LastEditedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Car");
+
+                    b.Navigation("Driver");
+
+                    b.Navigation("LastEditedBy");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Feedback.FeedbackHistory", b =>

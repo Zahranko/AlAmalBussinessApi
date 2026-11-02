@@ -71,5 +71,10 @@ namespace AlAmalBusiness.Domain.Constants
         // monthly check sheets. Like AttendanceManager it may do everything
         // but delete, change the managed list, or reopen/edit a closed month.
         public const string SecurityManager = "SecurityManager";
+        // Movement orders (أمر حركة, added 2026-11-02): a hospital driver logs
+        // their own trips — car, destination, odometer, depart/return times —
+        // and submits each one, after which only an Admin may change it. Reads
+        // only their own trips; SecurityManager and Admin read everyone's.
+        public const string Driver = "Driver";
     }
 }

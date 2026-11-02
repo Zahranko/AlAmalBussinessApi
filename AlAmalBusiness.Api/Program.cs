@@ -103,6 +103,7 @@ builder.Services.AddScoped<IAttendanceCodeRepo, AttendanceCodeRepo>();
 builder.Services.AddScoped<IAttendanceSheetRepo, AttendanceSheetRepo>();
 builder.Services.AddScoped<IAttendanceRowRepo, AttendanceRowRepo>();
 builder.Services.AddScoped<ICarCheckRepo, CarCheckRepo>();
+builder.Services.AddScoped<ICarTripRepo, CarTripRepo>();
 // Services (Application)
 builder.Services.AddScoped<IUserServices, UserServices>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -131,6 +132,7 @@ builder.Services.AddScoped<IMammogramAppointmentService, MammogramAppointmentSer
 builder.Services.AddScoped<IAttendanceCodeService, AttendanceCodeService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<ICarCheckService, CarCheckService>();
+builder.Services.AddScoped<ICarTripService, CarTripService>();
 // The register's WhatsApp follow-up reminders, through the hospital's own
 // WhatsApp platform (WhatsApp section; blank ApiKey = off) — see the scheduler.
 builder.Services.AddHttpClient<IWhatsAppSender, AlAmalBusiness.Api.WhatsApp.WhatsAppPlatformClient>(http =>
