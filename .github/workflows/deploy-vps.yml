@@ -94,7 +94,11 @@ jobs:
           set -euo pipefail
           [ -n "$DEPLOY_KEY" ] || { echo "::error::Secret VPS_DEPLOY_KEY is not set"; exit 1; }
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          # tolerate a secret pasted from Windows (CRLF line endings)
+          printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          # expected: SHA256 fingerprint of ~/.ssh/alamal_github_deploy (public info)
+          ssh-keygen -l -f ~/.ssh/deploy_key \
+            || { echo "::error::VPS_DEPLOY_KEY is not a valid private key: paste the whole alamal_github_deploy file (not the .pub), BEGIN to END lines included"; exit 1; }
           printf '%s\n' "$VPS_HOST_KEY" > ~/.ssh/known_hosts
           {
             printf 'GHCR_USER=%s\n' "${{ github.actor }}"
