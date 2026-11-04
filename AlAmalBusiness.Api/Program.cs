@@ -158,6 +158,10 @@ builder.Services.AddHostedService<SmtpEmailBackgroundService>();
 builder.Services.AddScoped<IFilterCacheRepo, FilterCacheRepo>();
 builder.Services.AddScoped<IFilterCacheService, FilterCacheService>();
 builder.Services.AddSignalR();
+// /health = the process answers (liveness); /health/ready also checks SQL
+// Server. Anonymous, no rate limit — see the MapHealthChecks calls below.
+builder.Services.AddHealthChecks()
+    .AddCheck<AlAmalBusiness.Api.Health.DatabaseHealthCheck>("database", tags: new[] { "ready" });
 // In-memory IDistributedCache — no Redis on the target (smartasp.net shared)
 // hosting. Swapping to AddStackExchangeRedisCache(...) later needs no other
 // change, since everything talks to IDistributedCache only.
@@ -527,6 +531,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+// Health endpoints for the VPS deploy (it waits for /health/ready before
+// switching traffic) and the server GUI. Anonymous on purpose — they answer
+// only "Healthy"/"Unhealthy", nothing else — and exempt from rate limiting so
+// a busy limiter never makes a healthy instance look dead.
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = _ => false })
+    .AllowAnonymous().DisableRateLimiting();
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") })
+    .AllowAnonymous().DisableRateLimiting();
 app.MapHub<LeadHub>("/hubs/leads");
 // The solving agents' live queue. Grouped by desk inside the hub, not
 // broadcast like LeadHub — see TicketHub.

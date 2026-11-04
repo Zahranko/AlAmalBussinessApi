@@ -20,6 +20,36 @@ There is no test project in this solution yet.
 
 Dev DB: SQL Server at `localhost\MSSQLSERVER01`, database `AlAmalBusiness` (see `AlAmalBusiness.Api/appsettings.json`). Swagger UI is available at `/swagger` in the Development environment.
 
+## Hosting: VPS in Docker (added 2026-11-03)
+
+The API also runs on the Hostinger VPS (`187.126.1.126`) at **`https://businessapi.alamalhospitaljo.com`**, next to SmarterASP (`deploy.yml`, still live) until the console's `API_BASE_URL` is switched. Both hosts use the same database and the same `PROD_*` secrets.
+
+- **`Dockerfile`** (repo root):
+  - Multi-stage. SDK build → `aspnet:10.0-noble-chiseled-extra` (no shell, non-root uid 1654).
+  - Keep the `-extra` variant for ICU/Arabic and ClosedXML.
+  - ReadyToRun publish. Restore must also get `-p:PublishReadyToRun=true`, or publish fails with NETSDK1094.
+  - **Server + concurrent GC set only in the Dockerfile**. The csproj stays Workstation/non-concurrent for SmarterASP's 1 GB pool. Don't change the csproj for the VPS.
+- **`.github/workflows/deploy-vps.yml`**:
+  - Pull requests: build only.
+  - `main`: push the image to `ghcr.io/zahranko/alamalbussinessapi`, then deploy by **digest** over SSH as `deployer`.
+  - The `deployer` key can only run `/usr/local/bin/nginny-deploy-gate`: deploy/rollback/status of a named app, no shell.
+  - Secrets and a job-scoped registry token go over stdin. The new secret is `VPS_DEPLOY_KEY`.
+- **Blue/green on the server** (`/usr/local/sbin/nginny-deploy`; source in the nginny project, `D:\nginny\deploy\apps`):
+  - The new container (ports 5101/5102) must answer **`/health/ready`** before nginx's upstream `alamal_api` is switched. Otherwise the old one keeps serving and the job fails.
+  - Rollback: `ssh deployer@187.126.1.126 "rollback alamal-api"`.
+  - Two instances overlap for a few seconds. That is safe here: both schedulers wait 2 min after startup, the mammogram reminders claim rows with a conditional UPDATE, and the monthly report claims its month.
+- **Container settings**:
+  - Read-only root filesystem, `cap-drop ALL`, 2 GB / 2 CPU limit.
+  - Data Protection keys are on the volume `alamal-api-dpkeys`.
+  - Env comes from `/opt/apps/alamal-api/app.env`. Only the keys listed in `app.conf` are accepted.
+- **Client IP behind nginx**: the container sees every request coming from the Docker gateway, so nginx is what vouches for the client IP.
+  - nginx knows `PROD_PROXY_SECRET` (written by the deploy into a root-only snippet). It always sends `X-Proxy-Secret` plus an `X-Forwarded-For` it controls.
+  - A request that itself carries the right secret (the console's server) keeps its forwarded staff IP.
+  - Every other request gets its real peer address, and any `X-Forwarded-For` it sent is dropped.
+  - Without this, every client would share one rate-limit bucket.
+- **Health**: `/health` (process up) and `/health/ready` (plus SQL Server via `Api/Health/DatabaseHealthCheck`). Both are anonymous and not rate-limited. The server GUI (Nginny) watches `/health/ready`.
+- Migrations are still applied by hand (`dotnet ef database update`). The pipeline never touches the schema.
+
 ## Architecture
 
 Four-project layered/clean architecture, referenced in one direction: `Api → Application/Infrastructure → Domain`. `Infrastructure` and `Application` do not reference each other directly — `Api`'s `Program.cs` is the composition root wiring `I<X>Repo` (Infrastructure) and `I<X>Service` (Application) into DI.
