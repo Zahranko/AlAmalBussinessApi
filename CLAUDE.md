@@ -22,7 +22,12 @@ Dev DB: SQL Server at `localhost\MSSQLSERVER01`, database `AlAmalBusiness` (see 
 
 ## Hosting: VPS in Docker (added 2026-11-03)
 
-The API also runs on the Hostinger VPS (`187.126.1.126`) at **`https://businessapi.alamalhospitaljo.com`**, next to SmarterASP (`deploy.yml`, still live) until the console's `API_BASE_URL` is switched. Both hosts use the same database and the same `PROD_*` secrets.
+**Production is the Hostinger VPS (`187.126.1.126`) at `https://businessapi.alamalhospitaljo.com` since 2026-11-05.** SmarterASP is retired: `deploy.yml` is manual-only and the old site shows `app_offline.htm`.
+
+- **Database**: SQL Server 2025 Express in Docker on the same VPS (container `mssql`, Docker network `nginny-db`, reached as `mssql,1433`). It was restored from SmarterASP's backup of 2026-11-05.
+- **App login** `alamal_app` has db_datareader, db_datawriter and EXECUTE, and **no DDL**. `dotnet ef database update` therefore needs an admin login, through an SSH tunnel to `127.0.0.1:1433` on the VPS.
+- **Secrets**: the connection string is the secret `VPS_DB_CONNECTION_STRING`; the other `PROD_*` secrets are shared. Nightly backups are taken by `mssql-backup` on the VPS.
+- **Times**: the SQL container's TZ is Asia/Amman. That doesn't matter here: nothing uses `GETDATE()`, see AppClock.
 
 - **`Dockerfile`** (repo root):
   - Multi-stage. SDK build → `aspnet:10.0-noble-chiseled-extra` (no shell, non-root uid 1654).

@@ -1,8 +1,9 @@
 name: Build and Deploy to SmarterASP.NET
 
+# Retired 2026-11-05: production moved to the VPS (deploy-vps.yml) with its own
+# database. Manual runs only; a SmarterASP deploy removes app_offline.htm there,
+# which would let the old host write to the old SmarterASP database again.
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
