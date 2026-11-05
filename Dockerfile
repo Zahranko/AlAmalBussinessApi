@@ -7,7 +7,7 @@
 #   formatting and ClosedXML need real globalization; don't switch to plain
 #   chiseled or InvariantGlobalization.
 # - Restore is its own layer keyed only on the .csproj files, so a code-only
-#   change rebuilds in seconds; NuGet packages are also kept in a BuildKit cache.
+#   change rebuilds in seconds.
 
 ARG DOTNET_VERSION=10.0
 
@@ -19,7 +19,10 @@ COPY AlAmalBusiness.Api/AlAmalBusiness.Api.csproj AlAmalBusiness.Api/
 COPY AlAmalBusiness.Application/AlAmalBusiness.Application.csproj AlAmalBusiness.Application/
 COPY AlAmalBusiness.Domain/AlAmalBusiness.Domain.csproj AlAmalBusiness.Domain/
 COPY AlAmalBusiness.Infrastructure/AlAmalBusiness.Infrastructure.csproj AlAmalBusiness.Infrastructure/
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+# NuGet packages live in the restore layer itself. No BuildKit cache mount: GitHub Actions
+# keeps the layer cache but not cache mounts, so a cached restore layer left publish
+# --no-restore without its packages (NETSDK1064, 2026-11-05).
+RUN \
     dotnet restore AlAmalBusiness.Api/AlAmalBusiness.Api.csproj -r linux-x64 -p:PublishReadyToRun=true
 
 COPY . .
@@ -31,7 +34,7 @@ COPY . .
 # memory, so Server GC (with .NET's DATAS, which sizes the heap to the load)
 # gives more throughput and shorter pauses. Overridden here only, so the
 # SmarterASP build is unchanged.
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+RUN \
     dotnet publish AlAmalBusiness.Api/AlAmalBusiness.Api.csproj \
         -c Release -r linux-x64 --self-contained false --no-restore \
         -p:PublishReadyToRun=true \
