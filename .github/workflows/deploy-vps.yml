@@ -7,7 +7,8 @@ name: Build and Deploy to VPS (Docker)
 # doesn't, the running version keeps serving and this job fails.
 #
 # Runs next to deploy.yml (SmarterASP) while both hosts are live; both use the
-# same production secrets. Server side: D:\nginny\deploy\apps (nginny-deploy).
+# same production secrets, except the database: VPS_DB_CONNECTION_STRING points
+# at the VPS's own SQL Server. Server side: D:\nginny\deploy\apps (nginny-deploy).
 
 on:
   push:
@@ -83,7 +84,9 @@ jobs:
         env:
           DEPLOY_KEY: ${{ secrets.VPS_DEPLOY_KEY }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DB: ${{ secrets.PROD_DB_CONNECTION_STRING }}
+          # The VPS has its own database (SQL Server in Docker, reached as "mssql").
+          # Until VPS_DB_CONNECTION_STRING is set it falls back to the shared one.
+          DB: ${{ secrets.VPS_DB_CONNECTION_STRING || secrets.PROD_DB_CONNECTION_STRING }}
           JWT: ${{ secrets.PROD_JWT_KEY }}
           PROXY: ${{ secrets.PROD_PROXY_SECRET }}
           SMTP_USER: ${{ secrets.PROD_SMTP_USERNAME }}
