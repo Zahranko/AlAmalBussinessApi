@@ -37,9 +37,11 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         private const int MaxPageSize = 100;
         private const int DefaultPageSize = 12;
 
-        // Who hears about a new request: the maintenance team. Admins are
-        // left out, as they are from every other notice.
-        private static readonly string[] SupportRoles = { AppRoles.MSupport };
+        // Who hears about a new request: the maintenance team and whoever
+        // oversees it. Admins are left out, as they are from every other
+        // notice. Someone holding both roles still gets one email (the
+        // recipient query is DISTINCT).
+        private static readonly string[] SupportRoles = { AppRoles.MSupport, AppRoles.MaintenanceManager };
 
         public MaintenanceTicketService(
             IMaintenanceTicketRepo ticketRepo,
@@ -328,6 +330,108 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             return Ok(await LoadDetailAsync(id));
         }
 
+        // ---------- dashboard ----------
+
+        public async Task<MaintenanceTicketStatsResponse> GetStatsAsync(TicketStatsQuery query)
+        {
+            if (query.From.HasValue && query.To.HasValue && query.From > query.To)
+                (query.From, query.To) = (query.To, query.From);
+
+            var rows = await _ticketRepo.GetStatsAsync(query);
+
+            int CountOf(TicketStatus status) => rows.Statuses.FirstOrDefault(r => r.Status == status)?.Count ?? 0;
+
+            var response = new MaintenanceTicketStatsResponse
+            {
+                From = query.From,
+                To = query.To,
+                OpenCount = CountOf(TicketStatus.Open),
+                SuccessCount = CountOf(TicketStatus.Success),
+                FailedCount = CountOf(TicketStatus.Failed),
+                AvgResolutionHours = ToHours(rows.AvgResolutionMinutes),
+                OldestOpenHours = rows.OldestOpenAt.HasValue
+                    ? Math.Round((AppClock.Now - rows.OldestOpenAt.Value).TotalHours, 1)
+                    : null
+            };
+
+            response.Total = response.OpenCount + response.SuccessCount + response.FailedCount;
+            var closed = response.SuccessCount + response.FailedCount;
+            response.SuccessPercent = closed == 0 ? 0 : Math.Round(response.SuccessCount * 100.0 / closed, 1);
+
+            response.AvgResponseHours = rows.FirstResponses.Count == 0
+                ? null
+                : ToHours(rows.FirstResponses.Average(r => r.Minutes));
+
+            // One row per person, whether they answered requests, closed
+            // them, or both — keyed on the user id so the two halves meet.
+            var agents = new Dictionary<string, TicketAgentStatResponse>();
+
+            TicketAgentStatResponse For(string? id, string? name)
+            {
+                var key = id ?? string.Empty;
+                if (!agents.TryGetValue(key, out var agent))
+                {
+                    agent = new TicketAgentStatResponse { UserId = id, UserName = name };
+                    agents[key] = agent;
+                }
+                agent.UserName ??= name;
+                return agent;
+            }
+
+            foreach (var closer in rows.Closers)
+            {
+                var agent = For(closer.ActorId, closer.ActorName);
+                agent.ClosedCount = closer.ClosedCount;
+                agent.SuccessCount = closer.SuccessCount;
+                agent.FailedCount = closer.FailedCount;
+                agent.AvgResolutionHours = ToHours(closer.AvgResolutionMinutes);
+            }
+
+            foreach (var group in rows.FirstResponses.GroupBy(r => r.ActorId ?? string.Empty))
+            {
+                var agent = For(group.Key, group.First().ActorName);
+                agent.RespondedCount = group.Count();
+                agent.AvgResponseHours = ToHours(group.Average(r => r.Minutes));
+            }
+
+            response.Agents = agents.Values
+                .OrderByDescending(a => a.ClosedCount)
+                .ThenByDescending(a => a.RespondedCount)
+                .ThenBy(a => a.UserName)
+                .ToList();
+
+            response.Sites = rows.Sites
+                .OrderByDescending(s => s.Total)
+                .Select(s => Breakdown(s.Site?.ToString(), s.Total, s.OpenCount))
+                .ToList();
+
+            // Workflow order rather than size: Urgent, Important, Normal.
+            response.Priorities = rows.Priorities
+                .OrderByDescending(p => p.Priority)
+                .Select(p => Breakdown(p.Priority.ToString(), p.Total, p.OpenCount))
+                .ToList();
+
+            response.Departments = rows.Departments
+                .OrderByDescending(d => d.Total)
+                .ThenBy(d => d.Name)
+                .Select(d =>
+                {
+                    var row = Breakdown(d.Name, d.Total, d.OpenCount);
+                    row.Id = d.Id;
+                    return row;
+                })
+                .ToList();
+
+            return response;
+        }
+
+        private static TicketBreakdownResponse Breakdown(string? name, int total, int open) =>
+            new() { Name = name, Total = total, OpenCount = open, ClosedCount = total - open };
+
+        // Null stays null: nothing answered yet is not "answered in zero hours".
+        private static double? ToHours(double? minutes) =>
+            minutes.HasValue ? Math.Round(minutes.Value / 60.0, 1) : null;
+
         // ---------- rules ----------
 
         private const string ClosedError = "هذا الطلب مغلق. أعد فتحه قبل أي إجراء آخر.";
@@ -348,7 +452,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             {
                 var recipients = await _userRepo.GetActiveEmailsInRolesAsync(SupportRoles, actorId);
                 Enqueue(ticket.Id, "new-maintenance", recipients,
-                    to => TicketEmailTemplate.NewMaintenance(to, Facts(ticket), Where(ticket), ticket.RequesterPhone, PriorityLabel(ticket.Priority), Link(ticket.Id)));
+                    to => TicketEmailTemplate.NewMaintenance(to, Facts(ticket), Where(ticket), ticket.RequesterPhone, PriorityLabel(ticket.Priority), ticket.Details, Link(ticket.Id)));
             }
             catch (Exception ex)
             {

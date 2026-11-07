@@ -23,8 +23,14 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
     [Authorize(Roles = MaintenanceAccess)]
     public class MaintenanceTicketController : ControllerBase
     {
+        // MaintenanceManager is let through the class gate for the dashboard
+        // alone: on every other action it is neither raiser nor team, so the
+        // queue comes back empty and a request answers 404 (the service's
+        // per-resource check), and create/close/reopen stay role-gated below.
         private const string MaintenanceAccess =
-            nameof(AppRoles.MRaiser) + "," + nameof(AppRoles.MSupport) + "," + nameof(AppRoles.Admin);
+            nameof(AppRoles.MRaiser) + "," + nameof(AppRoles.MSupport) + "," + nameof(AppRoles.MaintenanceManager) + "," + nameof(AppRoles.Admin);
+        // The dashboard: whoever oversees the team, and Admin.
+        private const string CanReport = nameof(AppRoles.MaintenanceManager) + "," + nameof(AppRoles.Admin);
         // Raising: the raisers. The team that solves them doesn't raise them.
         private const string CanCreate = nameof(AppRoles.MRaiser) + "," + nameof(AppRoles.Admin);
         // Solving — close and reopen.
@@ -83,6 +89,13 @@ namespace AlAmalBusiness.Api.Area.Tickets.Controllers
             var query = new MaintenanceTicketListQuery { Page = page, PageSize = pageSize, Search = search, Status = status };
             return Ok(await _tickets.GetCreatedByMeAsync(query, Actor));
         }
+
+        // The dashboard over requests RAISED between from and to (inclusive
+        // days); neither = all time.
+        [HttpGet("stats")]
+        [Authorize(Roles = CanReport)]
+        public async Task<ActionResult<MaintenanceTicketStatsResponse>> GetStats(DateOnly? from = null, DateOnly? to = null) =>
+            Ok(await _tickets.GetStatsAsync(new TicketStatsQuery { From = from, To = to }));
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)

@@ -54,6 +54,23 @@ namespace AlAmalBusiness.Domain.IRepositories.Tickets
         public double Minutes { get; set; }
     }
 
+    // The maintenance dashboard's raw figures (added 2026-11-07), the same
+    // shape as TicketStatsRows with maintenance's own breakdowns: building and
+    // priority instead of procedure, category and the insurance flag.
+    // Read with the same TicketStatsQuery — tickets RAISED in the period.
+    public class MaintenanceTicketStatsRows
+    {
+        public List<TicketStatusCountRow> Statuses { get; set; } = new();
+        // Null Site = an older row, or a console request that picked none.
+        public List<(Constants.MaintenanceSite? Site, int Total, int OpenCount)> Sites { get; set; } = new();
+        public List<(Constants.MaintenancePriority Priority, int Total, int OpenCount)> Priorities { get; set; } = new();
+        public List<TicketNamedCountRow> Departments { get; set; } = new();
+        public double? AvgResolutionMinutes { get; set; }
+        public DateTime? OldestOpenAt { get; set; }
+        public List<TicketCloserRow> Closers { get; set; } = new();
+        public List<TicketFirstResponseRow> FirstResponses { get; set; } = new();
+    }
+
     public class TicketStatsRows
     {
         public List<TicketStatusCountRow> Statuses { get; set; } = new();

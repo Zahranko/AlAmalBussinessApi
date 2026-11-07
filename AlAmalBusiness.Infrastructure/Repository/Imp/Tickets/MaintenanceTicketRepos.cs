@@ -141,6 +141,116 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Tickets
             return (items, totalCount);
         }
 
+        // TicketRepo.GetStatsAsync over the maintenance tables. Every figure
+        // is about the requests RAISED in the period, so one raised inside it
+        // but closed after still counts as the period's.
+        public async Task<MaintenanceTicketStatsRows> GetStatsAsync(TicketStatsQuery query)
+        {
+            var scoped = _context.MaintenanceTickets.AsNoTracking();
+
+            // CreatedDate is local (AppClock): 00:00 on From up to, but not
+            // including, 00:00 the day after To.
+            if (query.From.HasValue)
+            {
+                var from = query.From.Value.ToDateTime(TimeOnly.MinValue);
+                scoped = scoped.Where(t => t.CreatedDate >= from);
+            }
+
+            if (query.To.HasValue)
+            {
+                var toExclusive = query.To.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+                scoped = scoped.Where(t => t.CreatedDate < toExclusive);
+            }
+
+            var rows = new MaintenanceTicketStatsRows();
+
+            rows.Statuses = await scoped
+                .GroupBy(t => t.Status)
+                .Select(g => new TicketStatusCountRow { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var sites = await scoped
+                .GroupBy(t => t.Site)
+                .Select(g => new { Site = g.Key, Total = g.Count(), OpenCount = g.Count(t => t.Status == TicketStatus.Open) })
+                .ToListAsync();
+            rows.Sites = sites.Select(s => (s.Site, s.Total, s.OpenCount)).ToList();
+
+            var priorities = await scoped
+                .GroupBy(t => t.Priority)
+                .Select(g => new { Priority = g.Key, Total = g.Count(), OpenCount = g.Count(t => t.Status == TicketStatus.Open) })
+                .ToListAsync();
+            rows.Priorities = priorities.Select(p => (p.Priority, p.Total, p.OpenCount)).ToList();
+
+            // Public requests carry no department; they are left out here
+            // rather than shown as a nameless row.
+            rows.Departments = await scoped
+                .Where(t => t.DepartmentId != null)
+                .GroupBy(t => new { t.DepartmentId, Name = t.Department!.Name })
+                .Select(g => new TicketNamedCountRow
+                {
+                    Id = g.Key.DepartmentId,
+                    Name = g.Key.Name,
+                    Total = g.Count(),
+                    OpenCount = g.Count(t => t.Status == TicketStatus.Open)
+                })
+                .ToListAsync();
+
+            rows.AvgResolutionMinutes = await scoped
+                .Where(t => t.ClosedAt != null)
+                .Select(t => (double?)EF.Functions.DateDiffMinute(t.CreatedDate, t.ClosedAt!.Value))
+                .AverageAsync();
+
+            // Min() over a nullable projection answers null on an empty set.
+            rows.OldestOpenAt = await scoped
+                .Where(t => t.Status == TicketStatus.Open)
+                .Select(t => (DateTime?)t.CreatedDate)
+                .MinAsync();
+
+            rows.Closers = await scoped
+                .Where(t => t.AssignedToId != null && t.ClosedAt != null)
+                .GroupBy(t => new { t.AssignedToId, Name = t.AssignedTo!.UserName })
+                .Select(g => new TicketCloserRow
+                {
+                    ActorId = g.Key.AssignedToId,
+                    ActorName = g.Key.Name,
+                    ClosedCount = g.Count(),
+                    SuccessCount = g.Count(t => t.Status == TicketStatus.Success),
+                    FailedCount = g.Count(t => t.Status == TicketStatus.Failed),
+                    AvgResolutionMinutes = g.Average(t => (double?)EF.Functions.DateDiffMinute(t.CreatedDate, t.ClosedAt!.Value))
+                })
+                .ToListAsync();
+
+            // Who answered each request first — a comment or a close by
+            // anyone but the raiser. A public request has no raiser account
+            // (CreatedById null), so any signed-in actor's entry counts.
+            var firstResponses = await scoped
+                .Select(t => new
+                {
+                    t.CreatedDate,
+                    First = _context.MaintenanceTicketHistories
+                        .Where(h => h.TicketId == t.Id
+                            && h.Type != TicketActions.Created
+                            && h.ActorId != null
+                            && h.ActorId != t.CreatedById)
+                        .OrderBy(h => h.CreatedAt)
+                        .Select(h => new { h.ActorId, ActorName = h.Actor!.UserName, h.CreatedAt })
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            rows.FirstResponses = firstResponses
+                .Where(x => x.First != null)
+                .Select(x => new TicketFirstResponseRow
+                {
+                    ActorId = x.First!.ActorId,
+                    ActorName = x.First.ActorName,
+                    Minutes = (x.First.CreatedAt - x.CreatedDate).TotalMinutes
+                })
+                .ToList();
+
+            return rows;
+        }
+
         public Task SaveChangesAsync() => _context.SaveChangesAsync();
     }
 

@@ -33,13 +33,15 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
                 noteLabel: success ? null : "السبب", note: reason);
 
         // A maintenance request was raised — to the maintenance team
-        // (MSupport). Same layout; the location takes the payment row's place,
-        // and a request from the public page adds the number it left.
-        public static EmailMessage NewMaintenance(string to, TicketFacts ticket, string? location, string? phone, string? priority, string? link) =>
+        // (MSupport) and MaintenanceManager. Same layout; the location takes
+        // the payment row's place, a request from the public page adds the
+        // number it left, and the sender's own description follows the table.
+        public static EmailMessage NewMaintenance(
+            string to, TicketFacts ticket, string? location, string? phone, string? priority, string? details, string? link) =>
             Build(to, ticket, link,
                 subject: priority == null ? $"طلب صيانة جديد - {ticket.Title}" : $"طلب صيانة جديد ({priority}) - {ticket.Title}",
                 heading: "وصل طلب صيانة جديد إلى فريق الصيانة",
-                noteLabel: null, note: null, location: location, phone: phone, priority: priority);
+                noteLabel: "التفاصيل", note: details, location: location, phone: phone, priority: priority);
 
         // To the raiser: their maintenance request was closed.
         public static EmailMessage MaintenanceClosed(

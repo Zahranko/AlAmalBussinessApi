@@ -62,6 +62,12 @@ namespace AlAmalBusiness.Domain.Constants
         // only by spelling — that one is the mammogram register's.)
         public const string MRaiser = "MRaiser";
         public const string MSupport = "MSupport";
+        // Maintenance oversight (added 2026-11-07): reads the maintenance
+        // dashboard — counts by status, building and priority, response and
+        // close times, per-technician figures — and gets the new-request
+        // email alongside MSupport. Neither raises nor solves. Spelt out in
+        // full because MManager is the mammogram register's.
+        public const string MaintenanceManager = "MaintenanceManager";
         // Staff attendance (added 2026-10-29): opens a department's monthly
         // attendance sheet and fills its codes. Per-department, the feedback
         // way — the departments on their token, Admin every department. Spelt

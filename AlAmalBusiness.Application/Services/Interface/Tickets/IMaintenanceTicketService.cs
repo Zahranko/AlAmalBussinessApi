@@ -31,5 +31,9 @@ namespace AlAmalBusiness.Application.Services.Interface.Tickets
         Task<MaintenanceTicketActionResponse> CommentAsync(int id, CommentTicketDTO request, MaintenanceTicketActor actor);
         Task<MaintenanceTicketActionResponse> CloseAsync(int id, CloseTicketDTO request, MaintenanceTicketActor actor);
         Task<MaintenanceTicketActionResponse> ReopenAsync(int id, MaintenanceTicketActor actor);
+
+        // The dashboard. No visibility to resolve: whoever may open it
+        // (Admin, MaintenanceManager) reads every request.
+        Task<MaintenanceTicketStatsResponse> GetStatsAsync(TicketStatsQuery query);
     }
 }
