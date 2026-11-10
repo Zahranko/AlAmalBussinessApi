@@ -227,6 +227,10 @@ The paper "أمر حركة" (driver, companion, destination, odometer before/aft
 - `GET ?from&to&carId&page&pageSize` (≤500, newest first) filters on `DepartedAt ?? CreatedAt`. Indexes `(CarId, DepartedAt)`, `(DriverId, CreatedAt)`, `CreatedAt`.
 - Console: `/sc/trips` (`CarTrips`) — see that repo's AGENTS.md.
 
+### My profile (added 2026-11-10)
+
+`ProfileController` (`api/Profile`, any signed-in user — no role gate, PerUserLimit) → `ProfileService` → `ProfileRepo` (`Domain/IRepositories/Profile`). **Every action is the caller's own account, taken from the token; no route carries an id.** `GET` (name, username, department + extra departments, roles), `PUT name` (display `FullName`, 2-100 chars, spaces collapsed; the login username is untouched; reaches the token on the next refresh), `POST password` (current + new; a wrong current password counts toward the login lockout via `AccessFailedAsync`, a locked account is refused, Identity's refusal reasons are folded into `message`; success revokes **every** refresh token of the account — the console signs the browser straight back in with the new password), `GET stats` ("my status": one section per role area held — CRM, feedback, appointments, questionnaires, tickets raised/solved, maintenance raised/solved/overview, mammogram, attendance, security, driver — each a list of `{key, value}` counts, keys translated by the console). **Admin never gets a section** (the user's rule: status is for the roles that do work). Counts are about the caller (created/claimed/closed by me) or their token's departments, "this month" in Jordan time; plain `CountAsync`s run one after another on the one DbContext. The CRM success count reads `LeadHistories`, so it excludes deleted leads itself.
+
 ### Multi-department users (added 2026-09-19)
 
 One person overseeing several departments — reading all of their feedback, appointment requests and questionnaires, and being emailed about all of them — without being made an Admin. `UserDepartments` (`UserId` + `DepartmentId`, composite PK, cascade from `AspNetUsers`, `Restrict` on `Departments`) is the only new table.
