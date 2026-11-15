@@ -31,6 +31,15 @@ namespace AlAmalBusiness.Domain.Constants
         // behavior, until their next refresh.
         public const string DepartmentIds = "department_ids";
 
+        // Marks a token minted by POST api/Auth/hub-token (2026-11-15): a copy
+        // of the caller's own access token, same claims and same expiry, that
+        // Program.cs's OnTokenValidated accepts under /hubs and nowhere else.
+        // The console hands the CertaCure extension one of these for the
+        // ticket hub's WebSocket instead of the session token itself, so a
+        // script that gets hold of it can listen to the hub but can't call
+        // the rest of the API as that user.
+        public const string HubOnly = "hub_only";
+
         // The claim's value as ids. Anything unparseable or non-positive is
         // dropped rather than throwing: a malformed token should narrow what
         // its holder can see, never widen it or 500 the request.

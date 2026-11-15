@@ -227,6 +227,18 @@ builder.Services.AddAuthentication(options =>
             }
             return Task.CompletedTask;
         },
+        // A hub-only token (AuthController.HubToken) opens a SignalR hub and
+        // nothing else: anywhere outside /hubs it fails authentication, so it
+        // answers 401 exactly like a forged one.
+        OnTokenValidated = context =>
+        {
+            if (context.Principal?.HasClaim(c => c.Type == AlAmalBusiness.Domain.Constants.AppClaims.HubOnly) == true
+                && !context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+            {
+                context.Fail("This token is only valid for the live hubs.");
+            }
+            return Task.CompletedTask;
+        },
         // Default behavior on a missing/expired/invalid token is an empty 401
         // body — callers (the Next.js frontend included) can't tell "never
         // logged in" from "session expired" from anything else. HandleResponse()

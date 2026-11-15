@@ -15,5 +15,10 @@ namespace AlAmalBusiness.Application.Services.Interface
         // department is folded in here, so no caller has to remember to.
         string GenerateToken(string sub, string userName, string? fullName, int departmentId, IEnumerable<int> readableDepartmentIds, IEnumerable<string> roles);
 
+        // Re-signs an already validated access token's own claims as a
+        // hub-only token (AppClaims.HubOnly) expiring when it does. Returns
+        // null for a token that can't be read or is itself hub-only.
+        string? GenerateHubToken(string accessToken);
+
     }
 }

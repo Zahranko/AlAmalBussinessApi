@@ -64,6 +64,22 @@ public class AuthController : ControllerBase
         refreshExpiresInSeconds = res.RefreshExpiresInSeconds
     };
 
+    // A hub-only copy of the caller's access token (AppClaims.HubOnly): what
+    // the console's /api/tickets/realtime hands the CertaCure extension for
+    // the ticket hub's WebSocket. It carries the same claims and expiry, so
+    // the hub sees the same person and roles, but Program.cs refuses it
+    // anywhere outside /hubs.
+    [HttpPost("hub-token")]
+    public IActionResult HubToken([FromServices] ITokenService tokens)
+    {
+        var header = Request.Headers.Authorization.ToString();
+        var raw = header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header["Bearer ".Length..].Trim() : null;
+        var token = string.IsNullOrEmpty(raw) ? null : tokens.GenerateHubToken(raw);
+        return token is null
+            ? Unauthorized(new { message = "You need to log in to do that." })
+            : Ok(new { token });
+    }
+
     // Current-user profile — the frontend's session hook reads name/roles from
     // here instead of decoding the JWT client-side. Covered by the global
     // fallback policy (any authenticated user), no explicit [Authorize] needed.

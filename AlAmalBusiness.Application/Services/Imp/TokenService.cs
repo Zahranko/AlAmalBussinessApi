@@ -55,5 +55,39 @@ namespace AlAmalBusiness.Application.Services.Imp
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+        // The registered claims that describe the token rather than the user;
+        // the copy gets its own (new jti, same exp) instead.
+        private static readonly HashSet<string> TokenOwnClaims = new(StringComparer.Ordinal)
+        {
+            JwtRegisteredClaimNames.Jti, JwtRegisteredClaimNames.Exp, JwtRegisteredClaimNames.Nbf,
+            JwtRegisteredClaimNames.Iat, JwtRegisteredClaimNames.Iss, JwtRegisteredClaimNames.Aud
+        };
+
+        public string? GenerateHubToken(string accessToken)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (!handler.CanReadToken(accessToken)) return null;
+            var source = handler.ReadJwtToken(accessToken);
+            if (source.Claims.Any(c => c.Type == AppClaims.HubOnly)) return null;
+
+            var jwtSettings = _config.GetSection("JwtSettings");
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = source.Claims.Where(c => !TokenOwnClaims.Contains(c.Type)).ToList();
+            claims.Add(new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()));
+            claims.Add(new Claim(AppClaims.HubOnly, "1"));
+
+            var token = new JwtSecurityToken(
+                issuer: jwtSettings["Issuer"],
+                audience: jwtSettings["Audience"],
+                claims: claims,
+                // Never outlives the token it was copied from.
+                expires: source.ValidTo,
+                signingCredentials: creds);
+
+            return handler.WriteToken(token);
+        }
     }
 }
