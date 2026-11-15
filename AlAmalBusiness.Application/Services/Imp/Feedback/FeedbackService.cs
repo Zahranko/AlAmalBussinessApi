@@ -70,8 +70,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             if (request.Type == FeedbackType.Complaint && string.IsNullOrWhiteSpace(request.Details))
                 return Rejected("يرجى كتابة تفاصيل الشكوى");
 
+            // Hidden from the feedback page answers the same as missing.
             var department = await _departmentRepo.GetDepartmentByIdAsync(request.DepartmentId);
-            if (department == null || !department.IsActive)
+            if (department == null || !department.IsActive || !department.ShowOnFeedback)
                 return Rejected("القسم المختار غير موجود");
 
             var feedback = new PatientFeedback

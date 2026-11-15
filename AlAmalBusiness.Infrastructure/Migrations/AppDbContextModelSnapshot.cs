@@ -791,6 +791,12 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("ShowOnAppointment")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowOnFeedback")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.ToTable("Departments");

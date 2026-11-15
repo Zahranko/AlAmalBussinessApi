@@ -33,6 +33,10 @@ namespace AlAmalBusiness.Application.Services.Imp
             var departmentEntity = new Departments
             {
                 Name = department.Name,
+                // A new department shows on both public pages unless the
+                // admin says otherwise.
+                ShowOnAppointment = department.ShowOnAppointment ?? true,
+                ShowOnFeedback = department.ShowOnFeedback ?? true,
             };
 
             await _repo.CreateDepartmentAsync(departmentEntity);
@@ -40,13 +44,7 @@ namespace AlAmalBusiness.Application.Services.Imp
             return new DepartmentResponse
             {
                 Success = true,
-                Department = new DepartmentDTO
-                {
-                    Id = departmentEntity.Id,
-                    Name = departmentEntity.Name,
-                    IsActive = departmentEntity.IsActive,
-                    DisplayOrder = departmentEntity.DisplayOrder
-                }
+                Department = ToDto(departmentEntity)
             };
         }
 
@@ -59,29 +57,33 @@ namespace AlAmalBusiness.Application.Services.Imp
                 return new List<DepartmentDTO>();
             }
 
-            return departments.Select(d => new DepartmentDTO
-            {
-                Id = d.Id,
-                Name = d.Name,
-                IsActive = d.IsActive,
-                DisplayOrder = d.DisplayOrder,
-                AttendanceOrder = d.AttendanceOrder
-            });
+            return departments.Select(ToDto);
         }
 
         public async Task<IEnumerable<DepartmentDTO>> GetActiveDepartmentsAsync()
         {
             var departments = await _repo.GetActiveDepartmentsAsync();
 
-            return departments.Select(d => new DepartmentDTO
-            {
-                Id = d.Id,
-                Name = d.Name,
-                IsActive = d.IsActive,
-                DisplayOrder = d.DisplayOrder,
-                AttendanceOrder = d.AttendanceOrder
-            });
+            return departments.Select(ToDto);
         }
+
+        public async Task<IEnumerable<DepartmentDTO>> GetPublicDepartmentsAsync(bool appointment)
+        {
+            var departments = await _repo.GetPublicDepartmentsAsync(appointment);
+
+            return departments.Select(ToDto);
+        }
+
+        private static DepartmentDTO ToDto(Departments d) => new()
+        {
+            Id = d.Id,
+            Name = d.Name,
+            IsActive = d.IsActive,
+            DisplayOrder = d.DisplayOrder,
+            AttendanceOrder = d.AttendanceOrder,
+            ShowOnAppointment = d.ShowOnAppointment,
+            ShowOnFeedback = d.ShowOnFeedback
+        };
 
         public async Task<DepartmentResponse> GetDepartmentByIdAsync(int departmentId)
         {
@@ -98,13 +100,7 @@ namespace AlAmalBusiness.Application.Services.Imp
             return new DepartmentResponse
             {
                 Success = true,
-                Department = new DepartmentDTO
-                {
-                    Id = department.Id,
-                    Name = department.Name,
-                    IsActive = department.IsActive,
-                    DisplayOrder = department.DisplayOrder
-                }
+                Department = ToDto(department)
             };
         }
 
@@ -137,19 +133,16 @@ namespace AlAmalBusiness.Application.Services.Imp
             }
             departmentEntity.Name = department.Name;
             departmentEntity.IsActive = department.IsActive;
+            // null = not sent: keep what it was.
+            if (department.ShowOnAppointment is bool showOnAppointment) departmentEntity.ShowOnAppointment = showOnAppointment;
+            if (department.ShowOnFeedback is bool showOnFeedback) departmentEntity.ShowOnFeedback = showOnFeedback;
 
             await _repo.UpdateDepartmentAsync(departmentEntity);
 
             return new DepartmentResponse
             {
                 Success = true,
-                Department = new DepartmentDTO
-                {
-                    Id = departmentEntity.Id,
-                    Name = departmentEntity.Name,
-                    IsActive = departmentEntity.IsActive,
-                    DisplayOrder = departmentEntity.DisplayOrder
-                }
+                Department = ToDto(departmentEntity)
             };
         }
 

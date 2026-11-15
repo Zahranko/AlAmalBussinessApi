@@ -24,6 +24,15 @@ namespace AlAmalBusiness.Domain.Models
         // Its own column on purpose: the public form's order is for patients,
         // this one is the HR grouping, and moving one must not move the other.
         public int AttendanceOrder { get; set; }
+
+        // Whether patients can pick this department on each public page
+        // (2026-11-15): the appointment page (appointment.) and the feedback
+        // page (feedback.). Admin switches them from Settings -> Departments.
+        // A hidden department is left out of that page's list and refused on
+        // submit there; staff screens and forwarding still use it. Only an
+        // active department is ever shown, whatever these say.
+        public bool ShowOnAppointment { get; set; } = true;
+        public bool ShowOnFeedback { get; set; } = true;
         public ICollection<User> Users { get; set; } = new List<User>();
 
     }

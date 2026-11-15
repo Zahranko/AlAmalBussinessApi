@@ -32,11 +32,12 @@ namespace AlAmalBusiness.Api.Area.Feedback.Controllers
             _departmentService = departmentService;
         }
 
-        // Fills the form's department dropdown. Active departments only — a
-        // retired one stays on old messages but can't be picked again.
+        // Fills the form's department dropdown: active departments switched
+        // on for the feedback page (Departments.ShowOnFeedback). A retired or
+        // hidden one stays on old messages but can't be picked.
         [HttpGet("departments")]
         public async Task<IActionResult> GetDepartments() =>
-            Ok(await _departmentService.GetActiveDepartmentsAsync());
+            Ok(await _departmentService.GetPublicDepartmentsAsync(appointment: false));
 
         [HttpPost]
         public async Task<IActionResult> Submit(CreateFeedbackDTO request)

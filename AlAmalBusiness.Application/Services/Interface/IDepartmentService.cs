@@ -11,6 +11,8 @@ namespace AlAmalBusiness.Application.Services.Interface
     {
         Task<IEnumerable<DepartmentDTO>> GetAllDepartmentsAsync();
         Task<IEnumerable<DepartmentDTO>> GetActiveDepartmentsAsync();
+        // One public page's list: active and switched on for that page.
+        Task<IEnumerable<DepartmentDTO>> GetPublicDepartmentsAsync(bool appointment);
         Task<DepartmentResponse> GetDepartmentByIdAsync(int departmentId);
         Task<DepartmentResponse> CreateDepartmentAsync(DepartmentDTO department);
         Task<DepartmentResponse> UpdateDepartmentAsync(int id,DepartmentDTO department);

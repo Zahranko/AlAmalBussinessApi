@@ -11,6 +11,9 @@ namespace AlAmalBusiness.Domain.IRepositories
         // Ordered the way the public feedback form's dropdown shows them. A
         // retired department stays on old messages but can't be picked again.
         Task<IEnumerable<Departments>> GetActiveDepartmentsAsync();
+        // What one public page's dropdown lists: active, and switched on for
+        // that page (ShowOnAppointment / ShowOnFeedback), in DisplayOrder.
+        Task<IEnumerable<Departments>> GetPublicDepartmentsAsync(bool appointment);
         Task<Departments?> GetDepartmentByIdAsync(int departmentId);
         Task<Departments> CreateDepartmentAsync(Departments department);
         Task<Departments> UpdateDepartmentAsync(Departments department);

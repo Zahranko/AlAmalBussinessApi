@@ -18,5 +18,11 @@ namespace AlAmalBusiness.Application.DTOs.Departments
         // Where it sits on the attendance screens. Read-only here too; only
         // PUT /api/Department/attendance-order writes it.
         public int AttendanceOrder { get; set; }
+
+        // Shown on the public appointment / feedback page. Always filled on
+        // the way out; on the way in null means "leave as it is", so a body
+        // that only renames a department never hides it anywhere.
+        public bool? ShowOnAppointment { get; set; }
+        public bool? ShowOnFeedback { get; set; }
     }
 }

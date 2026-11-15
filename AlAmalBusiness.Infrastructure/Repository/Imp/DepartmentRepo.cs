@@ -64,6 +64,16 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Departments>> GetPublicDepartmentsAsync(bool appointment)
+        {
+            var query = _context.Departments.Where(d => d.IsActive);
+            query = appointment ? query.Where(d => d.ShowOnAppointment) : query.Where(d => d.ShowOnFeedback);
+            return await query
+                .OrderBy(d => d.DisplayOrder)
+                .ThenBy(d => d.Name)
+                .ToListAsync();
+        }
+
         public async Task<bool> ReorderAsync(IReadOnlyList<int> orderedIds, bool attendance = false)
         {
             var departments = await _context.Departments.ToListAsync();
@@ -115,6 +125,9 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             {
                 
                 searchDepartment.Name = department.Name;
+                searchDepartment.IsActive = department.IsActive;
+                searchDepartment.ShowOnAppointment = department.ShowOnAppointment;
+                searchDepartment.ShowOnFeedback = department.ShowOnFeedback;
                 _context.Departments.Update(searchDepartment);
                 await _context.SaveChangesAsync();
                 return searchDepartment;

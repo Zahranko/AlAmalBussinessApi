@@ -64,7 +64,9 @@ namespace AlAmalBusiness.Application.Services.Imp.Appointments
         {
             // Sequential on purpose: both run on the one scoped DbContext,
             // which does not allow concurrent queries.
-            var departments = await _departmentRepo.GetActiveDepartmentsAsync();
+            // Only the departments switched on for this page
+            // (Departments.ShowOnAppointment).
+            var departments = await _departmentRepo.GetPublicDepartmentsAsync(appointment: true);
             var referralSources = await _referralSourceRepo.GetActiveAsync();
 
             return new AppointmentFormOptionsResponse
@@ -84,10 +86,10 @@ namespace AlAmalBusiness.Application.Services.Imp.Appointments
             if (fullName == null || fullName.Length < 2)
                 return Rejected("الاسم مطلوب (حرفان على الأقل)");
 
-            // Inactive entries answer the same as missing ones: a retired
-            // choice stays on old requests but can't be picked again.
+            // Inactive or hidden-from-this-page entries answer the same as
+            // missing ones: they stay on old requests but can't be picked.
             var department = await _departmentRepo.GetDepartmentByIdAsync(request.DepartmentId);
-            if (department == null || !department.IsActive)
+            if (department == null || !department.IsActive || !department.ShowOnAppointment)
                 return Rejected("القسم المختار غير موجود");
 
             var referralSource = await _referralSourceRepo.GetByIdAsync(request.ReferralSourceId);
