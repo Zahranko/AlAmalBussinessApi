@@ -12,6 +12,7 @@ namespace AlAmalBusiness.Domain.IRepositories.CRM
         public string? ClaimedByUserId { get; set; }
         public string? CreatedByUserId { get; set; }
         public int? DoctorId { get; set; }
+        public int? ReferalId { get; set; }
         public bool UnclaimedOnly { get; set; }
         public bool TodayOnly { get; set; }
         public DateTime? ExactDate { get; set; }

@@ -81,9 +81,9 @@ public class LeadController : ControllerBase
     public async Task<ActionResult<LeadPagedResultResponse>> GetDashboardPaged(
         int page = 1, int pageSize = 12, string? search = null, string? status = null, string? scope = null,
         int? doctorId = null, string? createdByUserId = null, string? claimedByUserId = null,
-        [FromQuery] DateTime? date = null)
+        [FromQuery] DateTime? date = null, int? referalId = null)
     {
-        var filter = await ResolveLeadFilterAsync("leads-dashboard-paged", page, pageSize, search, status, scope, doctorId, createdByUserId, claimedByUserId, date);
+        var filter = await ResolveLeadFilterAsync("leads-dashboard-paged", page, pageSize, search, status, scope, doctorId, createdByUserId, claimedByUserId, date, referalId);
         var query = BuildScopedQuery(filter);
         // An explicit status filter and the "closed" scope still work as they
         // do everywhere else; what changes is the no-status default.
@@ -134,7 +134,7 @@ public class LeadController : ControllerBase
     // exactly as sent and becomes the new "last filter" for next time.
     private async Task<LeadFilterCacheDTO> ResolveLeadFilterAsync(
         string endpointKey, int page, int pageSize, string? search, string? status, string? scope, int? doctorId,
-        string? createdByUserId = null, string? claimedByUserId = null, DateTime? date = null)
+        string? createdByUserId = null, string? claimedByUserId = null, DateTime? date = null, int? referalId = null)
     {
         if (!Request.QueryString.HasValue)
         {
@@ -150,6 +150,7 @@ public class LeadController : ControllerBase
             Status = status,
             Scope = scope,
             DoctorId = doctorId,
+            ReferalId = referalId,
             CreatedByUserId = createdByUserId,
             ClaimedByUserId = claimedByUserId,
             Date = date,
@@ -169,6 +170,7 @@ public class LeadController : ControllerBase
             PageSize = filter.PageSize,
             Search = filter.Search,
             DoctorId = filter.DoctorId,
+            ReferalId = filter.ReferalId,
             CreatedByUserId = filter.CreatedByUserId,
             ClaimedByUserId = filter.ClaimedByUserId,
             // One day, matched on CreatedDate. Independent of the "today"

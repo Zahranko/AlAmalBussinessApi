@@ -274,6 +274,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CRM
 
             if (query.DoctorId.HasValue)
                 q = q.Where(l => l.DoctorId == query.DoctorId.Value);
+            if (query.ReferalId.HasValue)
+                q = q.Where(l => l.ReferalId == query.ReferalId.Value);
 
             if (query.UnclaimedOnly)
                 q = q.Where(l => l.ClaimedById == null);

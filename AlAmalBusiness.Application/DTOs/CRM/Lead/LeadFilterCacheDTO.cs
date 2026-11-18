@@ -10,6 +10,8 @@ namespace AlAmalBusiness.Application.DTOs.CRM.Lead
         public string? Status { get; set; }
         public string? Scope { get; set; }
         public int? DoctorId { get; set; }
+        // Admin dashboard only: the case's referral source (2026-11-18).
+        public int? ReferalId { get; set; }
         public string? CreatedByUserId { get; set; }
         public string? ClaimedByUserId { get; set; }
         // A single day to restrict the list to, matched against CreatedDate
