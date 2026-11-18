@@ -347,27 +347,19 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             }
             else if (request.Status == LeadStatus.Success)
             {
-                if (request.HasDoctor == true)
-                {
-                    lead.HasDoctor = true;
-                    if (!string.IsNullOrWhiteSpace(request.SignatureData))
-                    {
-                        // The console sends a FileReader data URL of an image;
-                        // anything else is not something the detail page can show.
-                        if (!request.SignatureData.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
-                            throw new InvalidOperationException("The clinic signature must be an image.");
-                        lead.ClinicSignature = request.SignatureData;
-                    }
+                // A successful case always names its doctor (2026-11-18): the
+                // old "has a doctor" checkbox and clinic-signature upload are
+                // gone, so the doctor is required and HasDoctor follows from it.
+                // HasDoctor/SignatureData in the body are ignored here.
+                var doctor = request.DoctorId.HasValue
+                    ? await _doctorRepo.GetByIdAsync(request.DoctorId.Value)
+                    : null;
+                if (doctor == null || !doctor.IsActive)
+                    throw new InvalidOperationException("Please select a valid doctor.");
 
-                    if (request.DoctorId.HasValue)
-                    {
-                        var doctor = await _doctorRepo.GetByIdAsync(request.DoctorId.Value);
-                        if (doctor == null || !doctor.IsActive)
-                            throw new InvalidOperationException("Please select a valid doctor.");
-                        lead.DoctorId = doctor.Id;
-                        history.DoctorId = doctor.Id;
-                    }
-                }
+                lead.HasDoctor = true;
+                lead.DoctorId = doctor.Id;
+                history.DoctorId = doctor.Id;
             }
             else if (request.Status == LeadStatus.Closed)
             {

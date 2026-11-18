@@ -76,6 +76,7 @@ Lives under `Area/CRM/` in Api (`Area/CRM/Controllers/`, `Area/CRM/Hubs/`) and `
 
 - **No "Forward" workflow** — a lead's owner only changes via Claim, never transferred to another user.
 - **No separate "Failed" status** — `LeadStatus` is `New, Pending, Waiting, Success, Closed`. Closing a lead requires picking a `ClosedReason` (what the old app called `FailureReason`), enforced in `LeadService.FollowUpAsync`.
+- **Success requires a doctor** (2026-11-18) — the follow-up's "has a doctor" checkbox and clinic-signature upload were removed; `FollowUpAsync` refuses Success without an active `DoctorId` and sets `HasDoctor = true` itself. `HasDoctor`/`SignatureData` in the body are ignored on Success; old `ClinicSignature` values stay readable.
 
 `Lead.CreatedById`/`ClaimedById` are `string` FKs straight to the local `AspNetUsers` table (via `IdentityUser`-derived `User`) — display names are read through EF navigation (`lead.CreatedBy.UserName`), no username-snapshot columns. Every workflow action (`Created`, `Claimed`, `ReOpened`, `Edited`, `FollowUp`) is appended to `LeadHistory` as an audit timeline, read back via `ILeadHistoryRepo`.
 
