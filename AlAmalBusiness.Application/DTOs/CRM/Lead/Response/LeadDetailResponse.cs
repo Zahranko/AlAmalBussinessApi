@@ -27,6 +27,9 @@ namespace AlAmalBusiness.Application.DTOs.CRM.Lead.Response
         public string? ClaimedByName { get; set; }
         public DateTime? CreatedDate { get; set; }
         public string? ClosedReason { get; set; }
+        // An employee's edit request waiting for an admin (2026-11-22), if any:
+        // the app shows "edit waiting" instead of offering a second request.
+        public int? PendingEditRequestId { get; set; }
         public List<LeadHistoryResponse> History { get; set; } = new();
         public List<LeadCallResponse> Calls { get; set; } = new();
     }

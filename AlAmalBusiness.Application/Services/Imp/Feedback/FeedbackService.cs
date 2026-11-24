@@ -1,3 +1,4 @@
+using AlAmalBusiness.Application.DTOs.Push;
 using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Feedback;
 using AlAmalBusiness.Application.DTOs.Feedback.Response;
@@ -25,6 +26,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
         private readonly IReferenceNumberGenerator _references;
         private readonly IUserRepo _userRepo;
         private readonly IEmailQueue _emailQueue;
+        private readonly IPushNotifier _push;
         private readonly ILogger<FeedbackService> _logger;
         private readonly string? _consoleBaseUrl;
 
@@ -39,6 +41,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             IReferenceNumberGenerator references,
             IUserRepo userRepo,
             IEmailQueue emailQueue,
+            IPushNotifier push,
             ILogger<FeedbackService> logger,
             IConfiguration config)
         {
@@ -51,6 +54,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
             _references = references;
             _userRepo = userRepo;
             _emailQueue = emailQueue;
+            _push = push;
             _logger = logger;
         }
 
@@ -113,6 +117,25 @@ namespace AlAmalBusiness.Application.Services.Imp.Feedback
         {
             try
             {
+                // The phone push goes to the same managers as the email, and
+                // first, so a manager with no email address still hears of it.
+                // Nothing that identifies the patient is put on a lock screen.
+                _push.ToRoleInDepartment(AppRoles.FManager, feedback.DepartmentId, new PushMessage
+                {
+                    Title = feedback.Type switch
+                    {
+                        FeedbackType.Complaint => "New complaint",
+                        FeedbackType.Thanks => "New thanks",
+                        _ => "New feedback",
+                    },
+                    Body = string.IsNullOrWhiteSpace(departmentName)
+                        ? feedback.ReferenceNumber
+                        : $"{feedback.ReferenceNumber} · {departmentName}",
+                    Kind = "feedback",
+                    Id = feedback.Id.ToString(),
+                    Thread = $"feedback-{feedback.Id}",
+                });
+
                 var recipients = await _userRepo.GetActiveEmailsInRoleAsync(AppRoles.FManager, feedback.DepartmentId);
                 if (recipients.Count == 0)
                 {

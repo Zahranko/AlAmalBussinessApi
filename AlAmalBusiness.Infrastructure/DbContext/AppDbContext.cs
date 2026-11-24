@@ -1,4 +1,4 @@
-﻿using AlAmalBusiness.Domain.Models;
+using AlAmalBusiness.Domain.Models;
 using AlAmalBusiness.Domain.Models.Appointments;
 using AlAmalBusiness.Domain.Models.Attendance;
 using AlAmalBusiness.Domain.Models.CarChecks;
@@ -29,6 +29,8 @@ public class AppDbContext : IdentityDbContext<User>
       public DbSet<LeadCall> LeadCalls { get; set; }
       public DbSet<DeletedLead> DeletedLeads { get; set; }
       public DbSet<RefreshToken> RefreshTokens { get; set; }
+      public DbSet<LeadEditRequest> LeadEditRequests { get; set; }
+      public DbSet<DeviceToken> DeviceTokens { get; set; }
       public DbSet<PatientFeedback> Feedbacks { get; set; }
       public DbSet<FeedbackHistory> FeedbackHistories { get; set; }
       public DbSet<Questionnaire> Questionnaires { get; set; }
@@ -209,6 +211,33 @@ public class AppDbContext : IdentityDbContext<User>
         // One recycle-bin row per deleted lead; the list sorts by DeletedAt.
         modelBuilder.Entity<DeletedLead>().HasIndex(d => d.LeadId).IsUnique();
         modelBuilder.Entity<DeletedLead>().HasIndex(d => d.DeletedAt);
+
+        // ---------- Lead edit requests (2026-11-22) ----------
+        // Cascade from the lead (a lead is only ever soft-deleted, so this
+        // never fires in practice); Restrict on every user and lookup so a
+        // review record never silently loses who asked or what they picked.
+        modelBuilder.Entity<LeadEditRequest>()
+            .HasOne(r => r.Lead).WithMany().HasForeignKey(r => r.LeadId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LeadEditRequest>()
+            .HasOne(r => r.RequestedBy).WithMany().HasForeignKey(r => r.RequestedById).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LeadEditRequest>()
+            .HasOne(r => r.ReviewedBy).WithMany().HasForeignKey(r => r.ReviewedById).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LeadEditRequest>()
+            .HasOne(r => r.Doctor).WithMany().HasForeignKey(r => r.DoctorId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LeadEditRequest>()
+            .HasOne(r => r.Referal).WithMany().HasForeignKey(r => r.ReferalId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LeadEditRequest>()
+            .HasOne(r => r.Procedure).WithMany().HasForeignKey(r => r.ProcedureId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LeadEditRequest>().Property(r => r.Description).HasMaxLength(8000);
+        modelBuilder.Entity<LeadEditRequest>().HasIndex(r => new { r.Status, r.RequestedAt });
+        modelBuilder.Entity<LeadEditRequest>().HasIndex(r => new { r.LeadId, r.Status });
+        modelBuilder.Entity<LeadEditRequest>().HasIndex(r => new { r.RequestedById, r.RequestedAt });
+
+        // ---------- Push device tokens (2026-11-22) ----------
+        modelBuilder.Entity<DeviceToken>()
+            .HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<DeviceToken>().HasIndex(d => d.Token).IsUnique();
+        modelBuilder.Entity<DeviceToken>().HasIndex(d => d.UserId);
 
         // ---------- Feedback ----------
 

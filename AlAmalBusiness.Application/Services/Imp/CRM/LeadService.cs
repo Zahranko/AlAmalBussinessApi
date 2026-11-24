@@ -1,4 +1,4 @@
-﻿using AlAmalBusiness.Application.DTOs;
+using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.CRM.Lead;
 using AlAmalBusiness.Application.DTOs.CRM.Lead.Response;
 using AlAmalBusiness.Application.DTOs.CRM.Stats;
@@ -27,6 +27,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
         private readonly IUserRepo _userRepo;
         private readonly ILeadNotifier _notifier;
         private readonly IMemoryCache _cache;
+        private readonly ILeadEditRequestRepo _editRequestRepo;
 
         private const int MaxCallsPerLead = 6;
 
@@ -52,7 +53,8 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             IClosedReasonRepo closedReasonRepo,
             IUserRepo userRepo,
             ILeadNotifier notifier,
-            IMemoryCache cache)
+            IMemoryCache cache,
+            ILeadEditRequestRepo editRequestRepo)
         {
             _leadRepo = leadRepo;
             _historyRepo = historyRepo;
@@ -64,6 +66,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             _userRepo = userRepo;
             _notifier = notifier;
             _cache = cache;
+            _editRequestRepo = editRequestRepo;
         }
 
         private Task<T> CachedAsync<T>(string key, Func<Task<T>> factory) =>
@@ -498,7 +501,16 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
 
         // Admin-only: edits every base field of an existing lead, regardless of
         // status — a data-correction tool, deliberately bypasses EnsureNotClosed.
-        public async Task<LeadActionResponse> AdminUpdateLeadAsync(int id, string adminUserId, AdminUpdateLeadDTO request)
+        public Task<LeadActionResponse> AdminUpdateLeadAsync(int id, string adminUserId, AdminUpdateLeadDTO request) =>
+            UpdateLeadCoreAsync(id, adminUserId, request, notePrefix: null);
+
+        // An Admin approving an employee's edit request (LeadEditRequestService):
+        // the same edit, with the timeline entry naming the request. Recorded
+        // even when nothing is left to change, so the approval is never silent.
+        public Task<LeadActionResponse> ApplyApprovedEditAsync(int id, string adminUserId, AdminUpdateLeadDTO request, string notePrefix) =>
+            UpdateLeadCoreAsync(id, adminUserId, request, notePrefix);
+
+        private async Task<LeadActionResponse> UpdateLeadCoreAsync(int id, string adminUserId, AdminUpdateLeadDTO request, string? notePrefix)
         {
             // The lookup navigations feed the "old value" side of the change note.
             var lead = await GetLeadOrThrow(id, includeLookups: true);
@@ -544,14 +556,17 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
             lead.DoctorId = doctorId;
             lead.Description = request.Description;
 
-            if (changes.Count > 0)
+            if (changes.Count > 0 || notePrefix != null)
             {
+                var note = string.Join("; ", changes);
+                if (notePrefix != null)
+                    note = changes.Count > 0 ? $"{notePrefix}: {note}" : $"{notePrefix} (nothing left to change)";
                 _historyRepo.Add(new LeadHistory
                 {
                     LeadId = lead.Id,
                     ActorId = adminUserId,
                     Type = LeadActions.Edited,
-                    Note = string.Join("; ", changes),
+                    Note = note,
                     ActionDate = AppClock.Now
                 });
             }
@@ -919,6 +934,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
         {
             var history = await _historyRepo.GetByLeadAsync(lead.Id);
             var calls = await _callRepo.GetByLeadAsync(lead.Id);
+            var pendingEdit = await _editRequestRepo.GetPendingIdForLeadAsync(lead.Id);
 
             return new LeadDetailResponse
             {
@@ -943,6 +959,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CRM
                 ClaimedByName = lead.ClaimedByName,
                 CreatedDate = lead.CreatedDate,
                 ClosedReason = lead.ClosedReasonName,
+                PendingEditRequestId = pendingEdit,
                 History = history.Select(h => new LeadHistoryResponse
                 {
                     Id = h.Id,

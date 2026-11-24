@@ -31,6 +31,7 @@ namespace AlAmalBusiness.Application.Services.Interface.CRM
         Task<LeadActionResponse> FollowUpAsync(int id, string userId, FollowUpLeadDTO request);
         Task<LeadActionResponse> ReopenAsync(int id, string adminUserId);
         Task<LeadActionResponse> AdminUpdateLeadAsync(int id, string adminUserId, AdminUpdateLeadDTO request);
+        Task<LeadActionResponse> ApplyApprovedEditAsync(int id, string adminUserId, AdminUpdateLeadDTO request, string notePrefix);
 
         // Up to 6 calls per lead. The first call logged on a New lead moves it
         // to Pending; any other status is left as-is.

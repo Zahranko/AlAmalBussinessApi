@@ -1,3 +1,4 @@
+using AlAmalBusiness.Application.DTOs.Push;
 using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Email;
 using AlAmalBusiness.Application.DTOs.Feedback;
@@ -31,6 +32,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         private readonly IMaintenanceTicketHistoryRepo _historyRepo;
         private readonly IUserRepo _userRepo;
         private readonly IEmailQueue _emailQueue;
+        private readonly IPushNotifier _push;
         private readonly ILogger<MaintenanceTicketService> _logger;
         private readonly string? _consoleBaseUrl;
 
@@ -48,6 +50,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             IMaintenanceTicketHistoryRepo historyRepo,
             IUserRepo userRepo,
             IEmailQueue emailQueue,
+            IPushNotifier push,
             ILogger<MaintenanceTicketService> logger,
             IConfiguration config)
         {
@@ -56,6 +59,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             _historyRepo = historyRepo;
             _userRepo = userRepo;
             _emailQueue = emailQueue;
+            _push = push;
             _logger = logger;
         }
 
@@ -450,6 +454,16 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         {
             try
             {
+                var priority = PriorityLabel(ticket.Priority);
+                _push.ToRoles(SupportRoles, actorId, new PushMessage
+                {
+                    Title = priority == null ? "New maintenance request" : $"New maintenance request · {priority}",
+                    Body = $"#{ticket.Id} · {ticket.Title}" + (Where(ticket) is { } where ? $" · {where}" : ""),
+                    Kind = "maintenance",
+                    Id = ticket.Id.ToString(),
+                    Thread = $"maintenance-{ticket.Id}",
+                });
+
                 var recipients = await _userRepo.GetActiveEmailsInRolesAsync(SupportRoles, actorId);
                 Enqueue(ticket.Id, "new-maintenance", recipients,
                     to => TicketEmailTemplate.NewMaintenance(to, Facts(ticket), Where(ticket), ticket.RequesterPhone, PriorityLabel(ticket.Priority), ticket.Details, Link(ticket.Id)));
@@ -465,6 +479,14 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             try
             {
                 if (ticket.CreatedById == null) return;
+                _push.ToUsers(new[] { ticket.CreatedById }, new PushMessage
+                {
+                    Title = success ? "Maintenance done" : "Maintenance not done",
+                    Body = $"#{ticket.Id} · {ticket.Title}",
+                    Kind = "maintenance",
+                    Id = ticket.Id.ToString(),
+                    Thread = $"maintenance-{ticket.Id}",
+                });
                 var email = await _userRepo.GetActiveEmailAsync(ticket.CreatedById);
                 var recipients = email == null ? new List<string>() : new List<string> { email };
                 Enqueue(ticket.Id, "closed", recipients,

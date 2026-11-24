@@ -1,3 +1,4 @@
+using AlAmalBusiness.Application.DTOs.Push;
 using AlAmalBusiness.Application.DTOs;
 using AlAmalBusiness.Application.DTOs.Email;
 using AlAmalBusiness.Application.DTOs.Tickets;
@@ -43,6 +44,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         private readonly ITicketProcedureRepo _procedureRepo;
         private readonly IUserRepo _userRepo;
         private readonly IEmailQueue _emailQueue;
+        private readonly IPushNotifier _push;
         private readonly ITicketNotifier _notifier;
         private readonly ILogger<TicketService> _logger;
         private readonly string? _consoleBaseUrl;
@@ -66,6 +68,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             ITicketProcedureRepo procedureRepo,
             IUserRepo userRepo,
             IEmailQueue emailQueue,
+            IPushNotifier push,
             ITicketNotifier notifier,
             ILogger<TicketService> logger,
             IConfiguration config)
@@ -79,6 +82,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             _procedureRepo = procedureRepo;
             _userRepo = userRepo;
             _emailQueue = emailQueue;
+            _push = push;
             _notifier = notifier;
             _logger = logger;
         }
@@ -520,6 +524,18 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
         {
             try
             {
+                // Same desk as the email. The title is an MRN, so it stays off
+                // the lock screen: the number and procedure say enough.
+                _push.ToRoles(insurance ? InsuranceRoles : QueueRoles, actorId, new PushMessage
+                {
+                    Title = insurance ? "New insurance ticket" : "New ticket",
+                    Body = $"#{ticket.Id}" + (string.IsNullOrWhiteSpace(ticket.ProcedureName) ? "" : $" · {ticket.ProcedureName}")
+                        + (string.IsNullOrWhiteSpace(ticket.DepartmentName) ? "" : $" · {ticket.DepartmentName}"),
+                    Kind = "ticket",
+                    Id = ticket.Id.ToString(),
+                    Thread = $"ticket-{ticket.Id}",
+                });
+
                 var recipients = await _userRepo.GetActiveEmailsInRolesAsync(insurance ? InsuranceRoles : QueueRoles, actorId);
                 Enqueue(ticket.Id, "new-ticket", recipients,
                     to => TicketEmailTemplate.NewTicket(to, Facts(ticket), insurance, Link(ticket.Id)));
@@ -535,6 +551,14 @@ namespace AlAmalBusiness.Application.Services.Imp.Tickets
             try
             {
                 if (ticket.CreatedById == null) return;
+                _push.ToUsers(new[] { ticket.CreatedById }, new PushMessage
+                {
+                    Title = success ? "Ticket solved" : "Ticket not solved",
+                    Body = $"#{ticket.Id}" + (string.IsNullOrWhiteSpace(ticket.AssignedToName) ? "" : $" · {ticket.AssignedToName}"),
+                    Kind = "ticket",
+                    Id = ticket.Id.ToString(),
+                    Thread = $"ticket-{ticket.Id}",
+                });
                 var email = await _userRepo.GetActiveEmailAsync(ticket.CreatedById);
                 var recipients = email == null ? new List<string>() : new List<string> { email };
                 Enqueue(ticket.Id, "closed", recipients,

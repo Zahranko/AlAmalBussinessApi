@@ -92,6 +92,8 @@ jobs:
           SMTP_USER: ${{ secrets.PROD_SMTP_USERNAME }}
           SMTP_PASS: ${{ secrets.PROD_SMTP_PASSWORD }}
           WA_KEY: ${{ secrets.PROD_WHATSAPP_API_KEY }}
+          # The whole Firebase service-account JSON; blank = phone push off.
+          FCM_JSON: ${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT }}
           DIGEST: ${{ needs.build.outputs.digest }}
         run: |
           set -euo pipefail
@@ -113,6 +115,9 @@ jobs:
             printf 'Email__Password=%s\n' "$SMTP_PASS"
             printf 'Email__FromAddress=%s\n' "$SMTP_USER"
             printf 'WhatsApp__ApiKey=%s\n' "$WA_KEY"
+            # one line: an env file can't hold the key file's line breaks
+            # (the private key's own "\n"s are escapes inside a JSON string, so they stay)
+            printf 'Push__ServiceAccountJson=%s\n' "$(printf '%s' "$FCM_JSON" | tr -d '\r\n')"
           } | ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
                 deployer@"$VPS_HOST" "deploy alamal-api ${IMAGE}@${DIGEST}"
 

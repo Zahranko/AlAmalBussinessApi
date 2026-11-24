@@ -1,4 +1,4 @@
-﻿using AlAmalBusiness.Api.Area.CRM.Hubs;
+using AlAmalBusiness.Api.Area.CRM.Hubs;
 using AlAmalBusiness.Api.Area.Tickets.Hubs;
 using AlAmalBusiness.Api.Email;
 using AlAmalBusiness.Application.Services.Imp.Appointments;
@@ -79,6 +79,8 @@ builder.Services.AddScoped<IDepartmentRepo, DepartmentRepo>();
 builder.Services.AddScoped<ILeadRepo, LeadRepo>();
 builder.Services.AddScoped<ILeadHistoryRepo, LeadHistoryRepo>();
 builder.Services.AddScoped<ILeadCallRepo, LeadCallRepo>();
+builder.Services.AddScoped<ILeadEditRequestRepo, LeadEditRequestRepo>();
+builder.Services.AddScoped<IDeviceTokenRepo, DeviceTokenRepo>();
 builder.Services.AddScoped<IDoctorRepo, DoctorRepo>();
 builder.Services.AddScoped<IProcedureRepo, ProcedureRepo>();
 builder.Services.AddScoped<IReferalSourceRepo, ReferalSourceRepo>();
@@ -111,6 +113,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<ILeadService, LeadService>();
+builder.Services.AddScoped<ILeadEditRequestService, LeadEditRequestService>();
+builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IDoctorService, DoctorService>();
 builder.Services.AddScoped<IProcedureService, ProcedureService>();
 builder.Services.AddScoped<IReferalSourceService, ReferalSourceService>();
@@ -157,6 +161,12 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(Email
 builder.Services.AddSingleton<ChannelEmailQueue>();
 builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<ChannelEmailQueue>());
 builder.Services.AddHostedService<SmtpEmailBackgroundService>();
+// Phone push notifications for the mobile app (Push section; blank
+// ServiceAccountJson = off) — same queue + background sender shape as email.
+builder.Services.Configure<AlAmalBusiness.Api.Push.PushSettings>(builder.Configuration.GetSection(AlAmalBusiness.Api.Push.PushSettings.SectionName));
+builder.Services.AddSingleton<AlAmalBusiness.Api.Push.ChannelPushQueue>();
+builder.Services.AddSingleton<IPushNotifier>(sp => sp.GetRequiredService<AlAmalBusiness.Api.Push.ChannelPushQueue>());
+builder.Services.AddHostedService<AlAmalBusiness.Api.Push.FcmPushBackgroundService>();
 builder.Services.AddScoped<IFilterCacheRepo, FilterCacheRepo>();
 builder.Services.AddScoped<IFilterCacheService, FilterCacheService>();
 builder.Services.AddSignalR();

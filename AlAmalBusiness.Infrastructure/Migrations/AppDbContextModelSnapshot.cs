@@ -497,6 +497,92 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.ToTable("LeadCalls");
                 });
 
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CRM.LeadEditRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CountryKey")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("DoctorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LeadId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NickName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("PaymentWay")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PhoneNum")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("ProcedureId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReferalId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RequestedById")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("ProcedureId");
+
+                    b.HasIndex("ReferalId");
+
+                    b.HasIndex("ReviewedById");
+
+                    b.HasIndex("LeadId", "Status");
+
+                    b.HasIndex("RequestedById", "RequestedAt");
+
+                    b.HasIndex("Status", "RequestedAt");
+
+                    b.ToTable("LeadEditRequests");
+                });
+
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.CRM.LeadHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -800,6 +886,43 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Departments");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.DeviceToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Platform")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("DeviceTokens");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Feedback.FeedbackHistory", b =>
@@ -2168,6 +2291,55 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Navigation("Lead");
                 });
 
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.CRM.LeadEditRequest", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.CRM.Doctors", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.CRM.Lead", "Lead")
+                        .WithMany()
+                        .HasForeignKey("LeadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.CRM.Procedures", "Procedure")
+                        .WithMany()
+                        .HasForeignKey("ProcedureId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.CRM.ReferalSource", "Referal")
+                        .WithMany()
+                        .HasForeignKey("ReferalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "RequestedBy")
+                        .WithMany()
+                        .HasForeignKey("RequestedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Lead");
+
+                    b.Navigation("Procedure");
+
+                    b.Navigation("Referal");
+
+                    b.Navigation("RequestedBy");
+
+                    b.Navigation("ReviewedBy");
+                });
+
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.CRM.LeadHistory", b =>
                 {
                     b.HasOne("AlAmalBusiness.Domain.Models.User", "Actor")
@@ -2268,6 +2440,17 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Navigation("Driver");
 
                     b.Navigation("LastEditedBy");
+                });
+
+            modelBuilder.Entity("AlAmalBusiness.Domain.Models.DeviceToken", b =>
+                {
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Feedback.FeedbackHistory", b =>
