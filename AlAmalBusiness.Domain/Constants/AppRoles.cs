@@ -88,5 +88,10 @@ namespace AlAmalBusiness.Domain.Constants
         // role; the console's server checks it (via /api/Auth/me) before it
         // calls AmalQR with its server key.
         public const string QRManager = "QRManager";
+        // Mailbox in the mobile app (added 2026-11-24): reads and sends their
+        // Hostinger mailbox through the separate mail service
+        // (mailapi.alamalhospitaljo.com, repo Zahranko/mailapi). Nothing in this
+        // API reads it; that service checks it via GET api/Auth/me.
+        public const string Email = "Email";
     }
 }
