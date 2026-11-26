@@ -26,7 +26,8 @@ namespace AlAmalBusiness.Api.Area.CarChecks.Controllers
     [Authorize(Roles = CarCheckAccess)]
     public class CarCheckController : ControllerBase
     {
-        private const string CarCheckAccess = nameof(AppRoles.SecurityManager) + "," + nameof(AppRoles.Admin);
+        private const string CarCheckAccess = nameof(AppRoles.SecurityManager) + "," + nameof(AppRoles.SecurityEmp) + "," + nameof(AppRoles.Admin);
+        private const string ManagerAccess = nameof(AppRoles.SecurityManager) + "," + nameof(AppRoles.Admin);
 
         private readonly ICarCheckService _checks;
 
@@ -37,6 +38,10 @@ namespace AlAmalBusiness.Api.Area.CarChecks.Controllers
 
         private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         private bool IsAdmin => User.IsInRole(nameof(AppRoles.Admin));
+
+        // A SecurityEmp who isn't also a manager: today's check only.
+        private bool TodayOnly =>
+            User.IsInRole(nameof(AppRoles.SecurityEmp)) && !IsAdmin && !User.IsInRole(nameof(AppRoles.SecurityManager));
 
         // ---------- cars ----------
 
@@ -63,7 +68,7 @@ namespace AlAmalBusiness.Api.Area.CarChecks.Controllers
         // ---------- sheets ----------
 
         [HttpPost("sheets")]
-        public Task<IActionResult> OpenSheet(OpenCarCheckSheetDTO dto) => Run(() => _checks.OpenSheetAsync(dto, UserId));
+        public Task<IActionResult> OpenSheet(OpenCarCheckSheetDTO dto) => Run(() => _checks.OpenSheetAsync(dto, UserId, TodayOnly));
 
         // The sheet and one entry per day of its month.
         [HttpGet("sheets/{id:int}")]
@@ -75,10 +80,11 @@ namespace AlAmalBusiness.Api.Area.CarChecks.Controllers
 
         // Every changed day in one request; answers the whole saved grid.
         [HttpPut("sheets/{id:int}/days")]
-        public Task<IActionResult> SaveDays(int id, List<CarCheckDayDTO> days) => Run(() => _checks.SaveDaysAsync(id, days, UserId, IsAdmin));
+        public Task<IActionResult> SaveDays(int id, List<CarCheckDayDTO> days) => Run(() => _checks.SaveDaysAsync(id, days, UserId, IsAdmin, TodayOnly));
 
         // Any SecurityManager may close a month; only an Admin reopens it.
         [HttpPost("sheets/{id:int}/close")]
+        [Authorize(Roles = ManagerAccess)]
         public Task<IActionResult> CloseSheet(int id) => Run(() => _checks.CloseSheetAsync(id, UserId));
 
         [HttpPost("sheets/{id:int}/reopen")]

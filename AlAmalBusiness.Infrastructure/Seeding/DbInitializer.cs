@@ -79,6 +79,7 @@ namespace AlAmalBusiness.Infrastructure.Seeding
                 AppRoles.AttendanceManager,
                 AppRoles.AttendEmp,
                 AppRoles.SecurityManager,
+                AppRoles.SecurityEmp,
                 AppRoles.Driver,
                 AppRoles.QRManager,
                 AppRoles.Email

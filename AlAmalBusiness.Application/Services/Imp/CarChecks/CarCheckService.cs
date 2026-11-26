@@ -85,7 +85,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
             };
         }
 
-        public async Task<CarCheckResult<CarCheckSheetResponse>> OpenSheetAsync(OpenCarCheckSheetDTO dto, string userId)
+        public async Task<CarCheckResult<CarCheckSheetResponse>> OpenSheetAsync(OpenCarCheckSheetDTO dto, string userId, bool todayOnly = false)
         {
             if (dto.Month is < 1 or > 12) return Failed<CarCheckSheetResponse>("Month must be between 1 and 12.");
             if (dto.Year is < 2000 or > 2100) return Failed<CarCheckSheetResponse>("Year isn't valid.");
@@ -93,6 +93,8 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
             var today = AppClock.Today;
             if (dto.Year * 12 + dto.Month > today.Year * 12 + today.Month)
                 return Failed<CarCheckSheetResponse>("That month hasn't started yet.");
+            if (todayOnly && (dto.Year != today.Year || dto.Month != today.Month))
+                return Conflicted<CarCheckSheetResponse>("Only this month's sheet can be opened.");
 
             var car = await _repo.GetCarAsync(dto.CarId);
             if (car == null) return Missing<CarCheckSheetResponse>();
@@ -138,7 +140,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
         // replace of that day; a day sent with nothing filled is cleared.
         // All or nothing — the rules are lengths and day numbers, so one bad
         // day is a client bug, not a typo to report per row.
-        public async Task<CarCheckResult<CarCheckGridResponse>> SaveDaysAsync(int id, List<CarCheckDayDTO> days, string userId, bool isAdmin)
+        public async Task<CarCheckResult<CarCheckGridResponse>> SaveDaysAsync(int id, List<CarCheckDayDTO> days, string userId, bool isAdmin, bool todayOnly = false)
         {
             var sheet = await _repo.GetSheetAsync(id);
             if (sheet == null) return Missing<CarCheckGridResponse>();
@@ -167,6 +169,17 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
 
             var existing = (await _repo.GetDaysAsync(id, tracking: true)).ToDictionary(d => d.Day);
             var now = AppClock.Now;
+
+            // A SecurityEmp fills today's check and nothing else: no other
+            // day, and not a week that was already checked on another day.
+            if (todayOnly && days.Count > 0)
+            {
+                if (sheet.Year != today.Year || sheet.Month != today.Month || days.Any(d => d.Day != today.Day))
+                    return Conflicted<CarCheckGridResponse>("You can only fill today's check — an earlier day is the manager's to change.");
+                var earlier = existing.Values.FirstOrDefault(x => x.Day != today.Day && WeekOf(x.Day) == WeekOf(today.Day));
+                if (earlier != null)
+                    return Conflicted<CarCheckGridResponse>($"This week was already checked on day {earlier.Day} — only a manager can change it.");
+            }
 
             foreach (var d in days)
             {
