@@ -73,6 +73,10 @@ namespace AlAmalBusiness.Domain.Constants
         // way — the departments on their token, Admin every department. Spelt
         // out in full because every short prefix (A-, M-) is already taken.
         public const string AttendanceManager = "AttendanceManager";
+        // An employee on the attendance sheets (added 2026-11-26): a sheet's
+        // rows are users holding this role in that department, and the role
+        // reads its own attendance (api/MyAttendance) and nothing else.
+        public const string AttendEmp = "AttendEmp";
         // Security's daily vehicle checks (added 2026-11-01): works the cars'
         // monthly check sheets. Like AttendanceManager it may do everything
         // but delete, change the managed list, or reopen/edit a closed month.

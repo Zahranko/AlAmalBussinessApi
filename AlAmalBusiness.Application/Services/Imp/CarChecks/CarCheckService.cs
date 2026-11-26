@@ -22,7 +22,6 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
     public class CarCheckService : ICarCheckService
     {
         private const int MaxNotes = 500;
-        private const int MaxEmployeeName = 100;
 
         private readonly ICarCheckRepo _repo;
 
@@ -150,14 +149,21 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
             if (days.Count > daysInMonth) return Failed<CarCheckGridResponse>("Too many days in one save.");
             if (days.Select(d => d.Day).Distinct().Count() != days.Count) return Failed<CarCheckGridResponse>("A day was sent twice.");
 
+            var today = AppClock.Now.Date;
             foreach (var d in days)
             {
                 if (d.Day < 1 || d.Day > daysInMonth) return Failed<CarCheckGridResponse>($"Day {d.Day} isn't in this month.");
                 d.Notes = Blank(d.Notes);
-                d.EmployeeName = Blank(d.EmployeeName);
+                // The checker is whoever saves the check, never a typed name.
+                d.EmployeeName = null;
                 if (d.Notes?.Length > MaxNotes) return Failed<CarCheckGridResponse>($"Day {d.Day}: notes are longer than {MaxNotes} characters.");
-                if (d.EmployeeName?.Length > MaxEmployeeName) return Failed<CarCheckGridResponse>($"Day {d.Day}: the name is longer than {MaxEmployeeName} characters.");
+                if (!IsBlank(d) && new DateTime(sheet.Year, sheet.Month, d.Day) > today)
+                    return Failed<CarCheckGridResponse>($"Day {d.Day} hasn't come yet — a check is saved on the day it was done.");
             }
+
+            // Weekly: one check per week of the month.
+            if (days.Where(d => !IsBlank(d)).GroupBy(d => WeekOf(d.Day)).Any(g => g.Count() > 1))
+                return Failed<CarCheckGridResponse>("One check per week — two days of the same week were sent.");
 
             var existing = (await _repo.GetDaysAsync(id, tracking: true)).ToDictionary(d => d.Day);
             var now = AppClock.Now;
@@ -172,6 +178,14 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
                     continue;
                 }
 
+                // The week's check moves to this day: any other day of the
+                // same week goes.
+                foreach (var other in existing.Values.Where(x => x.Day != d.Day && WeekOf(x.Day) == WeekOf(d.Day)).ToList())
+                {
+                    _repo.RemoveDay(other);
+                    existing.Remove(other.Day);
+                }
+
                 if (row == null)
                 {
                     row = new CarCheckDay { SheetId = id, Day = d.Day };
@@ -184,7 +198,7 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
                 row.RadiatorWater = d.RadiatorWater;
                 row.BodyDamage = d.BodyDamage;
                 row.Notes = d.Notes;
-                row.EmployeeName = d.EmployeeName;
+                row.EmployeeName = null;
                 row.UpdatedById = userId;
                 row.UpdatedAt = now;
             }
@@ -245,6 +259,9 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
 
         private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
+        // Days 1-7 are week 0, 8-14 week 1, ..., 29-31 week 4.
+        internal static int WeekOf(int day) => (day - 1) / 7;
+
         private static string Title(int year, int month) => $"{month}-{year}";
 
         private static SecurityCarResponse ToResponse(SecurityCarRow c) => new()
@@ -286,7 +303,9 @@ namespace AlAmalBusiness.Application.Services.Imp.CarChecks
             RadiatorWater = d.RadiatorWater,
             BodyDamage = d.BodyDamage,
             Notes = d.Notes,
-            EmployeeName = d.EmployeeName
+            // Who did the check: whoever saved it (a name typed before the
+            // checks became the signed-in user's, for the old rows).
+            EmployeeName = d.UpdatedBy != null ? (d.UpdatedBy.FullName ?? d.UpdatedBy.UserName) : d.EmployeeName
         };
 
         private static CarCheckResult<T> Ok<T>(T item) => new() { Success = true, Item = item };

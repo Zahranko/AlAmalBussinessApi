@@ -23,6 +23,26 @@ namespace AlAmalBusiness.Api.Area.Attendance.Controllers
     //
     // Answers: the saved item on success, { message } with 400 for a broken
     // rule, 409 for a duplicate/blocked action, 404 for no such id.
+    // An attendance employee's own months (AttendEmp): their row of each
+    // sheet they are on, newest first. Nothing else of the area is theirs.
+    [ApiController]
+    [Route("api/[controller]")]
+    [EnableRateLimiting("PerUserLimit")]
+    [Authorize(Roles = nameof(AppRoles.AttendEmp))]
+    public class MyAttendanceController : ControllerBase
+    {
+        private readonly IAttendanceService _attendance;
+
+        public MyAttendanceController(IAttendanceService attendance)
+        {
+            _attendance = attendance;
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<List<MyAttendanceMonthResponse>>> Get() =>
+            Ok(await _attendance.GetMineAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!));
+    }
+
     [ApiController]
     [Route("api/[controller]")]
     [EnableRateLimiting("PerUserLimit")]
@@ -115,6 +135,14 @@ namespace AlAmalBusiness.Api.Area.Attendance.Controllers
         [HttpPost("sheets/{id:int}/rows")]
         public Task<IActionResult> SaveRows(int id, List<SaveAttendanceRowDTO> rows) =>
             Run(() => _attendance.SaveRowsAsync(id, rows, Actor));
+
+        // The department's AttendEmp users, for the "add employee" picker.
+        [HttpGet("sheets/{id:int}/employees")]
+        public async Task<IActionResult> GetEmployees(int id)
+        {
+            var list = await _attendance.GetEmployeesAsync(id, Actor);
+            return list == null ? NotFound() : Ok(list);
+        }
 
         // Admin only.
         [HttpDelete("rows/{id:int}")]

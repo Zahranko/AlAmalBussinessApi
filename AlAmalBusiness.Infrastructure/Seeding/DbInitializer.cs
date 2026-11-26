@@ -77,6 +77,7 @@ namespace AlAmalBusiness.Infrastructure.Seeding
                 AppRoles.MSupport,
                 AppRoles.MaintenanceManager,
                 AppRoles.AttendanceManager,
+                AppRoles.AttendEmp,
                 AppRoles.SecurityManager,
                 AppRoles.Driver,
                 AppRoles.QRManager,

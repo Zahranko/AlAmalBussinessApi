@@ -54,8 +54,10 @@ namespace AlAmalBusiness.Domain.Models.CarChecks
         public List<CarCheckDay> Days { get; set; } = new();
     }
 
-    // One filled day. Each check is ✔ (true), ✘ (false) or not filled
-    // (null); a day with nothing filled has no row at all.
+    // One week's check. Since 2026-11-26 the checks are weekly — days 1-7,
+    // 8-14, 15-21, 22-28, 29-end — and a week's check is stored under the day
+    // it was done, so a sheet holds at most one row per week. Each check is
+    // ✔ (true), ✘ (false) or not filled (null); nothing filled is no row.
     public class CarCheckDay
     {
         public int SheetId { get; set; }
@@ -79,11 +81,12 @@ namespace AlAmalBusiness.Domain.Models.CarChecks
         [MaxLength(500)]
         public string? Notes { get; set; }
 
-        // اسم الموظف — typed, not an FK: the guards who do the check mostly
-        // have no account here.
+        // اسم الموظف as typed before 2026-11-26; no longer written. The checker
+        // is now UpdatedBy, the signed-in user who saved the check.
         [MaxLength(100)]
         public string? EmployeeName { get; set; }
 
+        // Who did the check: whoever saved it.
         public string? UpdatedById { get; set; }
         public User? UpdatedBy { get; set; }
         public DateTime UpdatedAt { get; set; } = AppClock.Now;

@@ -28,6 +28,9 @@ namespace AlAmalBusiness.Application.DTOs.Users
         // stored as no email; format is checked in UserServices.
         [StringLength(256)]
         public string? Email { get; set; }
+        // Optional staff number, unique when set. Blank is stored as none.
+        [StringLength(20)]
+        public string? EmployeeNumber { get; set; }
         public List<string> Roles { get; set; } = new List<string>();
 
     }

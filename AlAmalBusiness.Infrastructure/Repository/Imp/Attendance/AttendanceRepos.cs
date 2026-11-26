@@ -1,4 +1,5 @@
 ﻿using AlAmalBusiness.DbContext.Infrastructure;
+using AlAmalBusiness.Domain.Constants;
 using AlAmalBusiness.Domain.IRepositories.Attendance;
 using AlAmalBusiness.Domain.Models.Attendance;
 using Microsoft.EntityFrameworkCore;
@@ -95,7 +96,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Attendance
                 .Select(s => s.DepartmentId)
                 .ToListAsync();
 
-        public async Task<List<(string Number, string Name)>> GetLatestRosterAsync(int departmentId, int year, int month)
+        public async Task<List<(string Number, string Name, string? UserId)>> GetLatestRosterAsync(int departmentId, int year, int month)
         {
             var key = year * 12 + month;
             var latestId = await _context.AttendanceSheets
@@ -108,10 +109,10 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Attendance
             var rows = await _context.AttendanceRows.AsNoTracking()
                 .Where(r => r.SheetId == latestId.Value)
                 .OrderBy(r => r.DisplayOrder).ThenBy(r => r.Id)
-                .Select(r => new { r.EmployeeNumber, r.EmployeeName })
+                .Select(r => new { r.EmployeeNumber, r.EmployeeName, r.UserId })
                 .ToListAsync();
 
-            return rows.Select(r => (r.EmployeeNumber, r.EmployeeName)).ToList();
+            return rows.Select(r => (r.EmployeeNumber, r.EmployeeName, r.UserId)).ToList();
         }
 
         public Task<bool> HasEntriesAsync(int id) =>
@@ -132,19 +133,48 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.Attendance
         }
 
         public Task<List<AttendanceGridRow>> GetGridAsync(int sheetId) =>
-            _context.AttendanceRows.AsNoTracking()
+            Grid(_context.AttendanceRows.AsNoTracking()
                 .Where(r => r.SheetId == sheetId)
-                .OrderBy(r => r.DisplayOrder).ThenBy(r => r.Id)
-                .Select(r => new AttendanceGridRow
+                .OrderBy(r => r.DisplayOrder).ThenBy(r => r.Id))
+                .ToListAsync();
+
+        public Task<List<AttendanceGridRow>> GetMineAsync(string userId, int take) =>
+            Grid(_context.AttendanceRows.AsNoTracking()
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.Sheet!.Year).ThenByDescending(r => r.Sheet!.Month)
+                .Take(take))
+                .ToListAsync();
+
+        // A linked row shows its user's current number and name.
+        private static IQueryable<AttendanceGridRow> Grid(IQueryable<AttendanceRow> q) =>
+            q.Select(r => new AttendanceGridRow
                 {
                     Id = r.Id,
-                    EmployeeNumber = r.EmployeeNumber,
-                    EmployeeName = r.EmployeeName,
+                    SheetId = r.SheetId,
+                    UserId = r.UserId,
+                    EmployeeNumber = r.User != null ? (r.User.EmployeeNumber ?? "") : r.EmployeeNumber,
+                    EmployeeName = r.User != null ? (r.User.FullName ?? r.User.UserName ?? r.EmployeeName) : r.EmployeeName,
                     DisplayOrder = r.DisplayOrder,
                     Cells = r.Entries.Select(e => new AttendanceCell { Day = e.Day, CodeId = e.CodeId }).ToList()
                 })
-                .AsSplitQuery()
-                .ToListAsync();
+                .AsSplitQuery();
+
+        public Task<List<AttendanceEmployeeRow>> GetEmployeesAsync(int departmentId) =>
+            (from u in _context.Users.AsNoTracking()
+             join ur in _context.UserRoles on u.Id equals ur.UserId
+             join role in _context.Roles on ur.RoleId equals role.Id
+             where role.Name == AppRoles.AttendEmp
+                 && u.IsActive
+                 && (u.DepartmentId == departmentId || u.ExtraDepartments.Any(x => x.DepartmentId == departmentId))
+             select new AttendanceEmployeeRow
+             {
+                 UserId = u.Id,
+                 UserName = u.UserName,
+                 FullName = u.FullName,
+                 EmployeeNumber = u.EmployeeNumber
+             })
+            .OrderBy(e => e.FullName)
+            .ToListAsync();
 
         // A sheet is a department's staff (tens of rows, ~30 cells each), so
         // loading all of it for a save is cheaper than a query per row.

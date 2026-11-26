@@ -10,6 +10,7 @@ namespace AlAmalBusiness.Application.DTOs.Users.Response
         public string? UserName { get; set; }
         public string? FullName { get; set; }
         public string? Email { get; set; }
+        public string? EmployeeNumber { get; set; }
         public int DepartmentId { get; set; }
         // Extra departments this user may read, beyond DepartmentId.
         public List<int> ExtraDepartmentIds { get; set; } = new List<int>();

@@ -32,7 +32,7 @@ namespace AlAmalBusiness.Domain.IRepositories.Attendance
 
         // The employees of the department's latest sheet before that month,
         // in order — what a newly opened sheet starts with.
-        Task<List<(string Number, string Name)>> GetLatestRosterAsync(int departmentId, int year, int month);
+        Task<List<(string Number, string Name, string? UserId)>> GetLatestRosterAsync(int departmentId, int year, int month);
 
         Task<bool> HasEntriesAsync(int id);
 
@@ -51,6 +51,13 @@ namespace AlAmalBusiness.Domain.IRepositories.Attendance
 
         // Tracked.
         Task<AttendanceRow?> GetByIdAsync(int id);
+
+        // Who may be put on a department's sheet: active users holding
+        // AttendEmp whose home or extra departments include it.
+        Task<List<AttendanceEmployeeRow>> GetEmployeesAsync(int departmentId);
+
+        // Every row that is this user's, newest month first, with its cells.
+        Task<List<AttendanceGridRow>> GetMineAsync(string userId, int take);
 
         void Add(AttendanceRow row);
         void Remove(AttendanceRow row);
@@ -84,9 +91,19 @@ namespace AlAmalBusiness.Domain.IRepositories.Attendance
         public string? ClosedByName { get; set; }
     }
 
+    public class AttendanceEmployeeRow
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string? UserName { get; set; }
+        public string? FullName { get; set; }
+        public string? EmployeeNumber { get; set; }
+    }
+
     public class AttendanceGridRow
     {
         public int Id { get; set; }
+        public int SheetId { get; set; }
+        public string? UserId { get; set; }
         public string EmployeeNumber { get; set; } = string.Empty;
         public string EmployeeName { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }

@@ -39,12 +39,18 @@ namespace AlAmalBusiness.Application.Services.Imp
             {
                 return new CreateUserResult { IsSuccess = false, Message = extraError };
             }
+            var employeeNumber = Blank(user.EmployeeNumber);
+            if (employeeNumber != null && await _userRepo.IsEmployeeNumberTakenAsync(employeeNumber, null))
+            {
+                return new CreateUserResult { IsSuccess = false, Message = $"Employee number {employeeNumber} already belongs to someone else." };
+            }
             var newUser = new User
             {
                 UserName = user.UserName,
                 FullName = user.FullName,
                 DepartmentId = user.DepartmentId,
                 Email = email,
+                EmployeeNumber = employeeNumber,
             };
 
             var result = await _userRepo.CreateUserAsync(newUser, user.Password!);
@@ -82,6 +88,7 @@ namespace AlAmalBusiness.Application.Services.Imp
             UserName = user.UserName,
             FullName = user.FullName,
             Email = user.Email,
+            EmployeeNumber = user.EmployeeNumber,
             DepartmentId = user.DepartmentId,
             ExtraDepartmentIds = user.ExtraDepartmentIds,
             IsActive = user.IsActive,
@@ -115,6 +122,8 @@ namespace AlAmalBusiness.Application.Services.Imp
 
         // Blank means "no email" (null), anything else must parse as a plain
         // address — no display name, since this goes straight into SMTP RCPT.
+        private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
         private static bool TryNormalizeEmail(string? value, out string? email)
         {
             email = null;
@@ -180,7 +189,13 @@ namespace AlAmalBusiness.Application.Services.Imp
                 return new UpdateUserResponse { IsSuccess = false, Message = extraError };
             }
 
-            var updateUser = await _userRepo.UpdateUserAsync(id, updateDTO.UserName!, updateDTO.FullName!, updateDTO.DepartmentId, email);
+            var employeeNumber = Blank(updateDTO.EmployeeNumber);
+            if (employeeNumber != null && await _userRepo.IsEmployeeNumberTakenAsync(employeeNumber, id))
+            {
+                return new UpdateUserResponse { IsSuccess = false, Message = $"Employee number {employeeNumber} already belongs to someone else." };
+            }
+
+            var updateUser = await _userRepo.UpdateUserAsync(id, updateDTO.UserName!, updateDTO.FullName!, updateDTO.DepartmentId, email, employeeNumber);
 
             if (updateUser.Succeeded)
             {

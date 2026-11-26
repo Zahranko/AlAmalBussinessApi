@@ -103,9 +103,10 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
                 // so a month starts with its names and only the days to fill.
                 var roster = await _sheets.GetLatestRosterAsync(departmentId, dto.Year, dto.Month);
                 var order = 0;
-                foreach (var (number, name) in roster)
+                foreach (var (number, name, userId) in roster)
                     sheet.Rows.Add(new AttendanceRow
                     {
+                        UserId = userId,
                         EmployeeNumber = number,
                         EmployeeName = name,
                         DisplayOrder = ++order,
@@ -202,7 +203,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
                     .Where(c => c.IsActive || used.Contains(c.Id))
                     .Select(AttendanceCodeService.ToDto)
                     .ToList(),
-                Rows = rows.Select(r => ToRow(r.Id, r.EmployeeNumber, r.EmployeeName, r.DisplayOrder,
+                Rows = rows.Select(r => ToRow(r.Id, r.UserId, r.EmployeeNumber, r.EmployeeName, r.DisplayOrder,
                     r.Cells.Select(c => (c.Day, c.CodeId)), days, sheet.RequiredHours, codes)).ToList()
             };
         }
@@ -220,10 +221,11 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
             var codes = (await _codes.GetAllAsync()).ToDictionary(c => c.Id);
 
             var existing = (await _rows.GetForEditAsync(sheetId)).ToDictionary(r => r.Id);
+            var employees = (await _rows.GetEmployeesAsync(sheet.DepartmentId)).ToDictionary(e => e.UserId);
 
-            // Who holds each employee number right now, updated as the batch
-            // applies, so two rows of one save can't end up sharing one.
-            var numbers = existing.Values.ToDictionary(r => r.EmployeeNumber, r => r, StringComparer.OrdinalIgnoreCase);
+            // Which row each person is right now, updated as the batch
+            // applies, so two rows of one save can't end up the same person.
+            var people = existing.Values.Where(r => r.UserId != null).ToDictionary(r => r.UserId!, r => r);
             var nextOrder = existing.Values.Select(r => r.DisplayOrder).DefaultIfEmpty(0).Max();
 
             var results = new List<(AttendanceRowResult Result, AttendanceRow? Row)>();
@@ -239,7 +241,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
                     continue;
                 }
 
-                var error = Check(dto, row, days, codes, numbers, out var number, out var name, out var cells);
+                var error = Check(dto, row, days, codes, employees, people, out var userId, out var number, out var name, out var cells);
                 if (error != null)
                 {
                     result.Error = error;
@@ -259,14 +261,15 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
                 }
                 else
                 {
-                    numbers.Remove(row.EmployeeNumber);
+                    if (row.UserId != null) people.Remove(row.UserId);
                     if (dto.DisplayOrder.HasValue) row.DisplayOrder = dto.DisplayOrder.Value;
                     row.UpdatedAt = AppClock.Now;
                 }
 
+                row.UserId = userId;
                 row.EmployeeNumber = number;
                 row.EmployeeName = name;
-                numbers[number] = row;
+                if (userId != null) people[userId] = row;
                 ApplyCells(row, cells);
 
                 results.Add((result, row));
@@ -281,7 +284,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
                 if (x.Row != null)
                 {
                     x.Result.Id = x.Row.Id;
-                    x.Result.Row = ToRow(x.Row.Id, x.Row.EmployeeNumber, x.Row.EmployeeName, x.Row.DisplayOrder,
+                    x.Result.Row = ToRow(x.Row.Id, x.Row.UserId, x.Row.EmployeeNumber, x.Row.EmployeeName, x.Row.DisplayOrder,
                         x.Row.Entries.Select(e => (e.Day, e.CodeId)), days, sheet.RequiredHours, codes);
                 }
                 return x.Result;
@@ -302,6 +305,50 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
             return Ok(true);
         }
 
+        // ---------- people ----------
+
+        public async Task<List<AttendanceEmployeeResponse>?> GetEmployeesAsync(int sheetId, AttendanceActor actor)
+        {
+            var sheet = await _sheets.GetByIdAsync(sheetId);
+            if (sheet == null || !CanSee(sheet.DepartmentId, actor)) return null;
+
+            var onSheet = (await _rows.GetGridAsync(sheetId)).Select(r => r.UserId).Where(id => id != null).ToHashSet();
+            return (await _rows.GetEmployeesAsync(sheet.DepartmentId)).Select(e => new AttendanceEmployeeResponse
+            {
+                UserId = e.UserId,
+                UserName = e.UserName,
+                FullName = e.FullName,
+                EmployeeNumber = e.EmployeeNumber,
+                OnSheet = onSheet.Contains(e.UserId)
+            }).ToList();
+        }
+
+        // An AttendEmp reads their own rows and nothing else: no department
+        // check, the user id is the whole filter.
+        public async Task<List<MyAttendanceMonthResponse>> GetMineAsync(string userId)
+        {
+            var rows = await _rows.GetMineAsync(userId, 24);
+            if (rows.Count == 0) return new();
+
+            var codes = (await _codes.GetAllAsync()).ToDictionary(c => c.Id);
+            var result = new List<MyAttendanceMonthResponse>();
+            foreach (var r in rows)
+            {
+                var sheet = await _sheets.GetRowAsync(r.SheetId);
+                if (sheet == null) continue;
+                var days = DateTime.DaysInMonth(sheet.Year, sheet.Month);
+                var used = r.Cells.Select(c => c.CodeId).ToHashSet();
+                result.Add(new MyAttendanceMonthResponse
+                {
+                    Sheet = ToResponse(sheet),
+                    Codes = codes.Values.Where(c => used.Contains(c.Id)).Select(AttendanceCodeService.ToDto).ToList(),
+                    Row = ToRow(r.Id, r.UserId, r.EmployeeNumber, r.EmployeeName, r.DisplayOrder,
+                        r.Cells.Select(c => (c.Day, c.CodeId)), days, sheet.RequiredHours, codes)
+                });
+            }
+            return result;
+        }
+
         // ---------- validation + mapping ----------
 
         // Checks the whole row first and only then lets the caller copy it,
@@ -311,22 +358,42 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
             AttendanceRow? row,
             int days,
             Dictionary<int, AttendanceCode> codes,
-            Dictionary<string, AttendanceRow> numbers,
+            Dictionary<string, AttendanceEmployeeRow> employees,
+            Dictionary<string, AttendanceRow> people,
+            out string? userId,
             out string number,
             out string name,
             out Dictionary<int, int> cells)
         {
-            number = Clean(dto.EmployeeNumber) ?? "";
-            name = Clean(dto.EmployeeName) ?? "";
+            userId = Clean(dto.UserId) ?? row?.UserId;
+            number = row?.EmployeeNumber ?? "";
+            name = row?.EmployeeName ?? "";
             cells = new Dictionary<int, int>();
 
-            if (number.Length == 0) return "Employee number is required.";
-            if (number.Length > 20) return "Employee number is longer than 20 characters.";
-            if (name.Length == 0) return "Employee name is required.";
-            if (name.Length > 200) return "Employee name is longer than 200 characters.";
+            if (userId == null)
+            {
+                // Only an old typed row may stay without a user.
+                if (row == null) return "Pick the employee from the department's employees.";
+                number = Clean(dto.EmployeeNumber) ?? row.EmployeeNumber;
+                name = Clean(dto.EmployeeName) ?? row.EmployeeName;
+                if (number.Length > 20) return "Employee number is longer than 20 characters.";
+                if (name.Length == 0) return "Employee name is required.";
+                if (name.Length > 200) return "Employee name is longer than 200 characters.";
+            }
+            else if (employees.TryGetValue(userId, out var employee))
+            {
+                number = employee.EmployeeNumber ?? "";
+                name = employee.FullName ?? employee.UserName ?? "";
+            }
+            else if (userId != row?.UserId)
+            {
+                // Someone who left the department or lost the role may stay
+                // on the rows they already had, but can't be added anew.
+                return "That person isn't an attendance employee (AttendEmp) of this department.";
+            }
 
-            if (numbers.TryGetValue(number, out var holder) && holder != row)
-                return $"Employee number {number} is already on this sheet.";
+            if (userId != null && people.TryGetValue(userId, out var holder) && holder != row)
+                return $"{name} is already on this sheet.";
 
             var sent = dto.Days ?? new List<int?>();
             if (sent.Count > days) return $"This month has {days} days, but {sent.Count} were sent.";
@@ -367,6 +434,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
 
         private static AttendanceRowResponse ToRow(
             int id,
+            string? userId,
             string number,
             string name,
             int displayOrder,
@@ -388,6 +456,7 @@ namespace AlAmalBusiness.Application.Services.Imp.Attendance
             return new AttendanceRowResponse
             {
                 Id = id,
+                UserId = userId,
                 EmployeeNumber = number,
                 EmployeeName = name,
                 DisplayOrder = displayOrder,

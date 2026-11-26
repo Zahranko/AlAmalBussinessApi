@@ -31,5 +31,12 @@ namespace AlAmalBusiness.Application.Services.Interface.Attendance
         Task<AttendanceResult<List<AttendanceRowResult>>> SaveRowsAsync(int sheetId, List<SaveAttendanceRowDTO> rows, AttendanceActor actor);
 
         Task<AttendanceResult<bool>> DeleteRowAsync(int id, AttendanceActor actor);
+
+        // The AttendEmp users of the sheet's department. Null when the sheet
+        // isn't there or isn't the caller's.
+        Task<List<AttendanceEmployeeResponse>?> GetEmployeesAsync(int sheetId, AttendanceActor actor);
+
+        // The caller's own rows, newest month first.
+        Task<List<MyAttendanceMonthResponse>> GetMineAsync(string userId);
     }
 }

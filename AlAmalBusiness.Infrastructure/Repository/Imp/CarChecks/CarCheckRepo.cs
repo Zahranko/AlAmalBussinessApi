@@ -101,7 +101,8 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp.CarChecks
         public Task<List<CarCheckDay>> GetDaysAsync(int sheetId, bool tracking = false)
         {
             var q = _context.CarCheckDays.Where(d => d.SheetId == sheetId);
-            if (!tracking) q = q.AsNoTracking();
+            // Read-only: with the checker's name.
+            if (!tracking) q = q.AsNoTracking().Include(d => d.UpdatedBy);
             return q.OrderBy(d => d.Day).ToListAsync();
         }
 

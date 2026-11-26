@@ -16,7 +16,9 @@ namespace AlAmalBusiness.Domain.IRepositories
         // Id and username of every active user, for pickers.
         Task<List<(string Id, string? UserName)>> GetActiveUserNamesAsync();
         Task<IdentityResult> UpdateRolesAsync(string id, List<string> userRoles);
-        Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId, string? email);
+        Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId, string? email, string? employeeNumber);
+        // Whether another user already has this staff number.
+        Task<bool> IsEmployeeNumberTakenAsync(string number, string? excludeUserId);
         // Replaces a user's extra readable departments wholesale (see
         // UserDepartment). An empty list clears them, leaving the user with
         // their home department alone.

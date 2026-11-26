@@ -241,10 +241,16 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("SheetId", "EmployeeNumber")
-                        .IsUnique();
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SheetId", "UserId")
+                        .IsUnique()
+                        .HasFilter("[UserId] IS NOT NULL");
 
                     b.ToTable("AttendanceRows");
                 });
@@ -1902,6 +1908,10 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("EmployeeNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1946,6 +1956,10 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DepartmentId");
+
+                    b.HasIndex("EmployeeNumber")
+                        .IsUnique()
+                        .HasFilter("[EmployeeNumber] IS NOT NULL");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -2178,7 +2192,14 @@ namespace AlAmalBusiness.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("AlAmalBusiness.Domain.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Sheet");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("AlAmalBusiness.Domain.Models.Attendance.AttendanceSheet", b =>

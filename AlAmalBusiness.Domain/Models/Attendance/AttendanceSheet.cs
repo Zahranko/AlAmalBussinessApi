@@ -39,9 +39,10 @@ namespace AlAmalBusiness.Domain.Models.Attendance
         public List<AttendanceRow> Rows { get; set; } = new();
     }
 
-    // One employee on one sheet. Number and name are typed (or carried over
-    // from the department's previous sheet), not an FK: most staff have no
-    // account here.
+    // One employee on one sheet: since 2026-11-26 a user holding AttendEmp in
+    // the sheet's department. Number and name are snapshots of that user's,
+    // kept because the rows typed before then had no user; responses read
+    // them live from the user whenever UserId is set.
     public class AttendanceRow
     {
         [Key]
@@ -49,6 +50,9 @@ namespace AlAmalBusiness.Domain.Models.Attendance
 
         public int SheetId { get; set; }
         public AttendanceSheet? Sheet { get; set; }
+
+        public string? UserId { get; set; }
+        public User? User { get; set; }
 
         [MaxLength(20)]
         public string EmployeeNumber { get; set; } = string.Empty;

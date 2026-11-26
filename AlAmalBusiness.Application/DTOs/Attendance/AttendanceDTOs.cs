@@ -86,6 +86,9 @@ namespace AlAmalBusiness.Application.DTOs.Attendance
     public class AttendanceRowResponse
     {
         public int Id { get; set; }
+        // The AttendEmp user this row is; null only on rows typed before
+        // rows became users.
+        public string? UserId { get; set; }
         public string EmployeeNumber { get; set; } = string.Empty;
         public string EmployeeName { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }
@@ -112,10 +115,33 @@ namespace AlAmalBusiness.Application.DTOs.Attendance
     {
         public int? Id { get; set; }
         public string? ClientKey { get; set; }
+        // The employee: a user holding AttendEmp in the sheet's department.
+        // Required for a new row; number and name come from the user, so the
+        // two fields below are only read for an old typed row with no user.
+        public string? UserId { get; set; }
         public string? EmployeeNumber { get; set; }
         public string? EmployeeName { get; set; }
         public int? DisplayOrder { get; set; }
         public List<int?>? Days { get; set; }
+    }
+
+    // Who may be put on a sheet (GET sheets/{id}/employees).
+    public class AttendanceEmployeeResponse
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string? UserName { get; set; }
+        public string? FullName { get; set; }
+        public string? EmployeeNumber { get; set; }
+        // Already a row of this sheet.
+        public bool OnSheet { get; set; }
+    }
+
+    // One month of the caller's own attendance (GET api/MyAttendance).
+    public class MyAttendanceMonthResponse
+    {
+        public AttendanceSheetResponse Sheet { get; set; } = new();
+        public List<AttendanceCodeDTO> Codes { get; set; } = new();
+        public AttendanceRowResponse Row { get; set; } = new();
     }
 
     public class AttendanceRowResult

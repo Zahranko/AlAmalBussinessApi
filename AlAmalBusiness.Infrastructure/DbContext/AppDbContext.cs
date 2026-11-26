@@ -66,6 +66,9 @@ public class AppDbContext : IdentityDbContext<User>
     {
         base.OnModelCreating(modelBuilder);
 
+        // A staff number belongs to one person.
+        modelBuilder.Entity<User>().HasIndex(u => u.EmployeeNumber).IsUnique().HasFilter("[EmployeeNumber] IS NOT NULL");
+
         modelBuilder.Entity<User>()
             .HasOne(u => u.Department)
             .WithMany(d => d.Users)
@@ -556,8 +559,15 @@ public class AppDbContext : IdentityDbContext<User>
             .HasForeignKey(r => r.SheetId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // An employee number appears once per sheet.
-        modelBuilder.Entity<AttendanceRow>().HasIndex(r => new { r.SheetId, r.EmployeeNumber }).IsUnique();
+        // A person appears once per sheet. (Rows typed before rows became
+        // users have no UserId and aren't constrained.)
+        modelBuilder.Entity<AttendanceRow>().HasIndex(r => new { r.SheetId, r.UserId }).IsUnique().HasFilter("[UserId] IS NOT NULL");
+
+        modelBuilder.Entity<AttendanceRow>()
+            .HasOne(r => r.User)
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // A blank day is no row, so (row, day) is the whole identity.
         modelBuilder.Entity<AttendanceEntry>().HasKey(e => new { e.RowId, e.Day });

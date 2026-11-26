@@ -54,6 +54,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
                 UserName = u.UserName,
                 FullName = u.FullName,
                 Email = u.Email,
+                EmployeeNumber = u.EmployeeNumber,
                 DepartmentId = u.DepartmentId,
                 ExtraDepartmentIds = u.ExtraDepartments.Select(x => x.DepartmentId).ToList(),
                 IsActive = u.IsActive,
@@ -139,7 +140,10 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
                 .Select(u => u.Email)
                 .FirstOrDefaultAsync();
 
-        public async Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId, string? email)
+        public Task<bool> IsEmployeeNumberTakenAsync(string number, string? excludeUserId) =>
+            _context.Users.AnyAsync(u => u.EmployeeNumber == number && u.Id != excludeUserId);
+
+        public async Task<IdentityResult> UpdateUserAsync(string id, string userName, string fullName, int departmentId, string? email, string? employeeNumber)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "User not found." });
@@ -156,6 +160,7 @@ namespace AlAmalBusiness.Infrastructure.Repository.Imp
             user.DepartmentId = departmentId;
             // UpdateAsync re-normalizes NormalizedEmail along with the username.
             user.Email = email;
+            user.EmployeeNumber = employeeNumber;
             return await _userManager.UpdateAsync(user);
 
         }

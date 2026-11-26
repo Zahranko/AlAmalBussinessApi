@@ -12,6 +12,10 @@ public class User:IdentityUser
     [StringLength(20, MinimumLength = 3)]
     public string? FullName { get; set; }
     public bool IsActive { get; set; } = true;
+    // The hospital's staff number (optional, unique when set). Attendance
+    // rows show it next to the name.
+    [MaxLength(20)]
+    public string? EmployeeNumber { get; set; }
     // Where this person works: what every write stamps, and the floor of
     // what they can read. ExtraDepartments widens the reading only.
     public int DepartmentId { get; set; }

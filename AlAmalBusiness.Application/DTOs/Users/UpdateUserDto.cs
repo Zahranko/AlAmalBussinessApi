@@ -23,5 +23,8 @@ namespace AlAmalBusiness.Application.DTOs.Users
         // field isn't a 400).
         [StringLength(256)]
         public string? Email { get; set; }
+        // Full replace too: null or "" clears it.
+        [StringLength(20)]
+        public string? EmployeeNumber { get; set; }
     }
 }
